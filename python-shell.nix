@@ -1,5 +1,5 @@
 # python-shell.nix
-{ pkgs ? import <nixpkgs> {}, extraBuildInputs ? [], myPython ? pkgs.python3, extraLibPackages ? [], pythonWithPkgs? myPython }:
+{ pkgs ? import <nixpkgs> {}, extraBuildInputs ? [], myPython ? pkgs.python3, pythonWithPkgs? myPython }:
 
 
 let

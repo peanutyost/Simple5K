@@ -1,0 +1,10 @@
+asgiref
+Django
+sqlparse
+tzdata
+django-dotenv
+gunicorn
+mysqlclient
+whitenoise
+reportlab
+pillow

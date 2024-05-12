@@ -22,13 +22,18 @@ let
 
   extraBuildInputs = with pkgs; [
     # this list contains packages that you want to be available at runtime and might not be able to be installed properly via pip
-    # pythonPackages.pandas
-    python311Packages.django
+    pythonPackages.tzdata
+    pythonPackages.python-dotenv
+    pythonPackages.django
+    pythonPackages.gunicorn
+    pythonPackages.mysqlclient
+    pythonPackages.whitenoise
+    pythonPackages.reportlab
+    pythonPackages.pillow
   ];
 in
 import ./python-shell.nix { 
     extraBuildInputs=extraBuildInputs; 
-    extraLibPackages=extraLibPackages; 
     myPython=myPython;
     pythonWithPkgs=pythonWithPkgs;
 }
