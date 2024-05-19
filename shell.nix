@@ -30,6 +30,7 @@ let
     pythonPackages.whitenoise
     pythonPackages.reportlab
     pythonPackages.pillow
+    sqlite
   ];
 in
 import ./python-shell.nix { 
