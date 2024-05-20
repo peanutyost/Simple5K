@@ -8,7 +8,8 @@ from datetime import datetime
 from .models import race, runners, laps
 from .forms import LapForm, addRunnerForm, raceStart
 
-# Create your views here.
+
+@login_required
 def laps_view(request):
     p = []
     if request.method == 'POST':
@@ -62,6 +63,7 @@ def laps_view(request):
 
     return render(request, "tracker/laps.html", context=context)
 
+@login_required
 def add_runner_view(request):
     
     form = addRunnerForm(request.POST or None)
@@ -81,6 +83,7 @@ def add_runner_view(request):
     context = {"form": form}
     return render(request, "tracker/add_runner.html", context=context)
 
+@login_required
 def race_start_view(request):
     form = raceStart(request.POST or None)
     context = {"form": form}
@@ -101,3 +104,42 @@ def race_start_view(request):
                           })
             
     return render(request, "tracker/race_start.html", context=context)
+
+def race_overview(request):
+    current_race = race.objects.filter(is_current=True).first()
+    
+    # Initialize an empty list to store runner times
+    runner_times = []
+    
+    if current_race:
+        # Get all runners for the current race
+        runnersall = runners.objects.filter(race=current_race)
+        
+        # Create a list of runner names and their total race times
+        for arunner in runnersall:
+            run_laps =[]
+            alap = laps.objects.filter(runner=arunner).order_by('lap')
+            for lap in alap:
+                run_laps.append({
+                    'lap': lap.lap,
+                    'duration': lap.duration,
+                    'average_speed': lap.average_speed
+                })  
+
+            runner_times.append({
+                'number': arunner.number,
+                'name': f"{arunner.first_name} {arunner.last_name}",
+                'total_race_time': arunner.total_race_time if not None else "Not Finished",
+                'average_speed': arunner.race_avg_speed if not None else "Not Finished",
+                'laps' : run_laps
+                    
+            })
+    
+    # Pass the runner times to the template
+    context = {
+        'runner_times': runner_times,
+        'race_name': current_race.name if current_race else "No current race"
+    }
+    
+    return render(request, 'tracker/race_overview.html', context)
+    

@@ -11,11 +11,12 @@ from accounts.views import (
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic.base import RedirectView
+from tracker.views import race_overview
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path('', race_overview),
+    path('admin/', admin.site.urls),
     path('tracker/', include('tracker.urls')),
-    #path('reports/', include('reports.urls')),
     path('login/', login_view),
     path('logout/', logout_view),
     path('register/', register_view),

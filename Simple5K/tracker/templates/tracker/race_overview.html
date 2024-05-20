@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-center">
+    <h1>{{ race_name }}</h1>
+</div>
+<div class="d-flex align-items-center justify-content-center">
+    <table id="table" class= "sortable table-bordered table-striped w-75 padding-auto">
+        <thead>
+            <tr>
+                <th>Runner</th>
+                <th>Name</th>
+                <th>Lap - Time - Speed MPH</th>
+                <th>Total Race Time HH:MM:SS.</th>
+                <th>Average Race Speed MPH</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+            {% for runner in runner_times %}
+                <tr>
+                    <td> {{ runner.number}} </td>
+                    <td> {{ runner.name}} </td>
+                    <td> 
+                        {% for lap in runner.laps %}
+                        {{ lap.lap }} - {{ lap.duration }} - {{ lap.average_speed }}
+                        <br>
+                        {% endfor %}
+                    </td>
+                    <td> {% if runner.total_race_time == None %}
+                        Not Finished
+                        {% else %}
+                        {{ runner.total_race_time }} 
+                        {% endif %}
+                    </td>
+                    <td>{% if runner.average_speed == None %}
+                        Not Finished
+                        {% else %} 
+                        {{ runner.average_speed }}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
