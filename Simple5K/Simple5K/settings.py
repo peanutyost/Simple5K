@@ -26,7 +26,7 @@ SECRET_KEY = os.environ.get(
     "django-insecure-ch78dw0!7!*umk0b501jgt(t3z(xp&j4w166t8kfq=*2obe0p)")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", 'True')
+DEBUG = os.environ.get("DEBUG", 'True')
 
 CSRF_TRUSTED_ORIGINS = [os.environ.get('TRUSTED_ORIGINS', "http://localhost")]
 
