@@ -12,8 +12,13 @@ class race(models.Model):
         return self.name
     
 class runners(models.Model):
+    gender = (
+        ('male', 'Male'),
+        ('female', 'Female')
+    )
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
+    gender = models.CharField(max_length=50, choices=gender, blank=True, null=True)
     number = models.IntegerField(unique=True)
     race = models.ForeignKey(race, on_delete=models.PROTECT)
     race_completed = models.BooleanField(null=True, blank=True)

@@ -24,6 +24,7 @@ class addRunnerForm(forms.Form, forms.ModelForm):
             'first_name',
             'last_name',
             'number',
+            'gender',
             'race',
             'type',
             'notes'
