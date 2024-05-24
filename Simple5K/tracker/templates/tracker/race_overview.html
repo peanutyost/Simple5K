@@ -16,6 +16,7 @@
                 <th>Lap - Time - Speed MPH</th>
                 <th>Total Race Time HH:MM:SS.</th>
                 <th>Average Race Speed MPH</th>
+                <th>Finished Place</th>
             </tr>
         </thead>
         <tbody>
@@ -40,6 +41,12 @@
                         Not Finished
                         {% else %} 
                         {{ runner.average_speed }}
+                        {% endif %}
+                    </td>
+                    <td>{% if runner.average_speed == None %}
+                        Not Finished
+                        {% else %} 
+                        {{ runner.place }}
                         {% endif %}
                     </td>
                 </tr>

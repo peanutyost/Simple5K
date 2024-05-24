@@ -19,6 +19,7 @@ class runners(models.Model):
     race_completed = models.BooleanField(null=True, blank=True)
     total_race_time = models.DurationField(blank=True, null=True)
     race_avg_speed = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+    place = models.IntegerField(blank=True, null=True)
     type = models.CharField(max_length=64, null=True, blank=True)
     notes = models.CharField(max_length=512, null=True, blank=True)
     

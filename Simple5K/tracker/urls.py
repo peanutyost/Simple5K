@@ -5,6 +5,7 @@ from .views import (
     add_runner_view,
     race_start_view,
     race_overview,
+    runner_stats,
     
 )
 
@@ -14,4 +15,5 @@ urlpatterns = [
     path('laps', laps_view, name='laps-record'),
     path('add-runner', add_runner_view, name='add-runner'),
     path('race-start', race_start_view, name='race-start'),
+    path('runner-stats', runner_stats, name='runner-stats'),
 ]

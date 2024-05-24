@@ -32,3 +32,8 @@ class addRunnerForm(forms.Form, forms.ModelForm):
 class raceStart(forms.Form):
 
   racename = forms.ModelChoiceField(queryset=race.objects.all())
+  
+class runnerStats(forms.Form):
+    
+    racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=race.objects.get(is_current = True))
+    runnernumber = forms.IntegerField(label="Runner Number")
