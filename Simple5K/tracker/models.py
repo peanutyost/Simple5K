@@ -33,7 +33,7 @@ class laps(models.Model):
     lap = models.IntegerField()
     attach_to_race = models.ForeignKey(race , on_delete=models.CASCADE)
     duration = models.DurationField()
-    average_speed = models.DecimalField(max_digits=5, decimal_places=2)
+    average_speed = models.DecimalField(max_digits=10, decimal_places=2)
     
     def __str__(self):
         return self.attach_to_race.name + "/" + str(self.runner.number)
