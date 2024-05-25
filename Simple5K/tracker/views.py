@@ -29,7 +29,10 @@ def laps_view(request):
             thislap = lapsrun.lap + 1
             lapDuration = datetime.now().astimezone() - lapsrun.time
             if thislap == race_attached.laps_count:
-                allfinnisher = runners.objects.filter(race_completed = True)
+                if runner_attached.gender is None:
+                    runner_attached.gender = 'male'
+
+                allfinnisher = runners.objects.filter(race_completed = True, gender = runner_attached.gender)
                 if not allfinnisher.exists():
                     runner_attached.place = 1
                 else:
