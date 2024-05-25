@@ -123,7 +123,7 @@ def race_overview(request):
     
     if current_race:
         # Get all runners for the current race
-        runnersall = runners.objects.filter(race=current_race)
+        runnersall = runners.objects.filter(race=current_race).order_by(F('place').asc(nulls_last = True))
         
         # Create a list of runner names and their total race times
         for arunner in runnersall:
