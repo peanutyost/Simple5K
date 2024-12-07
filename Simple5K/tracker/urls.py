@@ -6,7 +6,7 @@ from .views import (
     race_start_view,
     race_overview,
     runner_stats,
-    
+
 )
 
 app_name = 'tracker'

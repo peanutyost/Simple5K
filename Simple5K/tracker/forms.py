@@ -1,6 +1,5 @@
 from django import forms
 from .models import runners
-
 from .models import (laps,
                      runners,
                      race,
@@ -12,10 +11,10 @@ BOOL_CHECKLIST_OPTIONS = (
     )
 
 
-
 class LapForm(forms.Form):
     runnernumber = forms.IntegerField(label="Runners Number", widget=forms.TextInput(attrs={'autofocus':'autofocus'}))
-    
+
+
 class addRunnerForm(forms.Form, forms.ModelForm):
 
     class Meta:
@@ -29,12 +28,14 @@ class addRunnerForm(forms.Form, forms.ModelForm):
             'type',
             'notes'
         ]
-        
+
+
 class raceStart(forms.Form):
 
-  racename = forms.ModelChoiceField(queryset=race.objects.all())
-  
+    racename = forms.ModelChoiceField(queryset=race.objects.all())
+
+
 class runnerStats(forms.Form):
-    
-    racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=race.objects.get(is_current = True))
+
+    racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=race.objects.get(is_current=True))
     runnernumber = forms.IntegerField(label="Runner Number")
