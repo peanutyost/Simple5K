@@ -82,7 +82,7 @@ WSGI_APPLICATION = "Simple5K.wsgi.application"
 
 DATABASES = {
      'default': {
-         
+
          'ENGINE': 'django.db.backends.{}'.format(
              os.environ.get('DATABASE_ENGINE', 'sqlite3')
          ),

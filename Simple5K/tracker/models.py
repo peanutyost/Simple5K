@@ -6,8 +6,10 @@ class race(models.Model):
     is_current = models.BooleanField(null=True, blank=True)
     distance = models.IntegerField()
     laps_count = models.IntegerField()
-    start_time = models.DateTimeField(auto_now=False, auto_now_add=False, null=True, blank=True)
-    end_time = models.DateTimeField(auto_now=False, auto_now_add=False, null=True, blank=True)
+    start_time = models.DateTimeField(
+        auto_now=False, auto_now_add=False, null=True, blank=True)
+    end_time = models.DateTimeField(
+        auto_now=False, auto_now_add=False, null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -24,14 +26,17 @@ class runners(models.Model):
     )
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    gender = models.CharField(max_length=50, choices=gender, blank=True, null=True)
+    gender = models.CharField(
+        max_length=50, choices=gender, blank=True, null=True)
     number = models.IntegerField(unique=True)
     race = models.ForeignKey(race, on_delete=models.PROTECT)
     race_completed = models.BooleanField(null=True, blank=True)
     total_race_time = models.DurationField(blank=True, null=True)
-    race_avg_speed = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    race_avg_speed = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True)
     place = models.IntegerField(blank=True, null=True)
-    type = models.CharField(max_length=64, choices=race_type, null=True, blank=True)
+    type = models.CharField(
+        max_length=64, choices=race_type, null=True, blank=True)
     notes = models.CharField(max_length=512, null=True, blank=True)
 
     def __str__(self):

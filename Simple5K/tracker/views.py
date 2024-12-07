@@ -18,7 +18,8 @@ def laps_view(request):
         runnerNumber = data['runnernumber']
         runner_attached = get_object_or_404(runners, number=runnerNumber)
         race_attached = get_object_or_404(race, is_current=True)
-        alllaps = laps.objects.filter(attach_to_race=race_attached, runner=runner_attached)
+        alllaps = laps.objects.filter(
+            attach_to_race=race_attached, runner=runner_attached)
 
         if not alllaps.exists():
             thislap = 1
@@ -32,14 +33,15 @@ def laps_view(request):
                 if runner_attached.gender is None:
                     runner_attached.gender = 'male'
 
-                allfinnisher = runners.objects.filter(race_completed=True, gender=runner_attached.gender)
+                allfinnisher = runners.objects.filter(
+                    race_completed=True, gender=runner_attached.gender)
                 if not allfinnisher.exists():
                     runner_attached.place = 1
                 else:
                     prevfinnisher = allfinnisher.order_by('-place').first()
                     runner_attached.place = prevfinnisher.place + 1
                 runner_attached.race_completed = True
-                runner_attached.total_race_time = datetime.now().astimezone()-race_attached.start_time
+                runner_attached.total_race_time = datetime.now().astimezone() - race_attached.start_time
                 totalracetimesecond = runner_attached.total_race_time.total_seconds()
                 kmhtotal = (race_attached.distance / 1000) / (totalracetimesecond / 3600)
                 mphtotal = kmhtotal * 0.621371
@@ -47,7 +49,7 @@ def laps_view(request):
 
                 runner_attached.save()
 
-        kmran = (race_attached.distance/race_attached.laps_count)/1000
+        kmran = (race_attached.distance / race_attached.laps_count) / 1000
         laptimeseconds = lapDuration.total_seconds()
         laptimehours = laptimeseconds / 3600
         kmh = kmran / laptimehours
@@ -81,11 +83,11 @@ def add_runner_view(request):
 
     if request.method == "POST":
         if form.is_valid():
-            lv = form.save()
+            form.save()
         else:
             return render(request, "tracker/add_runner.html",
                           context={
-                            "form": form
+                              "form": form
                           })
 
     form = addRunnerForm()
@@ -111,7 +113,7 @@ def race_start_view(request):
         else:
             return render(request, "tracker/race_start.html",
                           context={
-                            "form": form
+                              "form": form
                           })
 
     return render(request, "tracker/race_start.html", context=context)

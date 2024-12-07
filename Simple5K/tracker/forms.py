@@ -1,18 +1,17 @@
 from django import forms
-from .models import runners
 from .models import (laps,
                      runners,
                      race,
                      )
 
 BOOL_CHECKLIST_OPTIONS = (
-        (True, 'Yes'),
-        (False, 'No'),
-    )
+    (True, 'Yes'),
+    (False, 'No'),
+)
 
 
 class LapForm(forms.Form):
-    runnernumber = forms.IntegerField(label="Runners Number", widget=forms.TextInput(attrs={'autofocus':'autofocus'}))
+    runnernumber = forms.IntegerField(label="Runners Number", widget=forms.TextInput(attrs={'autofocus': 'autofocus'}))
 
 
 class addRunnerForm(forms.Form, forms.ModelForm):
