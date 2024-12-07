@@ -129,14 +129,14 @@ def race_overview(request):
 
         # Create a list of runner names and their total race times
         for arunner in runnersall:
-            run_laps =[]
+            run_laps = []
             alap = laps.objects.filter(runner=arunner).order_by('lap')
             for lap in alap:
                 run_laps.append({
                     'lap': lap.lap,
                     'duration': lap.duration,
                     'average_speed': lap.average_speed
-                })  
+                })
 
             runner_times.append({
                 'number': arunner.number,
@@ -182,7 +182,7 @@ def runner_stats(request):
 
             racetotalobj['name'] = raceobj.name
             runnersobj['name'] = runnerobj.first_name + ' ' + runnerobj.last_name
-            runnersobj['number'] =  runnerobj.number
+            runnersobj['number'] = runnerobj.number
             runnersobj['race'] = runnerobj.race.name
             runnersobj['race_completed'] = runnerobj.race_completed
             runnersobj['total_time'] = runnerobj.total_race_time
