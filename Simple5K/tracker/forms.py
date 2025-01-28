@@ -36,8 +36,13 @@ class raceStart(forms.Form):
 
 
 class runnerStats(forms.Form):
-    #need to make this fail gracefully
-    racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=get_object_or_404(race, is_current=True))
+    # need to make this fail gracefully
+    if get_object_or_404(race, is_current=True):
+
+        racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=race.objects.get(is_current=True))
+    else:
+        racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=None)
+
     runnernumber = forms.IntegerField(label="Runner Number")
 
 class SignupForm(forms.ModelForm):
