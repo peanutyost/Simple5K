@@ -36,12 +36,11 @@ class raceStart(forms.Form):
 
 
 class runnerStats(forms.Form):
-    # need to make this fail gracefully
-    if get_object_or_404(race, is_current=True):
+    # Check if there is a current race, if so use that as the initial value for racename field.
 
-        racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=race.objects.get(is_current=True))
-    else:
-        racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=None)
+    current_race = get_object_or_404(race, is_current=True) if race.objects.exists() else None
+
+    racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=current_race)
 
     runnernumber = forms.IntegerField(label="Runner Number")
 
