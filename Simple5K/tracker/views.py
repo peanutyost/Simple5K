@@ -6,7 +6,7 @@ from django.http import Http404, HttpResponse
 from datetime import datetime
 
 from .models import race, runners, laps
-from .forms import LapForm, addRunnerForm, raceStart, runnerStats
+from .forms import LapForm, addRunnerForm, raceStart, runnerStats, SignupForm
 from .pdf_gen import generate_race_report
 
 
@@ -198,3 +198,21 @@ def runner_stats(request):
         return response
 
     return render(request, 'tracker/runner_stats.html', context=context)
+
+
+def race_signup(request):
+    if request.method == 'POST':
+        form = SignupForm(request.POST)
+        if form.is_valid():
+            form.save()
+            # Optionally, redirect to a success page or another view
+            return redirect('signup_success')  # You'll need to define this URL
+    else:
+        form = SignupForm()
+    current_races = race.objects.filter(is_current=True)
+    context = {'form': form, 'current_races': current_races}
+    return render(request, 'tracker/signup.html', context)
+
+
+def signup_success(request):
+    return render(request, 'tracker/signup_success.html')

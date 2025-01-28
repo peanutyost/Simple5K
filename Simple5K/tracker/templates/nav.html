@@ -1,57 +1,84 @@
-<nav class="navbar navbar-expand-md navbar-light bg-light mb-3">
+<nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
   <div class="container">
-    <a class="navbar-brand" href={% url 'tracker:laps-record' %}>Simple 5K</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <a class="navbar-brand fw-bold" href={% url 'tracker:laps-record' %}>
+        <i class="bi bi-stopwatch me-1"></i> Simple 5K
+      </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
 
-    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Tracker
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="trackerDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Tracker
+            </a>
+          <ul class="dropdown-menu" aria-labelledby="trackerDropdown">
             <li><a class="dropdown-item" href={% url 'tracker:laps-record' %}>Lap Entry</a></li>
             <li><a class="dropdown-item" href={% url 'tracker:add-runner' %}>Add Runner</a></li>
             <li><a class="dropdown-item" href={% url 'tracker:race-start' %}>Race Start</a></li>
           </ul>
         </li>
-
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             Reports
           </a>
-          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+          <ul class="dropdown-menu" aria-labelledby="reportsDropdown">
             <li><a class="dropdown-item" href={% url 'tracker:race-overview' %}>Race Overview</a></li>
             <li><a class="dropdown-item" href={% url 'tracker:runner-stats' %}>Runner Report</a></li>
           </ul>
         </li>
-
       </ul>
-
-      {% comment %} <ul class="navbar-nav me-1 mb-2 mb-lg-0 justify-content-end">
+      <ul class="navbar-nav ms-auto">
         {% if request.user.is_authenticated %}
-        <li class="nav-item dropdown justify-content-end">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Admin
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-          </ul>
+        <li class="nav-item">
+          <a class="nav-link" href="/logout">Logout</a>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a class="nav-link" href="/login">Login</a>
         </li>
         {% endif %}
-      {% endcomment %}
-        <li class="nav-item justify-content-end">
-          {% if request.user.is_authenticated %}
-          <a class="nav-link active" aria-current="page" href="/logout">Logout</a>
-          {% else %}
-          <a class="nav-link active" aria-current="page" href="/login">Login</a>
-          {% endif %}
-        </li>
       </ul>
-
     </div>
   </div>
 </nav>
+  
+  <style>
+  .navbar-brand {
+  color: #343a40; /* Darker text for brand */
+  }
+  
+  .navbar-toggler {
+  border: none;
+  }
+  
+  .navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(0, 0, 0, 0.5)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e"); /* More visible toggler icon */
+  }
+  
+  .nav-link {
+  color: #6c757d; /* Muted link color */
+  transition: color 0.3s ease-in-out;
+  }
+  
+  .nav-link:hover,
+  .nav-link.active {
+  color: #007bff; /* Primary color on hover/active */
+  }
+  
+  .dropdown-menu {
+  border: none;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  border-radius: 0.25rem;
+  }
+  
+  .dropdown-item {
+  color: #495057;
+  transition: background-color 0.2s ease-in-out;
+  }
+  
+  .dropdown-item:hover {
+  background-color: #f8f9fa; /* Light background on hover */
+  }
+  </style>

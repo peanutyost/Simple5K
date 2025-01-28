@@ -35,6 +35,31 @@ class raceStart(forms.Form):
 
 
 class runnerStats(forms.Form):
-
-    racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=race.objects.get(is_current=True))
+    #need to make this fail gracefully
+    #racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=race.objects.get(is_current=True))
     runnernumber = forms.IntegerField(label="Runner Number")
+
+class SignupForm(forms.ModelForm):
+    class Meta:
+        model = runners
+        fields = ['first_name', 'last_name', 'gender', 'race', 'type']
+        # You can customize widgets and labels here if needed
+        widgets = {
+            'race': forms.Select(attrs={'class': 'form-control'}),
+            'gender': forms.Select(attrs={'class': 'form-control'}),
+            'type': forms.Select(attrs={'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'first_name': 'First Name',
+            'last_name': 'Last Name',
+            'gender': 'Gender',
+            'race': 'Select Race',
+            'type': 'Participant Type',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter the race choices to only show current races
+        self.fields['race'].queryset = race.objects.filter(is_current=True)
