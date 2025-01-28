@@ -1,4 +1,5 @@
 from django import forms
+from django.shortcuts import get_object_or_404
 from .models import (laps,
                      runners,
                      race,
@@ -36,7 +37,7 @@ class raceStart(forms.Form):
 
 class runnerStats(forms.Form):
     #need to make this fail gracefully
-    #racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=race.objects.get(is_current=True))
+    racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=get_object_or_404(race, is_current=True))
     runnernumber = forms.IntegerField(label="Runner Number")
 
 class SignupForm(forms.ModelForm):
