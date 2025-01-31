@@ -1,9 +1,20 @@
 from django.db import models
+from django.urls import reverse
 
 
 class race(models.Model):
+    status_choices = (
+        ('signup_closed', 'Sign Up Closed'),
+        ('signup_open', 'Sign Up Open'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed')
+    )
+
     name = models.CharField(max_length=255)
     is_current = models.BooleanField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=status_choices)
+    Entry_fee = models.DecimalField(max_digits=10, decimal_places=2)
+    date = models.DateField(auto_now=False, auto_now_add=False)
     distance = models.IntegerField()
     laps_count = models.IntegerField()
     start_time = models.DateTimeField(
@@ -13,6 +24,9 @@ class race(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_absolute_edit_url(self):
+        return reverse("tracker:edit-race", kwargs={"pk": self.id})
 
 
 class runners(models.Model):
@@ -24,11 +38,30 @@ class runners(models.Model):
         ('running', 'Running'),
         ('walking', 'Walking')
     )
+    shirt_size = (
+        ('Extra Small', 'Extra Small'),
+        ('Small', 'Small'),
+        ('Medium', 'Medium'),
+        ('Large', 'Large'),
+        ('Extra Large', 'Extra Large'),
+        ('XXL', 'XXL')
+    )
+    age_bracket = (
+        ('0-12', '0-12'),
+        ('12-17', '12-17'),
+        ('18-34', '18-34'),
+        ('35-49', '35-49'),
+        ('50+', '50+')
+    )
+
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
+    email = models.EmailField(max_length=254)
+    age = models.CharField(
+        max_length=50, choices=age_bracket)
     gender = models.CharField(
         max_length=50, choices=gender, blank=True, null=True)
-    number = models.IntegerField(unique=True)
+    number = models.IntegerField(null=True, blank=True)
     race = models.ForeignKey(race, on_delete=models.PROTECT)
     race_completed = models.BooleanField(null=True, blank=True)
     total_race_time = models.DurationField(blank=True, null=True)
@@ -37,6 +70,8 @@ class runners(models.Model):
     place = models.IntegerField(blank=True, null=True)
     type = models.CharField(
         max_length=64, choices=race_type, null=True, blank=True)
+    shirt_size = models.CharField(
+        max_length=64, choices=shirt_size)
     notes = models.CharField(max_length=512, null=True, blank=True)
 
     def __str__(self):

@@ -4,10 +4,49 @@ from django.views import View
 from django.db.models import F, Q
 from django.http import Http404, HttpResponse
 from datetime import datetime
+from django.views.generic.edit import FormView, UpdateView
+from django.views.generic.list import ListView
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .models import race, runners, laps
-from .forms import LapForm, addRunnerForm, raceStart, runnerStats, SignupForm
+from .forms import LapForm, addRunnerForm, raceStart, runnerStats, SignupForm, RaceForm
 from .pdf_gen import generate_race_report
+
+
+class RaceAdd(LoginRequiredMixin, FormView):
+    form_class = RaceForm
+    template_name = 'tracker/race_add.html'
+    success_url = '/'
+
+    def form_valid(self, form):
+        # This method is called when the form is valid.
+        # Process the form data here, e.g. send an email.
+        form.save()
+        return super().form_valid(form)
+
+
+class RaceEdit(LoginRequiredMixin, UpdateView):
+    model = race
+    form_class = RaceForm
+    template_name = 'tracker/race_add.html'
+    success_url = '/'
+
+
+class ListRaces(LoginRequiredMixin, ListView):
+    model = race
+    queryset = race.objects.all()
+    template_name = 'tracker/list_races.html'
+    context_object_name = 'object_list'
+    paginate_by = 50
+    ordering = ['-date']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Print the context object
+        print(context)
+
+        return context
 
 
 @login_required
@@ -206,7 +245,7 @@ def race_signup(request):
         if form.is_valid():
             form.save()
             # Optionally, redirect to a success page or another view
-            return redirect('signup_success')  # You'll need to define this URL
+            return redirect('/tracker/signup_success/')  # You'll need to define this URL
     else:
         form = SignupForm()
     current_races = race.objects.filter(is_current=True)

@@ -17,7 +17,8 @@ urlpatterns = [
     path('', race_overview),
     path('admin/', admin.site.urls),
     path('tracker/', include('tracker.urls')),
-    path('login/', login_view),
-    path('logout/', logout_view),
-    path('register/', register_view),
+    path('signup/', RedirectView.as_view(url='/tracker/signup/')),
+    path('login/', login_view, name='login'),
+    path('logout/', logout_view, name='logout'),
+    path('register/', register_view, name='register'),
 ]
