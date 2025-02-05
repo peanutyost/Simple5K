@@ -41,7 +41,7 @@
                   <!-- Authentication Links -->
                   {% if user.is_authenticated %}
                       <div class="dropdown">
-                          <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                          <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
                               {{ user.first_name }} {{ user.last_name }}
                           </button>
                           <ul class="dropdown-menu dropdown-menu-end">
@@ -50,7 +50,7 @@
                           </ul>
                       </div>
                   {% else %}
-                      <a class="btn btn-primary" href="{% url 'login' %}">Login</a>
+                      <a class="btn btn-light" href="{% url 'login' %}">Login</a>
                   {% endif %}
               </div>
           </div>
