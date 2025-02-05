@@ -8,3 +8,4 @@ mysqlclient
 whitenoise
 reportlab
 pillow
+django-simple-captcha
