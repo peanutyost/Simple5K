@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "captcha",
     "tracker",
 ]
 
@@ -81,17 +82,17 @@ WSGI_APPLICATION = "Simple5K.wsgi.application"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-     'default': {
+    'default': {
 
-         'ENGINE': 'django.db.backends.{}'.format(
-             os.environ.get('DATABASE_ENGINE', 'sqlite3')
-         ),
-         'NAME': os.environ.get('DATABASE_NAME', BASE_DIR / 'db.sqlite3'),
-         'USER': os.environ.get('DATABASE_USERNAME'),
-         'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
-         'HOST': os.environ.get('DATABASE_HOST'),
-         'PORT': os.environ.get('DATABASE_PORT')
-     }
+        'ENGINE': 'django.db.backends.{}'.format(
+            os.environ.get('DATABASE_ENGINE', 'sqlite3')
+        ),
+        'NAME': os.environ.get('DATABASE_NAME', BASE_DIR / 'db.sqlite3'),
+        'USER': os.environ.get('DATABASE_USERNAME'),
+        'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
+        'HOST': os.environ.get('DATABASE_HOST'),
+        'PORT': os.environ.get('DATABASE_PORT')
+    }
 }
 
 
@@ -134,7 +135,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [
-   os.path.join(BASE_DIR, 'static')
+    os.path.join(BASE_DIR, 'static')
 ]
 
 STORAGES = {
@@ -149,3 +150,9 @@ STORAGES = {
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Captcha settings
+CAPTCHA_IMAGE_SIZE = (200, 50)
+CAPTCHA_FG_COLOR = '#000'
+CAPTCHA_BG_COLOR = '#fff'
+CAPTCHA_FONT_SIZE = 45

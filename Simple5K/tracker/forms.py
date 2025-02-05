@@ -4,6 +4,7 @@ from .models import (laps,
                      runners,
                      race,
                      )
+from captcha.fields import CaptchaField
 
 BOOL_CHECKLIST_OPTIONS = (
     (True, 'Yes'),
@@ -86,6 +87,8 @@ class runnerStats(forms.Form):
 
 
 class SignupForm(forms.ModelForm):
+    captcha = CaptchaField()
+
     class Meta:
         model = runners
         fields = ['first_name', 'last_name', 'email', 'age', 'gender', 'race', 'type', 'shirt_size', 'notes']

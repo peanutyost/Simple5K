@@ -15,6 +15,7 @@ from tracker.views import race_overview
 
 urlpatterns = [
     path('', race_overview),
+    path('captcha/', include('captcha.urls')),
     path('admin/', admin.site.urls),
     path('tracker/', include('tracker.urls')),
     path('signup/', RedirectView.as_view(url='/tracker/signup/')),
