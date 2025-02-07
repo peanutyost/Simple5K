@@ -1,5 +1,4 @@
 from django import forms
-from django.shortcuts import get_object_or_404
 from .models import (laps,
                      runners,
                      race,
@@ -17,7 +16,6 @@ class RaceForm(forms.ModelForm):
         model = race
         fields = [
             'name',
-            'is_current',
             'status',
             'Entry_fee',
             'date',
@@ -33,7 +31,6 @@ class RaceForm(forms.ModelForm):
 
         labels = {
             'name': 'Race Name',
-            'is_current': 'Is Current Race',
             'status': 'Status',
             'Entry_fee': 'Entry Fee',
             'date': 'Date',
@@ -43,7 +40,6 @@ class RaceForm(forms.ModelForm):
 
         help_texts = {
             'name': 'Enter the name of the race',
-            'is_current': 'Check if this is the current race',
             'status': 'Select the status of the race',
             'Entry_fee': 'Enter the entry fee for the race',
             'date': 'Enter the date of the race',
@@ -79,9 +75,9 @@ class raceStart(forms.Form):
 class runnerStats(forms.Form):
     # Check if there is a current race, if so use that as the initial value for racename field.
 
-    current_race = get_object_or_404(race, is_current=True) if race.objects.exists() else None
+    current_race = race.objects.filter(status='in_progress').first() if race.objects.exists() else None
 
-    racename = forms.ModelChoiceField(queryset=race.objects.all(), initial=current_race)
+    racename = forms.ModelChoiceField(queryset=race.objects.all())
 
     runnernumber = forms.IntegerField(label="Runner Number")
 

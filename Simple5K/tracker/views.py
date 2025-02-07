@@ -20,7 +20,6 @@ class RaceAdd(LoginRequiredMixin, FormView):
 
     def form_valid(self, form):
         # This method is called when the form is valid.
-        # Process the form data here, e.g. send an email.
         form.save()
         return super().form_valid(form)
 
@@ -40,13 +39,13 @@ class ListRaces(LoginRequiredMixin, ListView):
     paginate_by = 50
     ordering = ['-date']
 
-    def get_context_data(self, **kwargs):
+"""     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
         # Print the context object
         print(context)
 
-        return context
+        return context """
 
 
 @login_required
@@ -56,7 +55,7 @@ def laps_view(request):
         data = request.POST
         runnerNumber = data['runnernumber']
         runner_attached = get_object_or_404(runners, number=runnerNumber)
-        race_attached = get_object_or_404(race, is_current=True)
+        race_attached = race.objects.filter(status='in_progress').first()
         alllaps = laps.objects.filter(
             attach_to_race=race_attached, runner=runner_attached)
 
@@ -130,7 +129,7 @@ def add_runner_view(request):
                           })
 
     form = addRunnerForm()
-    form.fields['race'].initial = race.objects.get(is_current=True)
+    form.fields['race'].initial = race.objects.filter(status='in_progress').first()
     context = {"form": form}
     return render(request, "tracker/add_runner.html", context=context)
 
@@ -142,6 +141,7 @@ def race_start_view(request):
 
     if request.method == "POST":
         if form.is_valid():
+            # need to loop thru and clear all other races to not current.
             race.objects.update(is_current=False)
             lv = race.objects.get(name=form.cleaned_data['racename'])
             now = datetime.now().astimezone()
@@ -159,7 +159,7 @@ def race_start_view(request):
 
 
 def race_overview(request):
-    current_race = race.objects.filter(is_current=True).first()
+    current_race = race.objects.filter(status='in_progress').first()
 
     # Initialize an empty list to store runner times
     runner_times = []
@@ -207,7 +207,7 @@ def runner_stats(request):
         lapsdict = {}
         runnersobj = {}
         if form.is_valid():
-            raceobj = race.objects.get(is_current=True)
+            raceobj = race.objects.filter(status='in_progress').first()
             runnerobj = runners.objects.get(number=form.cleaned_data['runnernumber'], race=form.cleaned_data['racename'])
             runnerlaps = laps.objects.filter(runner=runnerobj).order_by('lap')
 
@@ -248,7 +248,7 @@ def race_signup(request):
             return redirect('/tracker/signup_success/')  # You'll need to define this URL
     else:
         form = SignupForm()
-    current_races = race.objects.filter(is_current=True)
+    current_races = race.objects.filter(status='in_progress')
     context = {'form': form, 'current_races': current_races}
     return render(request, 'tracker/signup.html', context)
 

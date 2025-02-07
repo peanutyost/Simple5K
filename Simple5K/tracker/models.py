@@ -11,7 +11,6 @@ class race(models.Model):
     )
 
     name = models.CharField(max_length=255)
-    is_current = models.BooleanField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=status_choices)
     Entry_fee = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateField(auto_now=False, auto_now_add=False)
@@ -62,11 +61,13 @@ class runners(models.Model):
     gender = models.CharField(
         max_length=50, choices=gender, blank=True, null=True)
     number = models.IntegerField(null=True, blank=True)
+    rfid_tag = models.BinaryField(max_length=496, blank=True, null=True)
     race = models.ForeignKey(race, on_delete=models.PROTECT)
     race_completed = models.BooleanField(null=True, blank=True)
     total_race_time = models.DurationField(blank=True, null=True)
     race_avg_speed = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True)
+    race_avg_pace = models.DurationField()
     place = models.IntegerField(blank=True, null=True)
     type = models.CharField(
         max_length=64, choices=race_type, null=True, blank=True)
@@ -85,6 +86,7 @@ class laps(models.Model):
     attach_to_race = models.ForeignKey(race, on_delete=models.CASCADE)
     duration = models.DurationField()
     average_speed = models.DecimalField(max_digits=10, decimal_places=2)
+    avgerage_pace = models.DurationField()
 
     def __str__(self):
         return self.attach_to_race.name + "/" + str(self.runner.number)
