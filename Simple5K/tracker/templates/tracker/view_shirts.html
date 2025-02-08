@@ -1,14 +1,18 @@
 {% extends 'base.html' %}
 {% load static %}
 
-
-
 {% block content %}
 <head>
     <title>Shirt Sizes by Race</title>
 </head>
 <body>
     <h1>Shirt Size Distribution for Selected Race</h1>
+    <a href="{% url 'tracker:select_race' %}" class="btn btn-primary mb-3">Back to Race List</a>
+    <!-- Add total runners section -->
+    <div style="margin-bottom: 20px;">
+        <strong>Total Runners:</strong> {{ total_runners }}
+    </div>
+
     <table>
         <tr>
             <th>Shirt Size</th>
@@ -20,6 +24,12 @@
             <td>{{ count }}</td>
         </tr>
         {% endfor %}
+        
+        <!-- Add a row for total runners -->
+        <tr style="font-weight: bold; background-color: #f0f0f0;">
+            <td>Total Runners</td>
+            <td>{{ total_runners }}</td>
+        </tr>
     </table>
 </body>
 {% endblock %}

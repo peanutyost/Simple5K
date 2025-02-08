@@ -11,6 +11,8 @@ from .views import (
     signup_success,
     select_race,
     view_shirt_sizes,
+    select_race_for_runners,
+    show_runners,
     RaceAdd,
     RaceEdit,
     ListRaces,
@@ -30,4 +32,6 @@ urlpatterns = [
     path('signup_success/', signup_success, name='signup-success'),
     path('select_race/', select_race, name='select_race'),
     path('shirt_view/<int:pk>/', view_shirt_sizes, name='view_shirts'),
+    path('runners_view/<int:pk>/', show_runners, name='view_runners'),
+    path('select_race_runners', select_race_for_runners, name='select_race_runners'),
 ]

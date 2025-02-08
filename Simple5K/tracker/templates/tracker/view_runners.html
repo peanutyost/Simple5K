@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+    <div class="container mt-4">
+        <h2>Runners for {{ race.name }}</h2>
+        
+        <!-- Navigation Link -->
+        <a href="{% url 'tracker:select_race_runners' %}" class="btn btn-primary mb-3">Back to Race List</a>
+        <div class="table-responsive">
+            <table id="runnersTable" class="table table-striped table-bordered">
+                <thead class="bg-dark text-white">
+                    <tr>
+                        <th class="clickable">Name</th>
+                        <th class="clickable">Age</th>
+                        <th class="clickable">Number</th>
+                        <th class="clickable">Type</th>
+                        <th class="clickable">Shirt Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for runner in runners %}
+                    <tr>
+                        <td>{{ runner.first_name }} {{ runner.last_name }}</td>
+                        <td>{{ runner.age }}</td>
+                        <td>{% if runner.number %}
+                            {{ runner.number }}
+                        {% else %}
+                            -
+                        {% endif %}</td>
+
+                        <td>{{ runner.type }}</td>
+                        <td>{{ runner.shirt_size }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<style>
+    /* Add CSS for sort indicators */
+    .sorted_asc:after {
+        content: " ↑";
+    }
+    
+    .sorted_desc:after {
+        content: " ↓";
+    }
+    
+    .clickable:hover {
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    // Fix duplicate function definitions
+    document.addEventListener('DOMContentLoaded', function() {
+        const headers = document.querySelectorAll('thead th');
+        let currentSortColumn = null;
+        let isAscending = true;
+
+        headers.forEach(header => {
+            header.addEventListener('click', () => {
+                // Remove sorting indicators from all columns
+                headers.forEach(h => {
+                    h.classList.remove('sorted_asc', 'sorted_desc');
+                });
+
+                if (header === currentSortColumn) {
+                    isAscending = !isAscending;
+                } else {
+                    currentSortColumn = header;
+                    isAscending = true;
+                }
+
+                // Add appropriate sorting indicator
+                if (isAscending) {
+                    header.classList.add('sorted_asc');
+                } else {
+                    header.classList.add('sorted_desc');
+                }
+
+                // Perform the sort operation
+                const columnIdx = Array.from(headers).indexOf(currentSortColumn);
+                const tbody = document.querySelector('#runnersTable tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+
+                rows.sort((a, b) => {
+                    const aValue = a.cells[columnIdx].textContent;
+                    const bValue = b.cells[columnIdx].textContent;
+
+                    if (isAscending) {
+                        return aValue.localeCompare(bValue);
+                    } else {
+                        return bValue.localeCompare(aValue);
+                    }
+                });
+
+                tbody.append(...rows);
+            });
+        });
+    });
+</script>
+{% endblock %}

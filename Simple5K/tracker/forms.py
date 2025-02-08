@@ -67,7 +67,6 @@ class addRunnerForm(forms.Form, forms.ModelForm):
         ]
 
 
-
 class raceStart(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
