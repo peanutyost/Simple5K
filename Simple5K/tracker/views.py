@@ -284,11 +284,15 @@ def view_shirt_sizes(request, pk):
 
     # Get shirt size counts
     shirt_size_counts = {
+        'Kids XS': 0,
+        'Kids S': 0,
+        'Kids M': 0,
+        'Kids L': 0,
         'Extra Small': 0,
         'Small': 0,
         'Medium': 0,
         'Large': 0,
-        'Extra Large': 0,
+        'XL': 0,
         'XXL': 0
     }
 

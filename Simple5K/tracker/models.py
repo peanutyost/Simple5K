@@ -40,11 +40,15 @@ class runners(models.Model):
         ('walking', 'Walking')
     )
     shirt_size = (
+        ('Kids XS', 'Kids XS'),
+        ('Kids S', 'Kids S'),
+        ('Kids M', 'Kids M'),
+        ('Kids L', 'Kids L'),
         ('Extra Small', 'Extra Small'),
         ('Small', 'Small'),
         ('Medium', 'Medium'),
         ('Large', 'Large'),
-        ('Extra Large', 'Extra Large'),
+        ('XL', 'XL'),
         ('XXL', 'XXL')
     )
     age_bracket = (
