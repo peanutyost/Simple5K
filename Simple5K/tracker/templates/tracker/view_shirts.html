@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+
+{% block content %}
+<head>
+    <title>Shirt Sizes by Race</title>
+</head>
+<body>
+    <h1>Shirt Size Distribution for Selected Race</h1>
+    <table>
+        <tr>
+            <th>Shirt Size</th>
+            <th>Quantity</th>
+        </tr>
+        {% for size, count in shirt_size_counts.items %}
+        <tr>
+            <td>{{ size }}</td>
+            <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+{% endblock %}

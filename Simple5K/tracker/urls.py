@@ -9,10 +9,11 @@ from .views import (
     runner_stats,
     race_signup,
     signup_success,
+    select_race,
+    view_shirt_sizes,
     RaceAdd,
     RaceEdit,
-    ListRaces
-
+    ListRaces,
 )
 
 app_name = 'tracker'
@@ -27,4 +28,6 @@ urlpatterns = [
     path('runner-stats', runner_stats, name='runner-stats'),
     path('signup/', race_signup, name='race-signup'),
     path('signup_success/', signup_success, name='signup-success'),
+    path('select_race/', select_race, name='select_race'),
+    path('shirt_view/<int:pk>/', view_shirt_sizes, name='view_shirts'),
 ]

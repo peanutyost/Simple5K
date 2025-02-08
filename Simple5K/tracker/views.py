@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.db.models import F, Q
+from django.urls import reverse
 from django.http import Http404, HttpResponse
 from datetime import datetime
 from django.views.generic.edit import FormView, UpdateView
@@ -38,14 +39,6 @@ class ListRaces(LoginRequiredMixin, ListView):
     context_object_name = 'object_list'
     paginate_by = 50
     ordering = ['-date']
-
-"""     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        # Print the context object
-        print(context)
-
-        return context """
 
 
 @login_required
@@ -255,3 +248,45 @@ def race_signup(request):
 
 def signup_success(request):
     return render(request, 'tracker/signup_success.html')
+
+
+def select_race(request):
+    # Get all races where status is either 'signup_open' or 'signup_closed'
+    races = race.objects.filter(
+        Q(status='signup_open') | Q(status='signup_closed')
+    )
+
+    if request.method == 'POST':
+        # Extract the selected race ID from POST data
+        selected_race_id = request.POST.get('race', None)
+        if selected_race_id:
+            try:
+                # Validate that the selected_race_id is a valid integer and exists in the database
+                selected_race = race.objects.get(name=selected_race_id)
+
+                # Redirect to 'view_shirts' URL with the selected_race_id as a parameter
+                return redirect(reverse('tracker:view_shirts', kwargs={'pk': selected_race.pk}))
+            except (ValueError, race.DoesNotExist):
+                pass
+    return render(request, 'tracker/select_race.html', {'races': races})
+
+
+def view_shirt_sizes(request, pk):
+    # Get all runners for the selected race
+    runners_in_race = runners.objects.filter(race=pk)
+
+    # Get shirt size counts
+    shirt_size_counts = {
+        'Extra Small': 0,
+        'Small': 0,
+        'Medium': 0,
+        'Large': 0,
+        'Extra Large': 0,
+        'XXL': 0
+    }
+
+    for runner in runners_in_race:
+        if runner.shirt_size in shirt_size_counts:
+            shirt_size_counts[runner.shirt_size] += 1
+
+    return render(request, 'tracker/view_shirts.html', {'shirt_size_counts': shirt_size_counts})
