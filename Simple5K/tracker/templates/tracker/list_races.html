@@ -31,7 +31,7 @@
     </style>
     
     <!-- Include JavaScript for sorting functionality -->
-    <script src="{% static 'js/jquery.min.js' %}"></script>
+    {% comment %} <script src="{% static 'js/jquery.min.js' %}"></script> {% endcomment %}
     <script>
         $(document).ready(function(){
             $('.sortable-table th').click(function(e){
@@ -99,7 +99,5 @@
     </table>
    {% endif %}
 
-    <!-- Include any necessary JavaScript libraries -->
-{% comment %}     <script src="{% static 'js/jquery.min.js' %}"></script> {% endcomment %}
 </body>
 {% endblock %}
