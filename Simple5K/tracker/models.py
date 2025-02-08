@@ -16,6 +16,8 @@ class race(models.Model):
     date = models.DateField(auto_now=False, auto_now_add=False)
     distance = models.IntegerField()
     laps_count = models.IntegerField()
+    max_runners = models.IntegerField(null=True, blank=True)
+    number_start = models.IntegerField(null=True, blank=True)
     start_time = models.DateTimeField(
         auto_now=False, auto_now_add=False, null=True, blank=True)
     end_time = models.DateTimeField(
