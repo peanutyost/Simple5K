@@ -19,6 +19,9 @@ class RaceForm(forms.ModelForm):
             'status',
             'Entry_fee',
             'date',
+            'scheduled_time',
+            'number_start',
+            'max_runners',
             'distance',
             'laps_count',
         ]
@@ -33,7 +36,10 @@ class RaceForm(forms.ModelForm):
             'name': 'Race Name',
             'status': 'Status',
             'Entry_fee': 'Entry Fee',
+            'scheduled_time': 'Scheduled Time',
             'date': 'Date',
+            'number_start': 'Starting Number',
+            'max_runners': 'Max Runners',
             'distance': 'Distance',
             'laps_count': 'Laps Count',
         }
@@ -45,26 +51,14 @@ class RaceForm(forms.ModelForm):
             'date': 'Enter the date of the race',
             'distance': 'Enter the distance of the race in meters',
             'laps_count': 'Enter the number of laps in the race',
+            'scheduled_time': 'Enter the scheduled starting time in 24H format',
+            'number_start': 'Enter the starting number for the runner numbers',
+            'max_runners': 'Enter the max number of participants for the race.',
         }
 
 
 class LapForm(forms.Form):
     runnernumber = forms.IntegerField(label="Runners Number", widget=forms.TextInput(attrs={'autofocus': 'autofocus'}))
-
-
-class addRunnerForm(forms.Form, forms.ModelForm):
-
-    class Meta:
-        model = runners
-        fields = [
-            'first_name',
-            'last_name',
-            'number',
-            'gender',
-            'race',
-            'type',
-            'notes'
-        ]
 
 
 class raceStart(forms.Form):

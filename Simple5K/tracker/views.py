@@ -10,7 +10,7 @@ from django.views.generic.list import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .models import race, runners, laps
-from .forms import LapForm, addRunnerForm, raceStart, runnerStats, SignupForm, RaceForm
+from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm
 from .pdf_gen import generate_race_report
 
 
@@ -104,27 +104,6 @@ def laps_view(request):
         }
 
     return render(request, "tracker/laps.html", context=context)
-
-
-@login_required
-def add_runner_view(request):
-
-    form = addRunnerForm(request.POST or None)
-    context = {"form": form}
-
-    if request.method == "POST":
-        if form.is_valid():
-            form.save()
-        else:
-            return render(request, "tracker/add_runner.html",
-                          context={
-                              "form": form
-                          })
-
-    form = addRunnerForm()
-    form.fields['race'].initial = race.objects.filter(status='in_progress').first()
-    context = {"form": form}
-    return render(request, "tracker/add_runner.html", context=context)
 
 
 @login_required
@@ -237,9 +216,9 @@ def race_signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)
         if form.is_valid():
+            selected_race_id = form.cleaned_data['race'].id
             form.save()
-            # Optionally, redirect to a success page or another view
-            return redirect('/tracker/signup_success/')  # You'll need to define this URL
+            return redirect(reverse('tracker:signup-success', args=[selected_race_id]))  # You'll need to define this URL
     else:
         form = SignupForm()
     current_races = race.objects.filter(status='in_progress')
@@ -248,8 +227,16 @@ def race_signup(request):
 
 
 @login_required
-def signup_success(request):
-    return render(request, 'tracker/signup_success.html')
+def signup_success(request, pk):
+    try:
+        raceobj = race.objects.get(id=pk)
+        context = {'entry_fee': raceobj.Entry_fee,
+                   'race_date': raceobj.date,
+                   'race_time': raceobj.scheduled_time}
+    except race.DoesNotExist:
+        context = {'error': 'Race not found.'}
+
+    return render(request, 'tracker/signup_success.html', context)
 
 
 @login_required

@@ -6,42 +6,28 @@
 {% block content %}
 <form method="post">
     {% csrf_token %}
-    <div class="container">
-        <h2>Race Details</h2>
-        <div class="form-group">
-            {{ form.name.label }}
-            {{ form.name }}
+    {% if form.errors %}
+        <div class="alert alert-danger">
+            Please correct the errors below.
         </div>
+    {% endif %}
 
+    {% for field in form %}
         <div class="form-group">
-            {{ form.is_current.label }}
-            {{ form.is_current }}
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in field.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% if field.help_text %}
+                <small class="form-text text-muted">{{ field.help_text }}</small>
+            {% endif %}
         </div>
-
-        <div class="form-group">
-            {{ form.status.label }}
-            {{ form.status }}
-        </div>
-
-        <div class="form-group">
-            {{ form.Entry_fee.label }}
-            {{ form.Entry_fee }}
-        </div>
-
-        <div class="form-group">
-            {{ form.date.label }}
-            {{ form.date }}
-        </div>
-
-        <div class="form-group">
-            {{ form.distance.label }}
-            {{ form.distance }}
-        </div>
-
-        <div class="form-group">
-            {{ form.laps_count.label }}
-            {{ form.laps_count }}
-        </div>
+    {% endfor %}
 
         <button type="submit" class="btn btn-primary">Submit</button>
     </div>

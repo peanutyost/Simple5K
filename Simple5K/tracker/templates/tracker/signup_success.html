@@ -8,7 +8,15 @@
     <div class="container">
         <h1>Signup Successful!</h1>
         <p>Thank you for registering for the race.</p>
-        <!-- You can add more details here if needed -->
+        {% if entry_fee %}
+        <p>The entry fee is: ${{ entry_fee|floatformat:2 }}. Please bring payment with you on race day.</p>
+        {% else %}
+        <p>See you on race day.</p>
+        {% endif %}
+        {% if race_date %}
+        <p>The race is on {{ race_date }} at {{ race_time }}. We hope to see you there!</p>
+        {% endif %}
+
     </div>
 </body>
 {% endblock %}
