@@ -73,7 +73,7 @@ class runners(models.Model):
     total_race_time = models.DurationField(blank=True, null=True)
     race_avg_speed = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True)
-    race_avg_pace = models.DurationField()
+    race_avg_pace = models.DurationField(blank=True, null=True)
     place = models.IntegerField(blank=True, null=True)
     type = models.CharField(
         max_length=64, choices=race_type, null=True, blank=True)
