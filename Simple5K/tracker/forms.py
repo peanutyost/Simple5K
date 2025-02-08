@@ -67,19 +67,23 @@ class addRunnerForm(forms.Form, forms.ModelForm):
         ]
 
 
-class raceStart(forms.Form):
 
-    racename = forms.ModelChoiceField(queryset=race.objects.all())
+class raceStart(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['racename'] = forms.ModelChoiceField(queryset=race.objects.all())
 
 
 class runnerStats(forms.Form):
-    # Check if there is a current race, if so use that as the initial value for racename field.
-
-    current_race = race.objects.filter(status='in_progress').first() if race.objects.exists() else None
-
-    racename = forms.ModelChoiceField(queryset=race.objects.all())
-
-    runnernumber = forms.IntegerField(label="Runner Number")
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Move the database query here
+        current_race = race.objects.filter(status='in_progress').first() if race.objects.exists() else None
+        self.fields['racename'] = forms.ModelChoiceField(
+            queryset=race.objects.all(),
+            initial=current_race
+        )
+        self.fields['runnernumber'] = forms.IntegerField(label="Runner Number")
 
 
 class SignupForm(forms.ModelForm):
