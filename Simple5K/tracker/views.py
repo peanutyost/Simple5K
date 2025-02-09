@@ -220,7 +220,7 @@ def race_signup(request):
             return redirect(reverse('tracker:signup-success', args=[selected_race_id]))  # You'll need to define this URL
     else:
         form = SignupForm()
-    current_races = race.objects.filter(status='signup_open')
+    current_races = race.objects.filter(status='signup_open').order_by('date', 'scheduled_time')
     context = {'form': form, 'current_races': current_races}
     return render(request, 'tracker/signup.html', context)
 
