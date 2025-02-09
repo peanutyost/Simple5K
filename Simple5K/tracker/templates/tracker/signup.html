@@ -4,6 +4,32 @@
 {% block content %}
 <div class="container">
     <div class="row">
+        <!-- Races List -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    Future Races
+
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for race in current_races %}
+                        <li class="list-group-item">
+                            <h5 class="mb-1">{{ race.name }}</h5>
+                            <p class="text-muted small mb-0">
+                                Date: {{ race.date|date:"D M d Y" }}<br>
+                                Time: {% if race.scheduled_time %}{{ race.scheduled_time }}{% else %}Not available{% endif %}<br>
+                                Entry Fee: ${{ race.Entry_fee }}
+                                {% if race.notes %}<br>Additional Info:<br> {{ race.notes }}{% endif %}
+                            </p>
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item">
+                            No races currently available.
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
         <!-- Signup Form -->
         <div class="col-md-8">
             <h1>Sign Up for a Race</h1>
@@ -34,32 +60,6 @@
             </form>
         </div>
 
-        <!-- Races List -->
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    Future Races
-
-                </div>
-                <ul class="list-group list-group-flush">
-                    {% for race in current_races %}
-                        <li class="list-group-item">
-                            <h5 class="mb-1">{{ race.name }}</h5>
-                            <p class="text-muted small mb-0">
-                                Date: {{ race.date|date:"D M d Y" }}<br>
-                                Time: {% if race.scheduled_time %}{{ race.scheduled_time }}{% else %}Not available{% endif %}<br>
-                                Entry Fee: ${{ race.Entry_fee }}
-                                {% if race.notes %}<br>Additional Info:<br> {{ race.notes }}{% endif %}
-                            </p>
-                        </li>
-                    {% empty %}
-                        <li class="list-group-item">
-                            No races currently available.
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
     </div>
 </div>
 {% endblock %}

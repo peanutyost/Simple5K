@@ -211,7 +211,6 @@ def runner_stats(request):
     return render(request, 'tracker/runner_stats.html', context=context)
 
 
-
 def race_signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)
@@ -224,7 +223,6 @@ def race_signup(request):
     current_races = race.objects.filter(status='signup_open')
     context = {'form': form, 'current_races': current_races}
     return render(request, 'tracker/signup.html', context)
-
 
 
 def signup_success(request, pk):
