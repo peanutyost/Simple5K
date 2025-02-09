@@ -49,6 +49,7 @@
                                 Date: {{ race.date|date:"D M d Y" }}<br>
                                 Time: {% if race.scheduled_time %}{{ race.scheduled_time }}{% else %}Not available{% endif %}<br>
                                 Entry Fee: ${{ race.Entry_fee }}
+                                {% if race.notes %}<br>Additional Info:<br> {{ race.notes }}{% endif %}
                             </p>
                         </li>
                     {% empty %}
