@@ -1,38 +1,64 @@
 {% extends 'base.html' %}
 {% load static %}
 
-
-
 {% block content %}
 <div class="container">
-    <h1>Race Signup</h1>
-    <form method="post">
-        {% csrf_token %}
-        {% if form.errors %}
-            <div class="alert alert-danger">
-                Please correct the errors below.
-            </div>
-        {% endif %}
-
-        {% for field in form %}
-            <div class="form-group">
-                {{ field.label_tag }}
-                {{ field }}
-                {% if field.errors %}
-                    <div class="invalid-feedback d-block">
-                        {% for error in field.errors %}
-                            {{ error }}
-                        {% endfor %}
+    <div class="row">
+        <!-- Signup Form -->
+        <div class="col-md-8">
+            <h1>Sign Up for a Race</h1>
+            <form method="post">
+                {% csrf_token %}
+                {% if form.errors %}
+                    <div class="alert alert-danger">
+                        Please correct the errors below.
                     </div>
                 {% endif %}
-                {% if field.help_text %}
-                    <small class="form-text text-muted">{{ field.help_text }}</small>
-                {% endif %}
-            </div>
-        {% endfor %}
+                {% for field in form %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="invalid-feedback d- block">
+                                {% for error in field.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        {% if field.help_text %}
+                            <small class="form-text text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary">Sign Up</button>
+            </form>
+        </div>
 
-        <button type="submit" class="btn btn-primary">Sign Up</button>
-    </form>
+        <!-- Races List -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    Future Races
+
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for race in current_races %}
+                        <li class="list-group-item">
+                            <h5 class="mb-1">{{ race.name }}</h5>
+                            <p class="text-muted small mb-0">
+                                Date: {{ race.date|date:"D M d Y" }}<br>
+                                Time: {% if race.scheduled_time %}{{ race.scheduled_time }}{% else %}Not available{% endif %}<br>
+                                Entry Fee: ${{ race.Entry_fee }}
+                            </p>
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item">
+                            No races currently available.
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
 </div>
-</body>
 {% endblock %}
