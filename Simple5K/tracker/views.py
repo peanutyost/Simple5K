@@ -211,7 +211,7 @@ def runner_stats(request):
     return render(request, 'tracker/runner_stats.html', context=context)
 
 
-@login_required
+
 def race_signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)
@@ -226,7 +226,7 @@ def race_signup(request):
     return render(request, 'tracker/signup.html', context)
 
 
-@login_required
+
 def signup_success(request, pk):
     try:
         raceobj = race.objects.get(id=pk)
