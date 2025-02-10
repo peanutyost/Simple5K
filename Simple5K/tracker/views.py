@@ -9,7 +9,7 @@ from django.views.generic.edit import FormView, UpdateView
 from django.views.generic.list import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from .models import race, runners, laps
+from .models import race, runners, laps, Banner
 from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm
 from .pdf_gen import generate_race_report
 
@@ -221,7 +221,8 @@ def race_signup(request):
     else:
         form = SignupForm()
     current_races = race.objects.filter(status='signup_open').order_by('date', 'scheduled_time')
-    context = {'form': form, 'current_races': current_races}
+    banners = Banner.objects.filter(active=True)
+    context = {'form': form, 'current_races': current_races, 'banners': banners}
     return render(request, 'tracker/signup.html', context)
 
 

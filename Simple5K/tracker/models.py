@@ -98,3 +98,14 @@ class laps(models.Model):
 
     def __str__(self):
         return self.attach_to_race.name + "/" + str(self.runner.number)
+
+
+class Banner(models.Model):
+    title = models.CharField(max_length=200, blank=True)
+    subtitle = models.CharField(max_length=1024, blank=True)
+    background_color = models.CharField(max_length=30, default='#ffffff')
+    image = models.ImageField(upload_to='banners/', blank=True)
+    active = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.title
