@@ -358,7 +358,7 @@ def format_remaining_time(end_time):
 def race_countdown(request):
     """Get countdown for all upcoming races"""
     # Get races that haven't started yet (status is signup_open or signup_closed)
-    upcoming_races = race.objects.filter(status__in=['signup_open', 'signup_closed'])
+    upcoming_races = race.objects.filter(status__in=['signup_open', 'signup_closed']).order_by('date', 'scheduled_time')
 
     # Calculate remaining time for each race
     race_data = []
