@@ -11,10 +11,10 @@ from accounts.views import (
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic.base import RedirectView
-from tracker.views import race_overview
+from tracker.views import race_overview, race_list, race_countdown
 
 urlpatterns = [
-    path('', race_overview),
+    path('', race_list),
     path('captcha/', include('captcha.urls')),
     path('admin/', admin.site.urls),
     path('tracker/', include('tracker.urls')),
@@ -22,4 +22,6 @@ urlpatterns = [
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     # path('register/', register_view, name='register'),
+    path('races/', race_list, name='race-until'),
+    path('race-countdown/', race_countdown, name='race-countdown'),
 ]

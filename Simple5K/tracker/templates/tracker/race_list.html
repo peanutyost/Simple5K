@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="text-center mb-4">Upcoming Races</h1>
+    
+    <div id="race-container" class="row g-4"></div>
+
+    <!-- No races message -->
+    <div id="no-races-message" class="alert alert-info d-none text-center w-100">
+        There are currently no upcoming races.
+    </div>
+</div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function updateRaces() {
+        fetch('/race-countdown/')
+            .then(response => response.json())
+            .then(data => {
+                const raceContainer = document.getElementById('race-container');
+                const noRacesMessage = document.getElementById('no-races-message');
+                
+                // Clear previous content
+                raceContainer.innerHTML = '';
+                
+                if (data.length === 0) {
+                    noRacesMessage.classList.remove('d-none');
+                    return;
+                }
+                
+                data.forEach(race => {
+                    let countdownHTML = `
+                        <div class="card col-md-4 m-3">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">${race.name}</h5>
+                                <p class="card-text">
+                                    <strong>Distance:</strong> ${race.distance}<br>
+                                    <strong>Laps:</strong> ${race.laps_count}<br>
+                                    <strong>Entry Fee:</strong> ${race.entry_fee}
+                                </p>
+                                <div id="countdown-${race.id}" class="text-center mb-3">
+                                    <h4 class="text-primary">
+                                        Time Remaining: <br>
+                                        <span class="fw-bold me-2">${race.remaining.days}d</span>:
+                                        <span class="fw-bold me-2">${race.remaining.hours}h</span>:
+                                        <span class="fw-bold me-2">${race.remaining.minutes}m</span>:
+                                        <span class="fw-bold">${race.remaining.seconds}s</span>
+                                    </h4>
+                                </div>
+                    `;
+
+                    // Check if race is in progress or done
+                    const remaining = race.remaining;
+                    if (remaining.days === 0 && remaining.hours === 0 && 
+                        remaining.minutes === 0 && remaining.seconds === 0) {
+                        countdownHTML += `
+                            <p class="text-muted">
+                                Race is either in progress or completed.
+                                <a href="/tracker/" class="btn btn-primary ms-2">View Tracker</a>
+                            </p>
+                        `;
+                    }
+
+                    countdownHTML += '</div></div>';
+                    
+                    raceContainer.insertAdjacentHTML('beforeend', countdownHTML);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    // Update races immediately and then every second
+    updateRaces();
+    setInterval(updateRaces, 1000);
+});
+</script>
+{% endblock %}

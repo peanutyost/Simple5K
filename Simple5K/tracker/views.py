@@ -5,6 +5,8 @@ from django.db.models import F, Q
 from django.urls import reverse
 from django.http import Http404, HttpResponse
 from datetime import datetime
+from django.utils import timezone
+from django.http import JsonResponse
 from django.views.generic.edit import FormView, UpdateView
 from django.views.generic.list import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -319,3 +321,66 @@ def show_runners(request, pk):
     selected_race = get_object_or_404(race, pk=pk)
     race_runners = runners.objects.filter(race_id=pk)
     return render(request, 'tracker/view_runners.html', {'race': selected_race, 'runners': race_runners})
+
+
+def format_remaining_time(end_time):
+    """Format remaining time into days, hours, minutes, seconds"""
+    # Get current time in UTC
+    now = timezone.now()
+
+    # If end_time is naive (has no timezone info), localize it to UTC
+    if timezone.is_naive(end_time):
+        end_time = timezone.make_aware(end_time, timezone=timezone.get_default_timezone())
+
+    # Ensure both times are in the same timezone before comparison
+    now_utc = now.astimezone(timezone.get_default_timezone())
+    end_time_utc = end_time.astimezone(timezone.get_default_timezone())
+
+    if end_time_utc <= now_utc:
+        return {'days': 0, 'hours': 0, 'minutes': 0, 'seconds': 0}
+
+    delta = end_time_utc - now_utc
+
+    days = delta.days
+    seconds = delta.seconds
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    seconds = seconds % 60
+
+    return {
+        'days': days,
+        'hours': hours,
+        'minutes': minutes,
+        'seconds': seconds
+    }
+
+
+def race_countdown(request):
+    """Get countdown for all upcoming races"""
+    # Get races that haven't started yet (status is signup_open or signup_closed)
+    upcoming_races = race.objects.filter(status__in=['signup_open', 'signup_closed'])
+
+    # Calculate remaining time for each race
+    race_data = []
+    for r in upcoming_races:
+        # Combine date and scheduled_time into a datetime object
+        start_time = datetime.combine(r.date, r.scheduled_time)
+
+        # Get formatted remaining time
+        remaining = format_remaining_time(start_time)
+
+        race_data.append({
+            'id': r.id,
+            'name': r.name,
+            'distance': f"{r.distance} meters",
+            'laps_count': f"{r.laps_count} laps",
+            'entry_fee': f"${r.Entry_fee:.2f}",
+            'remaining': remaining
+        })
+
+    return JsonResponse(race_data, safe=False)
+
+
+def race_list(request):
+    """Render the race list page"""
+    return render(request, 'tracker/race_list.html')
