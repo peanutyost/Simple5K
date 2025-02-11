@@ -132,46 +132,6 @@ def race_start_view(request):
     return render(request, "tracker/race_start.html", context=context)
 
 
-def race_overview(request):
-    current_race = race.objects.filter(status='in_progress').first()
-
-    # Initialize an empty list to store runner times
-    runner_times = []
-
-    if current_race:
-        # Get all runners for the current race
-        runnersall = runners.objects.filter(race=current_race).order_by(F('place').asc(nulls_last=True))
-
-        # Create a list of runner names and their total race times
-        for arunner in runnersall:
-            run_laps = []
-            alap = laps.objects.filter(runner=arunner).order_by('lap')
-            for lap in alap:
-                run_laps.append({
-                    'lap': lap.lap,
-                    'duration': lap.duration,
-                    'average_speed': lap.average_speed
-                })
-
-            runner_times.append({
-                'number': arunner.number,
-                'name': f"{arunner.first_name} {arunner.last_name}",
-                'total_race_time': arunner.total_race_time if not None else "Not Finished",
-                'average_speed': arunner.race_avg_speed if not None else "Not Finished",
-                'place': arunner.place,
-                'laps': run_laps
-
-            })
-
-    # Pass the runner times to the template
-    context = {
-        'runner_times': runner_times,
-        'race_name': current_race.name if current_race else "No current race"
-    }
-
-    return render(request, 'tracker/race_overview.html', context)
-
-
 @login_required
 def runner_stats(request):
     form = runnerStats(request.POST or None)
@@ -211,33 +171,6 @@ def runner_stats(request):
         return response
 
     return render(request, 'tracker/runner_stats.html', context=context)
-
-
-def race_signup(request):
-    if request.method == 'POST':
-        form = SignupForm(request.POST)
-        if form.is_valid():
-            selected_race_id = form.cleaned_data['race'].id
-            form.save()
-            return redirect(reverse('tracker:signup-success', args=[selected_race_id]))  # You'll need to define this URL
-    else:
-        form = SignupForm()
-    current_races = race.objects.filter(status='signup_open').order_by('date', 'scheduled_time')
-    banners = Banner.objects.filter(active=True)
-    context = {'form': form, 'current_races': current_races, 'banners': banners}
-    return render(request, 'tracker/signup.html', context)
-
-
-def signup_success(request, pk):
-    try:
-        raceobj = race.objects.get(id=pk)
-        context = {'entry_fee': raceobj.Entry_fee,
-                   'race_date': raceobj.date,
-                   'race_time': raceobj.scheduled_time}
-    except race.DoesNotExist:
-        context = {'error': 'Race not found.'}
-
-    return render(request, 'tracker/signup_success.html', context)
 
 
 @login_required
@@ -355,6 +288,76 @@ def format_remaining_time(end_time):
     }
 
 
+''' ---------------------------Public Views-------------------------------------- '''
+
+
+def race_overview(request):
+    current_race = race.objects.filter(status='in_progress').first()
+
+    # Initialize an empty list to store runner times
+    runner_times = []
+
+    if current_race:
+        # Get all runners for the current race
+        runnersall = runners.objects.filter(race=current_race).order_by(F('place').asc(nulls_last=True))
+
+        # Create a list of runner names and their total race times
+        for arunner in runnersall:
+            run_laps = []
+            alap = laps.objects.filter(runner=arunner).order_by('lap')
+            for lap in alap:
+                run_laps.append({
+                    'lap': lap.lap,
+                    'duration': lap.duration,
+                    'average_speed': lap.average_speed
+                })
+
+            runner_times.append({
+                'number': arunner.number,
+                'name': f"{arunner.first_name} {arunner.last_name}",
+                'total_race_time': arunner.total_race_time if not None else "Not Finished",
+                'average_speed': arunner.race_avg_speed if not None else "Not Finished",
+                'place': arunner.place,
+                'laps': run_laps
+
+            })
+
+    # Pass the runner times to the template
+    context = {
+        'runner_times': runner_times,
+        'race_name': current_race.name if current_race else "No current race"
+    }
+
+    return render(request, 'tracker/race_overview.html', context)
+
+
+def race_signup(request):
+    if request.method == 'POST':
+        form = SignupForm(request.POST)
+        if form.is_valid():
+            selected_race_id = form.cleaned_data['race'].id
+            form.save()
+            return redirect(reverse('tracker:signup-success', args=[selected_race_id]))  # You'll need to define this URL
+    else:
+        form = SignupForm()
+    current_races = race.objects.filter(status='signup_open').order_by('date', 'scheduled_time')
+    banners = Banner.objects.filter(active=True)
+    context = {'form': form, 'current_races': current_races, 'banners': banners}
+    return render(request, 'tracker/signup.html', context)
+
+
+def signup_success(request, pk):
+    try:
+        raceobj = race.objects.get(id=pk)
+        context = {'entry_fee': raceobj.Entry_fee,
+                   'race_date': raceobj.date,
+                   'race_time': raceobj.scheduled_time}
+    except race.DoesNotExist:
+        context = {'error': 'Race not found.'}
+
+    return render(request, 'tracker/signup_success.html', context)
+
+
 def race_countdown(request):
     """Get countdown for all upcoming races"""
     # Get races that haven't started yet (status is signup_open or signup_closed)
@@ -382,5 +385,6 @@ def race_countdown(request):
 
 
 def race_list(request):
+    banners = Banner.objects.filter(active=True)
     """Render the race list page"""
-    return render(request, 'tracker/race_list.html')
+    return render(request, 'tracker/race_list.html', context={'banners': banners})

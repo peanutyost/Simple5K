@@ -1,17 +1,39 @@
 {% extends "base.html" %}
-
 {% block content %}
-<div class="container mt-4">
-    <h1 class="text-center mb-4">Upcoming Races</h1>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=BioRhyme:wght@200..800&display=swap');
+</style>
+{% if banners %}
+        <div class="container">
+            <div class="row justify-content-center mt-5">
+                <div class="col-md-12">
+                    <div class="banner-container h-100 d-flex align-items-center" style="height: 400px;">
+                        {% for banner in banners %}
+                            <div class="banner w-100 text-center text-dark" style="background-color: {{ banner.background_color }}">
+                                <div class="banner-content">
+                                    <h1 class="display-4 mb-4">{{ banner.title }}</h1>
+                                    <p class="lead mb-5">{{ banner.subtitle }}</p>
+                                    {% if banner.image %}
+                                        <img src="{{ banner.image.url }}" alt="{{ banner.title }}" class="img-fluid mx-auto d-block rounded mb-4" style="max-width: 300px;">
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
     
-    <div id="race-container" class="row g-4"></div>
-
+<div class="container mt-4">
+    <h1 class="text-center mb-4" style="font-family: 'BioRhyme', serif;">Upcoming Races</h1>
+    
+    <div id="race-container" class="row g-4 justify-content-center p-3"></div>
     <!-- No races message -->
     <div id="no-races-message" class="alert alert-info d-none text-center w-100">
         There are currently no upcoming races.
     </div>
 </div>
-
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -32,23 +54,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 data.forEach(race => {
                     let countdownHTML = `
-                        <div class="card col-md-4 m-3">
-                            <div class="card-body text-center">
-                                <h5 class="card-title">${race.name}</h5>
-                                <p class="card-text">
-                                    <strong>Distance:</strong> ${race.distance}<br>
-                                    <strong>Laps:</strong> ${race.laps_count}<br>
-                                    <strong>Entry Fee:</strong> ${race.entry_fee}
-                                </p>
-                                <div id="countdown-${race.id}" class="text-center mb-3">
-                                    <h4 class="text-primary">
-                                        Time Remaining: <br>
-                                        <span class="fw-bold me-2">${race.remaining.days}d</span>:
-                                        <span class="fw-bold me-2">${race.remaining.hours}h</span>:
-                                        <span class="fw-bold me-2">${race.remaining.minutes}m</span>:
-                                        <span class="fw-bold">${race.remaining.seconds}s</span>
-                                    </h4>
-                                </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 border-black border-3 rounded-2 race-card" style="background-color: rgba(180, 121, 43, 0.7);">
+                                <div class="card-body text-center p-4">
+                                    <h3 class="card-title mb-3">${race.name}</h3>
+                                    <p class="card-text">
+                                        <strong>Distance:</strong> ${race.distance}<br>
+                                        <strong>Laps:</strong> ${race.laps_count}<br>
+                                        <strong>Entry Fee:</strong> ${race.entry_fee}
+                                    </p>
+                                    <div id="countdown-${race.id}" class="text-center mb-3">
+                                        <h4 class="text-white">
+                                            Race Starts In: <br> 
+                                            <span class="fs-3 fw-bold me-2">${race.remaining.days}d</span>:
+                                            <span class="fs-3 fw-bold me-2">${race.remaining.hours}h</span>:
+                                            <span class="fs-3 fw-bold me-2">${race.remaining.minutes}m</span>:
+                                            <span class="fs-3 fw-bold">${race.remaining.seconds}s</span>
+                                        </h4>
+                                    </div>
                     `;
 
                     // Check if race is in progress or done
@@ -58,22 +81,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         countdownHTML += `
                             <p class="text-muted">
                                 Race is either in progress or completed.
-                                <a href="/tracker/" class="btn btn-primary ms-2">View Tracker</a>
+                                <a href="/tracker/" class="btn btn-primary">View Live Races</a>
                             </p>
                         `;
                     }
-
-                    countdownHTML += '</div></div>';
                     
-                    raceContainer.insertAdjacentHTML('beforeend', countdownHTML);
+                    countdownHTML += `
+                            </div>
+                        </div>`;
+                    
+                    raceContainer.innerHTML += countdownHTML;
                 });
             })
             .catch(error => console.error('Error:', error));
     }
-
-    // Update races immediately and then every second
+    
+    // Update the races immediately and then every 10 seconds
     updateRaces();
-    setInterval(updateRaces, 1000);
+    setInterval(updateRaces, 10000);
 });
 </script>
 {% endblock %}
