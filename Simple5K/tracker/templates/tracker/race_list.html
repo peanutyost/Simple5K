@@ -24,7 +24,7 @@
             </div>
         </div>
     {% endif %}
-    
+
 <div class="container mt-4">
     <h1 class="text-center mb-4" style="font-family: 'BioRhyme', serif;">Upcoming Races</h1>
     
@@ -96,9 +96,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => console.error('Error:', error));
     }
     
-    // Update the races immediately and then every 10 seconds
+    // Update the races immediately and then every 1 seconds
     updateRaces();
-    setInterval(updateRaces, 10000);
+    setInterval(updateRaces, 1000);
 });
 </script>
 {% endblock %}
