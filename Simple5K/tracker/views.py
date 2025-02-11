@@ -11,6 +11,7 @@ from django.views.generic.edit import FormView, UpdateView
 from django.views.generic.list import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
+
 from .models import race, runners, laps, Banner
 from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm
 from .pdf_gen import generate_race_report
