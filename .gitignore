@@ -1,7 +1,7 @@
 .vscode/*
 
 
-
+Simple5K/tracker/template/tracking.html
 Simple5k/static/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -166,3 +166,4 @@ cython_debug/
 
 *.code-workspace
 .vscode/*
+Simple5K/tracker/templates/tracking.html
