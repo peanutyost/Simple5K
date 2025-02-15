@@ -117,3 +117,7 @@ class SignupForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Filter the race choices to only show current races
         self.fields['race'].queryset = race.objects.filter(status='signup_open')
+
+
+class RaceSelectionForm(forms.Form):
+    race = forms.ModelChoiceField(queryset=race.objects.exclude(status='in_progress').exclude(status='completed'), label="Select Race")

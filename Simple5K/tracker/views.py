@@ -10,12 +10,13 @@ from django.http import JsonResponse
 from django.views.generic.edit import FormView, UpdateView
 from django.views.generic.list import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
 from django.views.decorators.cache import cache_page
 from functools import wraps
 
 
 from .models import race, runners, laps, Banner
-from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm
+from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm
 from .pdf_gen import generate_race_report
 
 
@@ -303,6 +304,40 @@ def format_remaining_time(end_time):
         'minutes': minutes,
         'seconds': seconds
     }
+
+
+# ----------------------------Assign numbers--------------------------------------
+def assign_numbers(request):
+    if request.method == 'POST':
+        race_id = request.POST.get('race')
+        race_local = get_object_or_404(race, id=race_id)
+
+        # Get all runners in the race without a number
+        runners_without_number = runners.objects.filter(race=race_local, number__isnull=True).order_by('id')
+        print(runners_without_number)
+        print(race_local)
+        if runners_without_number.exists():
+            # Check if there are any numbers already assigned
+            existing_numbers = runners.objects.filter(race=race_local, number__isnull=False).values_list('number', flat=True)
+
+            if existing_numbers:
+                next_number = max(existing_numbers) + 1
+            else:
+                next_number = race_local.number_start or 1  # Default to 1 if number_start is None
+
+            for runner in runners_without_number:
+                runner.number = next_number
+                runner.save()
+                next_number += 1
+            messages.success(request, 'Numbers assigned successfully!')
+            return redirect('tracker:assign_numbers')  # Redirect back with success message
+        else:
+            error_message = "All runners already have numbers assigned."
+            return render(request, 'tracker/assign_numbers.html', {'error_message': error_message})
+
+    races = race.objects.exclude(status='in_progress').exclude(status='completed')
+    form = RaceSelectionForm()
+    return render(request, 'tracker/assign_numbers.html', {'races': races, 'form': form})
 
 
 # ---------------------------Public Views------------------------------------------

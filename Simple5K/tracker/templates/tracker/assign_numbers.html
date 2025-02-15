@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Assign Runner Numbers</h1>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="race">Select Race:</label>
+        <select name="race" id="race" class="form-control">
+            <option value="">Choose a race...</option>
+            {% for race in races %}
+            <option value="{{ race.id }}">{{ race }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    {% if error_message %}
+    <div class="alert alert-danger">{{ error_message }}</div>
+    {% endif %}
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    
+    
+    <button type="submit" class="btn btn-primary">Assign Numbers</button>
+</form>
+
+{% endblock %}

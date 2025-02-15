@@ -15,6 +15,7 @@ from .views import (
     RaceAdd,
     RaceEdit,
     ListRaces,
+    assign_numbers
 )
 
 app_name = 'tracker'
@@ -32,4 +33,5 @@ urlpatterns = [
     path('shirt_view/<int:pk>/', view_shirt_sizes, name='view_shirts'),
     path('runners_view/<int:pk>/', show_runners, name='view_runners'),
     path('select_race_runners', select_race_for_runners, name='select_race_runners'),
+    path('assign_numbers/', assign_numbers, name='assign_numbers'),
 ]
