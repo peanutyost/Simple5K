@@ -11,6 +11,7 @@ class BannerAdmin(admin.ModelAdmin):
 
     fields = ('title', 'subtitle', 'background_color', 'image', 'active')
 
+
 @admin.register(runners)  # Make sure this is the correct model name
 class RunnersAdmin(admin.ModelAdmin):
     list_display = ('first_name', 'last_name', 'race', 'number')

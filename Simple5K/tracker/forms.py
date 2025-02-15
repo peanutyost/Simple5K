@@ -120,4 +120,5 @@ class SignupForm(forms.ModelForm):
 
 
 class RaceSelectionForm(forms.Form):
-    race = forms.ModelChoiceField(queryset=race.objects.exclude(status='in_progress').exclude(status='completed'), label="Select Race")
+    race = forms.ModelChoiceField(queryset=race.objects.exclude(status='in_progress').exclude(status='completed'),
+                                  label="Select Race")
