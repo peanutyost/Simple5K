@@ -10,11 +10,27 @@ from django.http import JsonResponse
 from django.views.generic.edit import FormView, UpdateView
 from django.views.generic.list import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.decorators.cache import cache_page
+from functools import wraps
 
 
 from .models import race, runners, laps, Banner
 from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm
 from .pdf_gen import generate_race_report
+
+
+def cache_unless_authenticated(timeout):
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped_view(request, *args, **kwargs):
+            if request.user.is_authenticated:
+                # Bypass caching and return fresh response for authenticated users
+                return view_func(request, *args, **kwargs)
+            else:
+                # Cache the response for anonymous users
+                return cache_page(timeout)(view_func)(request, *args, **kwargs)
+        return wrapped_view
+    return decorator
 
 
 class RaceAdd(LoginRequiredMixin, FormView):
@@ -289,9 +305,10 @@ def format_remaining_time(end_time):
     }
 
 
-''' ---------------------------Public Views-------------------------------------- '''
+# ---------------------------Public Views------------------------------------------
 
 
+@cache_unless_authenticated(60)
 def race_overview(request):
     current_race = race.objects.filter(status='in_progress').first()
 
