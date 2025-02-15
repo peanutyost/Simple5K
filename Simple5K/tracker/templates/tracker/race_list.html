@@ -24,7 +24,6 @@
             </div>
         </div>
     {% endif %}
-
 <div class="container mt-4">
     <h1 class="text-center mb-4" style="font-family: 'BioRhyme', serif;">Upcoming Races</h1>
     
@@ -34,7 +33,6 @@
         There are currently no upcoming races.
     </div>
 </div>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     function updateRaces() {
@@ -73,7 +71,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </h4>
                                     </div>
                     `;
-
                     // Check if race is in progress or done
                     const remaining = race.remaining;
                     if (remaining.days === 0 && remaining.hours === 0 && 
