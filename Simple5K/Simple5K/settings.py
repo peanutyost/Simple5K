@@ -30,7 +30,7 @@ DEBUG = os.environ.get("DEBUG", 'TRUE') == 'TRUE'
 
 CSRF_TRUSTED_ORIGINS = [os.environ.get('TRUSTED_ORIGINS', "http://localhost")]
 
-ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '127.0.0.1')]
+ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', 'localhost')]
 
 # Application definition
 

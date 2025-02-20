@@ -1,5 +1,6 @@
 from django.db import models
 from django.urls import reverse
+import secrets
 
 
 class race(models.Model):
@@ -86,6 +87,10 @@ class runners(models.Model):
     def __str__(self):
         return self.first_name + " " + self.last_name
 
+    @property
+    def rfid_tag_hex(self):
+        return self.rfid_tag.hex()
+
 
 class laps(models.Model):
     runner = models.ForeignKey(runners, on_delete=models.CASCADE)
@@ -109,3 +114,18 @@ class Banner(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class ApiKey(models.Model):
+    name = models.CharField(max_length=255)
+    key = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            self.key = secrets.token_urlsafe(32)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} - {self.key[:10]}..."

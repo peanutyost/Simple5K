@@ -1,10 +1,11 @@
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.db.models import F, Q
 from django.urls import reverse
 from django.http import Http404, HttpResponse
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.utils import timezone
 from django.http import JsonResponse
 from django.views.generic.edit import FormView, UpdateView
@@ -13,11 +14,28 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views.decorators.cache import cache_page
 from functools import wraps
+import json
+import pytz
 
-
-from .models import race, runners, laps, Banner
+from .models import race, runners, laps, Banner, ApiKey
 from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm
 from .pdf_gen import generate_race_report
+
+
+def require_api_key(view_func):
+    @wraps(view_func)
+    def wrapped_view(request, *args, **kwargs):
+        api_key = request.headers.get('X-API-Key')
+        if not api_key:
+            return JsonResponse({'error': 'No API key provided'}, status=401)
+
+        try:
+            ApiKey.objects.get(key=api_key, is_active=True)
+        except ApiKey.DoesNotExist:
+            return JsonResponse({'error': 'Invalid API key'}, status=401)
+
+        return view_func(request, *args, **kwargs)
+    return wrapped_view
 
 
 def cache_unless_authenticated(timeout):
@@ -59,71 +77,6 @@ class ListRaces(LoginRequiredMixin, ListView):
     context_object_name = 'object_list'
     paginate_by = 50
     ordering = ['-date']
-
-
-@login_required
-def laps_view(request):
-    p = []
-    if request.method == 'POST':
-        data = request.POST
-        runnerNumber = data['runnernumber']
-        runner_attached = get_object_or_404(runners, number=runnerNumber)
-        race_attached = race.objects.filter(status='in_progress').first()
-        alllaps = laps.objects.filter(
-            attach_to_race=race_attached, runner=runner_attached)
-
-        if not alllaps.exists():
-            thislap = 1
-            lapDuration = datetime.now().astimezone() - race_attached.start_time
-
-        else:
-            lapsrun = alllaps.order_by('-lap').first()
-            thislap = lapsrun.lap + 1
-            lapDuration = datetime.now().astimezone() - lapsrun.time
-            if thislap == race_attached.laps_count:
-                if runner_attached.gender is None:
-                    runner_attached.gender = 'male'
-
-                allfinnisher = runners.objects.filter(
-                    race_completed=True, gender=runner_attached.gender)
-                if not allfinnisher.exists():
-                    runner_attached.place = 1
-                else:
-                    prevfinnisher = allfinnisher.order_by('-place').first()
-                    runner_attached.place = prevfinnisher.place + 1
-                runner_attached.race_completed = True
-                runner_attached.total_race_time = datetime.now().astimezone() - race_attached.start_time
-                totalracetimesecond = runner_attached.total_race_time.total_seconds()
-                kmhtotal = (race_attached.distance / 1000) / (totalracetimesecond / 3600)
-                mphtotal = kmhtotal * 0.621371
-                runner_attached.race_avg_speed = mphtotal
-
-                runner_attached.save()
-
-        kmran = (race_attached.distance / race_attached.laps_count) / 1000
-        laptimeseconds = lapDuration.total_seconds()
-        laptimehours = laptimeseconds / 3600
-        kmh = kmran / laptimehours
-        mph = kmh * 0.621371
-
-        timenow = datetime.now().astimezone()
-        p = laps(attach_to_race=race_attached, runner=runner_attached,
-                 lap=thislap, duration=lapDuration, average_speed=mph,
-                 time=timenow)
-        p.save()
-
-    form = LapForm()
-    if p:
-        context = {
-            "form": form,
-            "data": p
-        }
-    else:
-        context = {
-            "form": form
-        }
-
-    return render(request, "tracker/laps.html", context=context)
 
 
 @login_required
@@ -304,6 +257,202 @@ def format_remaining_time(end_time):
         'minutes': minutes,
         'seconds': seconds
     }
+
+
+# ---------------------------API---------------------------------------------
+@csrf_exempt
+@require_api_key
+def record_lap(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    try:
+        data = json.loads(request.body)
+        runner_rfid = bytes.fromhex(data.get('runner_rfid'))
+        race_id = data.get('race_id')
+        timestamp = data.get('timestamp')  # Get the submitted UTC timestamp
+
+        if not timestamp:
+            return JsonResponse({'error': 'Timestamp is required'}, status=400)
+
+        # Parse the timestamp into a timezone-aware datetime object
+        time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')
+        current_time = time_naive.replace(tzinfo=pytz.utc)
+
+        runner_obj = runners.objects.get(rfid_tag=runner_rfid)
+        race_obj = race.objects.get(id=race_id)
+        if race_obj.min_lap_time is None:
+            race_obj.min_lap_time = timedelta(seconds=0)
+
+        # Calculate lap duration and averages
+        previous_lap = laps.objects.filter(
+            runner=runner_obj,
+            attach_to_race=race_obj
+        ).order_by('-lap').first()
+        if runner_obj.race_completed is not True:
+            print(previous_lap)
+            if previous_lap:
+                if current_time - previous_lap.time > race_obj.min_lap_time:
+                    duration = current_time - previous_lap.time
+                    lap_number = previous_lap.lap + 1
+                    if lap_number == race_obj.laps_count:
+                        runner_obj.race_completed = True
+                        if runner_obj.gender is None:
+                            runner_obj.gender = 'male'
+                        allfinnisher = runners.objects.filter(
+                            race_completed=True, gender=runner_obj.gender)
+                        if not allfinnisher.exists():
+                            runner_obj.place = 1
+                        else:
+                            prevfinnisher = allfinnisher.order_by('-place').first()
+                            runner_obj.place = prevfinnisher.place + 1
+                        # Calculate the average speed
+                        runner_obj.total_race_time = current_time - race_obj.start_time
+                        totalracetimesecond = runner_obj.total_race_time.total_seconds()
+                        kmhtotal = (race_obj.distance / 1000) / (totalracetimesecond / 3600)
+                        mphtotal = kmhtotal * 0.621371
+                        runner_obj.race_avg_speed = mphtotal
+                        # Calculate the average pace
+                        avg_pace_seconds = ((runner_obj.total_race_time.total_seconds() / 60) / (
+                            race_obj.distance / 1609.34)) * 60
+                        runner_obj.race_avg_pace = timedelta(seconds=avg_pace_seconds)
+
+                        runner_obj.save()
+
+                elif current_time - previous_lap.time <= race_obj.min_lap_time:
+                    return JsonResponse({
+                        'status': 'success'
+                    })
+
+            else:
+
+                if current_time - race_obj.start_time > race_obj.min_lap_time:
+                    duration = current_time - race_obj.start_time
+                    lap_number = 1
+                elif current_time - race_obj.start_time <= race_obj.min_lap_time:
+                    return JsonResponse({
+                        'status': 'success'
+                    })
+
+            # Calculate speed and pace
+            distance_per_lap = race_obj.distance / 1000 / race_obj.laps_count
+            speed = (distance_per_lap / duration.total_seconds()) * 3600 * 0.621371
+            pace_seconds = ((duration.total_seconds() / 60) / (distance_per_lap / 1.60934)) * 60  # time per Mile
+            pace = timedelta(seconds=pace_seconds)
+
+            laps_obj = laps.objects.create(
+                runner=runner_obj,
+                attach_to_race=race_obj,
+                time=current_time,
+                lap=lap_number,
+                duration=duration,
+                average_speed=speed,
+                average_pace=pace
+            )
+            laps_obj.save()
+
+            return JsonResponse({
+                'status': 'success'
+            })
+
+        else:
+            return JsonResponse({
+                'status': 'success'
+            })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@csrf_exempt
+@require_api_key
+def update_race_time(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        race_id = data.get('race_id')
+        action = data.get('action')  # 'start' or 'stop'
+        timestamp = data.get('timestamp')
+        time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')
+        current_time = time_naive.replace(tzinfo=pytz.utc)
+        race_obj = race.objects.get(id=race_id)
+
+        if action == 'start':
+            if race_obj.status not in ('in_progress', 'completed'):
+                race_obj.start_time = current_time
+                race_obj.status = 'in_progress'
+                race_obj.save()
+        elif action == 'stop':
+            if race_obj != 'completed':
+                race_obj.end_time = current_time
+                race_obj.status = 'completed'
+        else:
+            return JsonResponse({'error': 'Invalid action'}, status=400)
+
+        race_obj.save()
+
+        return JsonResponse({
+            'status': 'success'
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@csrf_exempt
+@require_api_key
+def update_rfid(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        runner_number = data.get('runner_number')
+        rfid_tag = data.get('rfid_tag')
+        race_id = data.get('race_id')
+
+        race_local = race.objects.get(id=race_id)
+        runner_obj = runners.objects.filter(number=runner_number).filter(race=race_local).first()
+        runner_obj.rfid_tag = bytes.fromhex(rfid_tag)
+        runner_obj.save()
+
+        return JsonResponse({
+            'status': 'success',
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@require_api_key
+def get_available_races(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        available_races = race.objects.exclude(
+            status__in=['completed']
+        ).values('id', 'name', 'status', 'date', 'scheduled_time')
+
+        return JsonResponse({
+            'status': 'success',
+            'races': list(available_races)
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+# View for generating API keys
+@login_required
+def generate_api_key(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        if name:
+            api_key = ApiKey.objects.create(name=name)
+            return render(request, 'tracker/generate_api_key.html', {'api_key': api_key})
+    return render(request, 'tracker/generate_api_key.html')
 
 
 # ----------------------------Assign numbers--------------------------------------
