@@ -27,7 +27,7 @@ def require_api_key(view_func):
     def wrapped_view(request, *args, **kwargs):
         api_key = request.headers.get('X-API-Key')
         if not api_key:
-            return JsonResponse({'error': 'No API key provided'}, status=401)
+            return JsonResponse({'error': 'Invalid API key'}, status=401)
 
         try:
             ApiKey.objects.get(key=api_key, is_active=True)
