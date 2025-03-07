@@ -266,98 +266,120 @@ def record_lap(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     try:
-        data = json.loads(request.body)
-        runner_rfid = bytes.fromhex(data.get('runner_rfid'))
-        race_id = data.get('race_id')
-        timestamp = data.get('timestamp')  # Get the submitted UTC timestamp
+        laps_data = json.loads(request.body)
 
-        if not timestamp:
-            return JsonResponse({'error': 'Timestamp is required'}, status=400)
+        if not laps_data or not isinstance(laps_data, list):
+            return JsonResponse({'error': 'Laps data must be a list'}, status=400)
 
-        # Parse the timestamp into a timezone-aware datetime object
-        time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')
-        current_time = time_naive.replace(tzinfo=pytz.utc)
+        results = []
 
-        runner_obj = runners.objects.get(rfid_tag=runner_rfid)
-        race_obj = race.objects.get(id=race_id)
-        if race_obj.min_lap_time is None:
-            race_obj.min_lap_time = timedelta(seconds=0)
+        for lap_data in laps_data:
+            runner_rfid_hex = lap_data.get('runner_rfid')  # This now correctly gets from individual lap
+            race_id = lap_data.get('race_id')  # This gets the race id for this particular lap
+            timestamp = lap_data.get('timestamp')
 
-        # Calculate lap duration and averages
-        previous_lap = laps.objects.filter(
-            runner=runner_obj,
-            attach_to_race=race_obj
-        ).order_by('-lap').first()
-        if runner_obj.race_completed is not True:
-            print(previous_lap)
-            if previous_lap:
-                if current_time - previous_lap.time > race_obj.min_lap_time:
-                    duration = current_time - previous_lap.time
-                    lap_number = previous_lap.lap + 1
-                    if lap_number == race_obj.laps_count:
-                        runner_obj.race_completed = True
-                        if runner_obj.gender is None:
-                            runner_obj.gender = 'male'
-                        allfinnisher = runners.objects.filter(
-                            race_completed=True, gender=runner_obj.gender)
-                        if not allfinnisher.exists():
-                            runner_obj.place = 1
-                        else:
-                            prevfinnisher = allfinnisher.order_by('-place').first()
-                            runner_obj.place = prevfinnisher.place + 1
-                        # Calculate the average speed
-                        runner_obj.total_race_time = current_time - race_obj.start_time
-                        totalracetimesecond = runner_obj.total_race_time.total_seconds()
-                        kmhtotal = (race_obj.distance / 1000) / (totalracetimesecond / 3600)
-                        mphtotal = kmhtotal * 0.621371
-                        runner_obj.race_avg_speed = mphtotal
-                        # Calculate the average pace
-                        avg_pace_seconds = ((runner_obj.total_race_time.total_seconds() / 60) / (
-                            race_obj.distance / 1609.34)) * 60
-                        runner_obj.race_avg_pace = timedelta(seconds=avg_pace_seconds)
+            if not runner_rfid_hex:
+                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Runner RFID required"})
+                continue
 
-                        runner_obj.save()
+            if not race_id:
+                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Race ID required"})
+                continue
 
-                elif current_time - previous_lap.time <= race_obj.min_lap_time:
-                    return JsonResponse({
-                        'status': 'success'
-                    })
+            if not timestamp:
+                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Timestamp is required"})
+                continue
 
-            else:
+            try:
+                runner_rfid = bytes.fromhex(runner_rfid_hex)  # Convert to bytes
+                # Parse the timestamp into a timezone-aware datetime object
+                time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
+                current_time = time_naive.replace(tzinfo=pytz.utc)
+                runner_obj = runners.objects.get(rfid_tag=runner_rfid)  # Get runner object, crucial to keep here
+                race_obj = race.objects.get(id=race_id)  # get race object
 
-                if current_time - race_obj.start_time > race_obj.min_lap_time:
-                    duration = current_time - race_obj.start_time
-                    lap_number = 1
-                elif current_time - race_obj.start_time <= race_obj.min_lap_time:
-                    return JsonResponse({
-                        'status': 'success'
-                    })
+                if race_obj.min_lap_time is None:
+                    race_obj.min_lap_time = timedelta(seconds=0)
 
-            # Calculate speed and pace
-            distance_per_lap = race_obj.distance / 1000 / race_obj.laps_count
-            speed = (distance_per_lap / duration.total_seconds()) * 3600 * 0.621371
-            pace_seconds = ((duration.total_seconds() / 60) / (distance_per_lap / 1.60934)) * 60  # time per Mile
-            pace = timedelta(seconds=pace_seconds)
+                # Calculate lap duration and averages
+                previous_lap = laps.objects.filter(
+                    runner=runner_obj,
+                    attach_to_race=race_obj
+                ).order_by('-lap').first()
 
-            laps_obj = laps.objects.create(
-                runner=runner_obj,
-                attach_to_race=race_obj,
-                time=current_time,
-                lap=lap_number,
-                duration=duration,
-                average_speed=speed,
-                average_pace=pace
-            )
-            laps_obj.save()
+                if runner_obj.race_completed is not True:
+                    if previous_lap:
+                        if current_time - previous_lap.time > race_obj.min_lap_time:
+                            duration = current_time - previous_lap.time
+                            lap_number = previous_lap.lap + 1
+                            if lap_number == race_obj.laps_count:
+                                runner_obj.race_completed = True
 
-            return JsonResponse({
-                'status': 'success'
-            })
+                                if runner_obj.gender is None:
+                                    runner_obj.gender = 'male'
+                                allfinnisher = runners.objects.filter(
+                                    race_completed=True, gender=runner_obj.gender)
 
-        else:
-            return JsonResponse({
-                'status': 'success'
-            })
+                                if not allfinnisher.exists():
+                                    runner_obj.place = 1
+                                else:
+                                    prevfinnisher = allfinnisher.order_by('-place').first()
+                                    runner_obj.place = prevfinnisher.place + 1
+
+                                runner_obj.total_race_time = current_time - race_obj.start_time
+                                totalracetimesecond = runner_obj.total_race_time.total_seconds()
+                                kmhtotal = (race_obj.distance / 1000) / (totalracetimesecond / 3600)
+                                mphtotal = kmhtotal * 0.621371
+                                runner_obj.race_avg_speed = mphtotal
+
+                                avg_pace_seconds = ((runner_obj.total_race_time.total_seconds() / 60) / (
+                                    race_obj.distance / 1609.34)) * 60
+                                runner_obj.race_avg_pace = timedelta(seconds=avg_pace_seconds)
+                                runner_obj.save()
+                        elif current_time - previous_lap.time <= race_obj.min_lap_time:
+                            results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
+                            continue  # Skip processing this lap as it's too soon
+
+                    else:
+                        if current_time - race_obj.start_time > race_obj.min_lap_time:
+                            duration = current_time - race_obj.start_time
+                            lap_number = 1
+                        elif current_time - race_obj.start_time <= race_obj.min_lap_time:
+                            results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
+                            continue  # Skip processing this lap as it's too soon
+
+                    distance_per_lap = race_obj.distance / 1000 / race_obj.laps_count
+                    speed = (distance_per_lap / duration.total_seconds()) * 3600 * 0.621371
+                    pace_seconds = ((duration.total_seconds() / 60) / (distance_per_lap / 1.60934)) * 60
+                    pace = timedelta(seconds=pace_seconds)
+
+                    laps_obj = laps.objects.create(
+                        runner=runner_obj,
+                        attach_to_race=race_obj,
+                        time=current_time,
+                        lap=lap_number,
+                        duration=duration,
+                        average_speed=speed,
+                        average_pace=pace
+                    )
+                    laps_obj.save()  # Save to database
+                    results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
+
+                else:
+                    results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
+
+            except runners.DoesNotExist:
+
+                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Runner not found"})
+
+            except race.DoesNotExist:
+
+                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Race not found"})
+
+            except Exception as e:
+                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": str(e)})
+
+        return JsonResponse({'results': results})
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
