@@ -19,6 +19,7 @@ from .views import (
     update_race_time,
     update_rfid,
     get_available_races,
+    mark_runner_finished,
 )
 
 app_name = 'tracker'
@@ -36,6 +37,7 @@ urlpatterns = [
     path('runners_view/<int:pk>/', show_runners, name='view_runners'),
     path('select_race_runners', select_race_for_runners, name='select_race_runners'),
     path('assign_numbers/', assign_numbers, name='assign_numbers'),
+    path('mark_runner_finished/', mark_runner_finished, name='mark_runner_finished'),
     # API endpoints
     path('generate-api-key/', generate_api_key, name='generate-api-key'),
     path('api/record-lap/', record_lap, name='api-record-lap'),

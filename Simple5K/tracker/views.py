@@ -4,10 +4,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.db.models import F, Q
 from django.urls import reverse
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from datetime import datetime, timedelta
 from django.utils import timezone
-from django.http import JsonResponse
 from django.views.generic.edit import FormView, UpdateView
 from django.views.generic.list import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -257,6 +256,22 @@ def format_remaining_time(end_time):
         'minutes': minutes,
         'seconds': seconds
     }
+
+
+@login_required
+def mark_runner_finished(request):
+    if request.method == 'POST':
+        runner_number = request.POST.get('runner_number')
+        try:
+            runner = runners.objects.get(number=runner_number)
+            runner.race_completed = True
+            runner.save()
+            return JsonResponse({'success': True, 'message': f'Runner {runner_number} marked as finished.'})
+        except runners.DoesNotExist:
+            return JsonResponse({'success': False, 'message': f'Runner with number {runner_number} not found.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'An error occurred: {str(e)}'})
+    return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
 
 # ---------------------------API---------------------------------------------

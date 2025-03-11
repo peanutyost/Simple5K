@@ -1,57 +1,117 @@
 {% extends 'base.html' %}
 {% load static %}
-
-
-
 {% block content %}
-<div class="d-flex align-items-center justify-content-center">
-    <h1>{{ race_name }}</h1>
-</div>
-<div class="d-flex align-items-center justify-content-center">
-    <table id="table" class= "sortable table-bordered table-striped w-75 padding-auto">
-        <thead>
-            <tr>
-                <th>Runner</th>
-                <th>Name</th>
-                <th>Lap - Time - Speed MPH</th>
-                <th>Total Race Time HH:MM:SS.</th>
-                <th>Average Race Speed MPH</th>
-                <th>Finished Place</th>
-            </tr>
-        </thead>
-        <tbody>
-            
-            {% for runner in runner_times %}
-                <tr>
-                    <td> {{ runner.number}} </td>
-                    <td> {{ runner.name}} </td>
-                    <td> 
-                        {% for lap in runner.laps %}
-                        {{ lap.lap }} - {{ lap.duration }} - {{ lap.average_speed }}
-                        <br>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{% static 'sorttable.js' %}"></script>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-12">
+            <h1 class="text-center mb-4">{{ race_name }}</h1>
+            {% if request.user.is_authenticated %}
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Mark Runner as Finished</h5>
+                            <form id="finishRunnerForm" method="post">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="runner_number" class="form-label">Runner Number:</label>
+                                    <input type="number" class="form-control" id="runner_number" name="runner_number" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Mark as Finished</button>
+                            </form>
+                            <div id="submission-response"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <script>
+                $(document).ready(function() {
+                    $("#finishRunnerForm").submit(function(event) {
+                        event.preventDefault();  // Prevent the form from submitting traditionally
+                        var runnerNumber = $("#runner_number").val();
+                        var csrfToken = $('input[name="csrfmiddlewaretoken"]').val();
+                        $.ajax({
+                            url: '/tracker/mark_runner_finished/',  //  URL to your view
+                            type: 'POST',
+                            data: {
+                                'runner_number': runnerNumber,
+                                'csrfmiddlewaretoken': csrfToken  // Include CSRF token
+                            },
+                            dataType: 'json',  // Expect JSON response
+                            success: function(data) {
+                                if (data.success) {
+                                    $("#submission-response").html("<div class='alert alert-success'>" + data.message + "</div>");
+                                    location.reload();
+                                } else {
+                                    $("#submission-response").html("<div class='alert alert-danger'>" + data.message + "</div>");
+                                }
+                            },
+                            error: function(xhr, textStatus, errorThrown) {
+                                console.log("Error: " + errorThrown);
+                                $("#submission-response").html("<div class='alert alert-danger'>An error occurred. Please try again.</div>");
+                            }
+                        });
+                    });
+                    setInterval(function(){
+                        location.reload();
+                     }, 30000);
+                });
+            </script>
+            {% endif %}
+
+            <div class="table-responsive">
+                <table id="raceTable" class="table table-bordered table-striped sortable">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Runner</th>
+                            <th>Name</th>
+                            <th>Lap Details</th>
+                            <th>Total Race Time</th>
+                            <th>Average Race Speed (MPH)</th>
+                            <th data-sort="number">Finished Place</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for runner in runner_times %}
+                        <tr>
+                            <td>{{ runner.number }}</td>
+                            <td>{{ runner.name }}</td>
+                            <td>
+                                {% for lap in runner.laps %}
+                                <div class="mb-1">
+                                    Lap {{ lap.lap }}: {{ lap.duration }} - {{ lap.average_speed }} MPH
+                                </div>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                {% if runner.total_race_time %}
+                                {{ runner.total_race_time }}
+                                {% else %}
+                                Not Finished
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if runner.average_speed %}
+                                {{ runner.average_speed }}
+                                {% else %}
+                                Not Finished
+                                {% endif %}
+                            </td>
+                             <td sorttable_customkey="{% if runner.place %}{{ runner.place }}{% else %}999999{% endif %}">
+                                {% if runner.place %}
+                                {{ runner.place }}
+                                {% else %}
+                                Not Finished
+                                {% endif %}
+                            </td>
+                        </tr>
                         {% endfor %}
-                    </td>
-                    <td> {% if runner.total_race_time == None %}
-                        Not Finished
-                        {% else %}
-                        {{ runner.total_race_time }} 
-                        {% endif %}
-                    </td>
-                    <td>{% if runner.average_speed == None %}
-                        Not Finished
-                        {% else %} 
-                        {{ runner.average_speed }}
-                        {% endif %}
-                    </td>
-                    <td>{% if runner.average_speed == None %}
-                        Not Finished
-                        {% else %} 
-                        {{ runner.place }}
-                        {% endif %}
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
