@@ -78,6 +78,79 @@ class ListRaces(LoginRequiredMixin, ListView):
     ordering = ['-date']
 
 
+class GenerateRaceReportView(LoginRequiredMixin, View):
+    def get(self, request, race_id, runner_id):
+        race_obj = get_object_or_404(race, pk=race_id)
+        runner_obj = get_object_or_404(runners, number=runner_id)
+        # Prepare data for the report
+        race_data = self.prepare_race_data(race_obj, runner_obj)
+        # Generate the PDF
+        pdf_filename = f"race_report_{race_obj.name}_{runner_obj.first_name}_{runner_obj.last_name}.pdf"
+        response = generate_race_report(pdf_filename, race_data)
+        return response
+
+    def prepare_race_data(self, race_obj, runner_obj):
+        """
+        Prepares the race data for the PDF report, including runner details,
+        lap information, and competitor placings.
+        """
+        race_info = {
+            'name': race_obj.name,
+            'date': race_obj.date.strftime('%Y-%m-%d'),
+            'distance': race_obj.distance,
+        }
+
+        # Runner Details
+        runner_details = {
+            'name': f"{runner_obj.first_name} {runner_obj.last_name}",
+            'number': runner_obj.number,
+            'age_bracket': runner_obj.age,
+            'gender': runner_obj.gender,
+            'type': runner_obj.type,
+            'shirt_size': runner_obj.shirt_size,
+            'total_time': str(runner_obj.total_race_time) if runner_obj.total_race_time else "N/A",
+            'race_avg_speed': float(runner_obj.race_avg_speed),
+            'place': runner_obj.place if runner_obj.place else "N/A",
+        }
+
+        # Lap Data
+        laps_data = []
+        for lap in laps.objects.filter(runner=runner_obj).order_by('lap'):
+            laps_data.append({
+                'lap': lap.lap,
+                'time': lap.time.strftime('%H:%M:%S'),
+                'duration': str(lap.duration),
+                'average_speed': float(lap.average_speed),
+            })
+
+        # Competitor Placement Data (2 faster, 2 slower)
+        # Find 2 runners faster
+        faster_runners = runners.objects.filter(
+            race=race_obj,
+            total_race_time__lt=runner_obj.total_race_time
+        ).order_by('total_race_time')[:2]
+
+        slower_runners = runners.objects.filter(
+            race=race_obj,
+            total_race_time__gt=runner_obj.total_race_time
+        ).order_by('-total_race_time')[:2]
+
+        def format_runner(runner):
+            return f"{runner.first_name} {runner.last_name} ({runner.total_race_time})" if runner else "N/A"
+
+        competitor_data = {
+            'faster_runners': [format_runner(runner) for runner in faster_runners],
+            'slower_runners': [format_runner(runner) for runner in slower_runners],
+        }
+
+        return {
+            'race': race_info,
+            'runner': runner_details,
+            'laps': laps_data,
+            'competitors': competitor_data,
+        }
+
+
 @login_required
 def race_start_view(request):
     form = raceStart(request.POST or None)
