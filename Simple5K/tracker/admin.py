@@ -9,7 +9,7 @@ admin.site.register(ApiKey)
 class RaceAdmin(admin.ModelAdmin):
     list_display = ('name', 'date', 'status')
     fields = ('name', 'status', 'Entry_fee', 'date', 'distance', 'laps_count', 'max_runners',
-              'number_start', 'scheduled_time', 'start_time', 'end_time')
+              'number_start', 'scheduled_time', 'start_time', 'end_time', 'all_emails_sent')
 
 
 @admin.register(Banner)

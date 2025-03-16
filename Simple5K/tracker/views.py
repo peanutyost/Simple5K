@@ -13,6 +13,8 @@ from django.views.generic.list import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views.decorators.cache import cache_page
+from django.core.mail import EmailMessage, send_mail
+from django.conf import settings
 from functools import wraps
 import json
 import pytz
@@ -52,6 +54,165 @@ def cache_unless_authenticated(timeout):
     return decorator
 
 
+def calculate_age_bracket_placement(runner, race_obj):
+    """
+    Calculates a runner's placement within their age bracket for a given race.
+
+    Args:
+        runner: A runners object representing the runner in question.
+        race_obj: A race object for the race to calculate placement in.
+
+    Returns:
+        The runner's placement within their age bracket (an integer), or None
+        if the runner's total_race_time is not available or if there are no
+        other runners in the same age bracket for that race.
+    """
+
+    if runner.total_race_time is None:
+        return None  # Cannot calculate placement without a total race time.
+
+    # Get all runners in the race who are in the same age bracket
+    same_age_bracket_runners = runners.objects.filter(
+        race=race_obj,
+        age=runner.age,
+        total_race_time__isnull=False  # Excludes runners with NULL total_race_time
+    ).annotate(
+        rank=Window(
+            expression=Rank(),
+            partition_by=F('age'),
+            order_by='total_race_time'
+        )
+    ).values('pk', 'rank')
+    # Find the runner in the queryset of same_age_bracket_runners
+
+    try:  # If that runners exist
+
+        runner_rank = next((item['rank'] for item in same_age_bracket_runners if item['pk'] == runner.pk), None)
+        return runner_rank
+    except StopIteration:
+        return None  # if no same bracket runner exist
+
+
+def prepare_race_data(race_obj, runner_obj):
+    """
+    Prepares the race data for the PDF report, including runner details,
+    lap information, and competitor placings.
+    """
+    race_info = {
+        'name': race_obj.name,
+        'date': race_obj.date.strftime('%Y-%m-%d'),
+        'distance': race_obj.distance,
+    }
+    if race_info is None:
+        return None
+
+    # Runner Details
+    runner_details = {
+        'name': f"{runner_obj.first_name} {runner_obj.last_name}",
+        'number': runner_obj.number if runner_obj.number else "N/A",
+        'age_bracket': runner_obj.age if runner_obj.age else "N/A",
+        'gender': runner_obj.gender if runner_obj.gender else "N/A",
+        'type': runner_obj.type if runner_obj.type else "N/A",
+        'shirt_size': runner_obj.shirt_size if runner_obj.shirt_size else "N/A",
+        'total_time': str(runner_obj.total_race_time) if runner_obj.total_race_time else "N/A",
+        'race_avg_speed': float(runner_obj.race_avg_speed)if runner_obj.race_avg_speed else "N/A",
+        'place': runner_obj.place if runner_obj.place else "N/A",
+        'avg_pace': str(runner_obj.race_avg_pace) if runner_obj.race_avg_pace else "N/A",
+        'age_group_placement': calculate_age_bracket_placement(
+            runner_obj, race_obj) if calculate_age_bracket_placement(runner_obj, race_obj) else "N/A"
+    }
+    if runner_details is None:
+        return None
+
+    # Lap Data
+    laps_data = []
+    for lap in laps.objects.filter(runner=runner_obj).order_by('lap'):
+        laps_data.append({
+            'lap': lap.lap,
+            'time': lap.time.strftime('%H:%M:%S'),
+            'duration': str(lap.duration),
+            'average_speed': float(lap.average_speed),
+        })
+
+    # Competitor Placement Data (2 faster, 2 slower)
+    # Find 2 runners faster
+    if runner_obj.total_race_time == "N/A" or runner_obj.total_race_time is None:
+        return None
+    else:
+
+        faster_runners = runners.objects.filter(
+            race=race_obj,
+            total_race_time__lt=runner_obj.total_race_time
+        ).order_by('total_race_time')[:2]
+
+        slower_runners = runners.objects.filter(
+            race=race_obj,
+            total_race_time__gt=runner_obj.total_race_time
+        ).order_by('-total_race_time')[:2]
+
+        def format_runner(runner):
+            return [runner.first_name + ' ' + runner.last_name, f"{runner.total_race_time}"] if runner else "N/A"
+
+        competitor_data = {
+            'faster_runners': [format_runner(runner) for runner in faster_runners],
+            'slower_runners': [format_runner(runner) for runner in slower_runners],
+        }
+
+    return {
+        'race': race_info,
+        'runner': runner_details,
+        'laps': laps_data,
+        'competitors': competitor_data,
+    }
+
+
+def send_race_report_email(runner_id, race_id):
+    """
+    Generates a race report, attaches it to an email, and sends the email
+    to the runner.
+    Args:
+        runner_id: The ID of the runner.
+        race_id: The ID of the race.
+    Returns:
+        None.  Raises exceptions if email sending fails.
+    """
+    race_obj = get_object_or_404(race, pk=race_id)
+    runner_obj = get_object_or_404(runners, number=runner_id)
+    # Generate the PDF
+    pdf_filename = f"race_report_{race_obj.name}_{runner_obj.first_name}_{runner_obj.last_name}.pdf"
+    race_data = prepare_race_data(race_obj, runner_obj)
+
+    try:
+        # Generate the race report PDF as bytes
+        pdf_content = generate_race_report(pdf_filename, race_data, 'file')  # Returns the pdf content as bytes
+
+        # Construct the email
+        subject = "Your Race Report"
+        body = f"Dear {runner_obj.first_name} {runner_obj.last_name},\n\nPlease find attached your race report.\n\nOkie Dokie Team"  # Customize as needed
+        from_email = settings.EMAIL_HOST_USER  # Use the email address configured in settings.py
+        recipient_list = [runner_obj.email]  # The runner's email address
+
+        # Create an EmailMessage object for attachments.  Use EmailMessage not send_mail for more control
+        email = EmailMessage(subject, body, from_email, recipient_list)
+
+        # Attach the PDF directly from the bytes
+        email.attach(pdf_filename, pdf_content, "application/pdf")  # Attach the report
+        # If you're using Microsoft 365 and have configured TLS settings:
+        # email.fail_silently = False  # Raise exceptions on email sending failures
+        # Send the email
+        try:
+            email.send()  # Actually sends the email.
+
+        except Exception as e:
+            print(f"Error sending email: {e}")
+            raise  # Re-raise to alert the caller
+
+    except Exception as e:
+        print(f"Error processing or sending race report for {runner_obj.email}: {e}")  # Log the combined error.
+        # Potentially log details to database
+        raise  # Re-raise the exception to  handle it further up
+
+
 class RaceAdd(LoginRequiredMixin, FormView):
     form_class = RaceForm
     template_name = 'tracker/race_add.html'
@@ -85,124 +246,14 @@ class GenerateRaceReportView(LoginRequiredMixin, View):
         runner_obj = get_object_or_404(runners, number=runner_id)
 
         # Prepare data for the report
-        race_data = self.prepare_race_data(race_obj, runner_obj)
+        race_data = prepare_race_data(race_obj, runner_obj)
         # Generate the PDF
         if race_data is None:
             return HttpResponseNotFound("No runner or race data found")
         else:
             pdf_filename = f"race_report_{race_obj.name}_{runner_obj.first_name}_{runner_obj.last_name}.pdf"
-        response = generate_race_report(pdf_filename, race_data)
+        response = generate_race_report(pdf_filename, race_data, 'response')
         return response
-
-    def calculate_age_bracket_placement(self, runner, race_obj):
-        """
-        Calculates a runner's placement within their age bracket for a given race.
-
-        Args:
-            runner: A runners object representing the runner in question.
-            race_obj: A race object for the race to calculate placement in.
-
-        Returns:
-            The runner's placement within their age bracket (an integer), or None
-            if the runner's total_race_time is not available or if there are no
-            other runners in the same age bracket for that race.
-        """
-
-        if runner.total_race_time is None:
-            return None  # Cannot calculate placement without a total race time.
-
-        # Get all runners in the race who are in the same age bracket
-        same_age_bracket_runners = runners.objects.filter(
-            race=race_obj,
-            age=runner.age,
-            total_race_time__isnull=False  # Excludes runners with NULL total_race_time
-        ).annotate(
-            rank=Window(
-                expression=Rank(),
-                partition_by=F('age'),
-                order_by='total_race_time'
-            )
-        ).values('pk', 'rank')
-        # Find the runner in the queryset of same_age_bracket_runners
-
-        try:  # If that runners exist
-
-            runner_rank = next((item['rank'] for item in same_age_bracket_runners if item['pk'] == runner.pk), None)
-            return runner_rank
-        except StopIteration:
-            return None  # if no same bracket runner exist
-
-    def prepare_race_data(self, race_obj, runner_obj):
-        """
-        Prepares the race data for the PDF report, including runner details,
-        lap information, and competitor placings.
-        """
-        race_info = {
-            'name': race_obj.name,
-            'date': race_obj.date.strftime('%Y-%m-%d'),
-            'distance': race_obj.distance,
-        }
-        if race_info is None:
-            return None
-
-        # Runner Details
-        runner_details = {
-            'name': f"{runner_obj.first_name} {runner_obj.last_name}",
-            'number': runner_obj.number,
-            'age_bracket': runner_obj.age,
-            'gender': runner_obj.gender,
-            'type': runner_obj.type if runner_obj.type else "N/A",
-            'shirt_size': runner_obj.shirt_size if runner_obj.shirt_size else "N/A",
-            'total_time': str(runner_obj.total_race_time) if runner_obj.total_race_time else "N/A",
-            'race_avg_speed': float(runner_obj.race_avg_speed)if runner_obj.race_avg_speed else "N/A",
-            'place': runner_obj.place if runner_obj.place else "N/A",
-            'avg_pace': str(runner_obj.race_avg_pace) if runner_obj.race_avg_pace else "N/A",
-            'age_group_placement': self.calculate_age_bracket_placement(
-                runner_obj, race_obj) if self.calculate_age_bracket_placement(runner_obj, race_obj) else "N/A"
-        }
-        if runner_details is None:
-            return None
-
-        # Lap Data
-        laps_data = []
-        for lap in laps.objects.filter(runner=runner_obj).order_by('lap'):
-            laps_data.append({
-                'lap': lap.lap,
-                'time': lap.time.strftime('%H:%M:%S'),
-                'duration': str(lap.duration),
-                'average_speed': float(lap.average_speed),
-            })
-
-        # Competitor Placement Data (2 faster, 2 slower)
-        # Find 2 runners faster
-        if runner_obj.total_race_time == "N/A" or runner_obj.total_race_time is None:
-            return None
-        else:
-
-            faster_runners = runners.objects.filter(
-                race=race_obj,
-                total_race_time__lt=runner_obj.total_race_time
-            ).order_by('total_race_time')[:2]
-
-            slower_runners = runners.objects.filter(
-                race=race_obj,
-                total_race_time__gt=runner_obj.total_race_time
-            ).order_by('-total_race_time')[:2]
-
-            def format_runner(runner):
-                return [runner.first_name + ' ' + runner.last_name, f"{runner.total_race_time}"] if runner else "N/A"
-
-            competitor_data = {
-                'faster_runners': [format_runner(runner) for runner in faster_runners],
-                'slower_runners': [format_runner(runner) for runner in slower_runners],
-            }
-
-        return {
-            'race': race_info,
-            'runner': runner_details,
-            'laps': laps_data,
-            'competitors': competitor_data,
-        }
 
 
 @login_required

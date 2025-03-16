@@ -27,6 +27,7 @@ class race(models.Model):
     min_lap_time = models.TimeField(null=True, blank=True)
     notes = models.CharField(max_length=1024, null=True, blank=True)
     logo = models.ImageField(upload_to='images/', null=True, blank=True)
+    all_emails_sent = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
