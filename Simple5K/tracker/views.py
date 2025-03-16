@@ -589,7 +589,7 @@ def update_race_time(request):
         race_id = data.get('race_id')
         action = data.get('action')  # 'start' or 'stop'
         timestamp = data.get('timestamp')
-        time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')
+        time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
         current_time = time_naive.replace(tzinfo=pytz.utc)
         race_obj = race.objects.get(id=race_id)
 
