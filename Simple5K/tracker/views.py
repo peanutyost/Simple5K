@@ -671,6 +671,7 @@ def generate_api_key(request):
 
 
 # ----------------------------Assign numbers--------------------------------------
+@login_required
 def assign_numbers(request):
     if request.method == 'POST':
         race_id = request.POST.get('race')
