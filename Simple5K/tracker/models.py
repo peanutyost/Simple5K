@@ -24,7 +24,7 @@ class race(models.Model):
         auto_now=False, auto_now_add=False, null=True, blank=True)
     end_time = models.DateTimeField(
         auto_now=False, auto_now_add=False, null=True, blank=True)
-    min_lap_time = models.TimeField(null=True, blank=True)
+    min_lap_time = models.DurationField()
     notes = models.CharField(max_length=1024, null=True, blank=True)
     logo = models.ImageField(upload_to='images/', null=True, blank=True)
     all_emails_sent = models.BooleanField(default=False)
