@@ -166,9 +166,9 @@ CAPTCHA_BG_COLOR = '#fff'
 CAPTCHA_FONT_SIZE = 45
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.environ.get('smtp_host', 'smtp.office365.com')
-EMAIL_PORT = os.environ.get('smtp_port', 587)
+EMAIL_HOST = os.environ.get('SMTP_HOST', 'smtp.office365.com')
+EMAIL_PORT = os.environ.get('SMTP_PORT', 587)
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('email_host_user')  # Your Microsoft 365 email address
-EMAIL_HOST_PASSWORD = os.environ.get('email_host_password')  # Your Microsoft 365 password or app password
-DEFAULT_FROM_EMAIL = os.environ.get('default_from_email')  # The email address you want to send from
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')  # Your Microsoft 365 email address
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # Your Microsoft 365 password or app password
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')  # The email address you want to send from
