@@ -117,7 +117,8 @@ def prepare_race_data(race_obj, runner_obj):
         'total_time': str(runner_obj.total_race_time) if runner_obj.total_race_time else "N/A",
         'race_avg_speed': float(runner_obj.race_avg_speed)if runner_obj.race_avg_speed else "N/A",
         'place': runner_obj.place if runner_obj.place else "N/A",
-        'avg_pace': str(runner_obj.race_avg_pace) if runner_obj.race_avg_pace else "N/A",
+        'avg_pace': str(timedelta(seconds=round(
+            runner_obj.race_avg_pace.total_seconds()))) if runner_obj.race_avg_pace else "N/A",
         'age_group_placement': calculate_age_bracket_placement(
             runner_obj, race_obj) if calculate_age_bracket_placement(runner_obj, race_obj) else "N/A"
     }
@@ -132,6 +133,7 @@ def prepare_race_data(race_obj, runner_obj):
             'time': lap.time.strftime('%H:%M:%S'),
             'duration': str(lap.duration),
             'average_speed': float(lap.average_speed),
+            'average_pace': str(timedelta(seconds=round(lap.average_pace.total_seconds()))),
         })
 
     # Competitor Placement Data (2 faster, 2 slower)
@@ -188,7 +190,7 @@ def send_race_report_email(runner_id, race_id):
 
         # Construct the email
         subject = "Your Race Report"
-        body = f"Dear {runner_obj.first_name} {runner_obj.last_name},\n\nPlease find attached your race report.\n\nOkie Dokie Team"  # Customize as needed
+        body = f"{runner_obj.first_name} {runner_obj.last_name},\nPlease find attached your race report.\n\n{race_obj.name} Team"
         from_email = settings.EMAIL_HOST_USER  # Use the email address configured in settings.py
         recipient_list = [runner_obj.email]  # The runner's email address
 

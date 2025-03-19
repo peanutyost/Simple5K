@@ -25,6 +25,8 @@ class RaceForm(forms.ModelForm):
             'distance',
             'laps_count',
             'notes',
+            'min_lap_time',
+            'logo'
         ]
 
         widgets = {
@@ -43,7 +45,9 @@ class RaceForm(forms.ModelForm):
             'max_runners': 'Max Runners',
             'distance': 'Distance',
             'laps_count': 'Laps Count',
-            'notes': 'Notes'
+            'notes': 'Notes',
+            'min_lap_time': 'Minimum Lap Time',
+            'logo': 'Logo'
         }
 
         help_texts = {
@@ -56,7 +60,9 @@ class RaceForm(forms.ModelForm):
             'scheduled_time': 'Enter the scheduled starting time in 24H format',
             'number_start': 'Enter the starting number for the runner numbers',
             'max_runners': 'Enter the max number of participants for the race.',
-            'notes': 'Enter notes to display on signup page.'
+            'notes': 'Enter notes to display on signup page.',
+            'min_lap_time': 'Enter the minimun lap time in seconds.',
+            'logo': 'Upload a logo for the race'
         }
 
 
