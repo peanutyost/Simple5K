@@ -728,14 +728,15 @@ def race_overview(request):
             for lap in alap:
                 run_laps.append({
                     'lap': lap.lap,
-                    'duration': lap.duration,
+                    'duration': timedelta(seconds=round(lap.duration.total_seconds())),
                     'average_speed': lap.average_speed
                 })
 
             runner_times.append({
                 'number': arunner.number,
                 'name': f"{arunner.first_name} {arunner.last_name}",
-                'total_race_time': arunner.total_race_time if not None else "Not Finished",
+                'total_race_time': timedelta(seconds=round(
+                    arunner.total_race_time.total_seconds())) if not None else "Not Finished",
                 'average_speed': arunner.race_avg_speed if not None else "Not Finished",
                 'place': arunner.place,
                 'laps': run_laps
