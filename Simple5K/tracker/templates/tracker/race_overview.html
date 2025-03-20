@@ -70,7 +70,7 @@
                             <th>Lap : Time - Pace - Speed</th>
                             <th>Total Race Time</th>
                             <th>Average Pace</th>
-                            <th>Average Race Speed (MPH)</th>
+                            <th>Average Speed (MPH)</th>
                             <th data-sort="number">Finished Place</th>
                         </tr>
                     </thead>
@@ -82,7 +82,7 @@
                             <td>
                                 {% for lap in runner.laps %}
                                 <div class="mb-1">
-                                    Lap {{ lap.lap }}: {{ lap.duration }} - {{ lap.average_pace }} -{{ lap.average_speed }} MPH
+                                    Lap {{ lap.lap }}: {{ lap.duration }} - {{ lap.average_pace }} - {{ lap.average_speed }} MPH
                                 </div>
                                 {% endfor %}
                             </td>
