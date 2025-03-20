@@ -174,7 +174,7 @@ def generate_race_report(filename, race_data, return_type):
     y_pos -= bracket_table_height + spaceAfter
 
     y_pos = y_pos - spaceAfter - 0.6 * inch
-    y_pos = draw_paragraph("Participants that finished before and after you", heading3, c, margin, y_pos)
+    y_pos = draw_paragraph("Those Who Finished Before and After You", heading3, c, margin, y_pos)
 
     # --- Competitor Table ---
     data = [["Name", "Total Time"]]
