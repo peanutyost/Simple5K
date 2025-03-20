@@ -187,7 +187,7 @@ def generate_race_report(filename, race_data, return_type):
     for competitor in race_data['competitors']['slower_runners']:
         data.append([competitor[0], competitor[1]])
 
-    competitor_table = Table(data, colWidths=[1 * inch, 3 * inch])
+    competitor_table = Table(data, colWidths=[2 * inch, 2 * inch])
     competitor_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                                           ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                                           ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
