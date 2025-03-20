@@ -174,16 +174,16 @@ def generate_race_report(filename, race_data, return_type):
     y_pos -= bracket_table_height + spaceAfter
 
     y_pos = y_pos - spaceAfter - 0.6 * inch
-    y_pos = draw_paragraph("Runner Around You", heading3, c, margin, y_pos)
+    y_pos = draw_paragraph("Participants that finished before and after you", heading3, c, margin, y_pos)
 
     # --- Competitor Table ---
     data = [["Name", "Total Time"]]
     if race_data['competitors']['faster_runners']:
-        data.append(['Ahead', ''])
+        data.append(['Before', ''])
     for competitor in race_data['competitors']['faster_runners']:
         data.append([competitor[0], competitor[1]])
     if race_data['competitors']['slower_runners']:
-        data.append(['Behind', ''])
+        data.append(['After', ''])
     for competitor in race_data['competitors']['slower_runners']:
         data.append([competitor[0], competitor[1]])
 
