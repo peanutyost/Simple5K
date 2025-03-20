@@ -116,7 +116,8 @@ def prepare_race_data(race_obj, runner_obj):
         'gender': runner_obj.gender if runner_obj.gender else "N/A",
         'type': runner_obj.type if runner_obj.type else "N/A",
         'shirt_size': runner_obj.shirt_size if runner_obj.shirt_size else "N/A",
-        'total_time': str(runner_obj.total_race_time) if runner_obj.total_race_time else "N/A",
+        'total_time': str(timedelta(seconds=round(
+            runner_obj.total_race_time.total_seconds()))) if runner_obj.total_race_time else "N/A",
         'race_avg_speed': float(runner_obj.race_avg_speed)if runner_obj.race_avg_speed else "N/A",
         'place': runner_obj.place if runner_obj.place else "N/A",
         'avg_pace': str(timedelta(seconds=round(
