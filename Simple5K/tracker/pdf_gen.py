@@ -133,7 +133,7 @@ def generate_race_report(filename, race_data, return_type):
     y_pos = draw_paragraph("Lap Stats", heading3, c, margin, y_pos)  # Reuse y_pos
     y_pos += spaceAfter
 
-    data = [["Lap", "Lap Time", "Avg Pace", "Avg Speed (mph)"],]
+    data = [["Lap", "Lap Time", "Avg. Pace", "Avg. Speed (mph)"],]
     for lap in race_data['laps']:
         data.append([lap['lap'], lap['time'], lap['average_pace'], f"{lap['average_speed']:.2f}"],)
 
