@@ -102,6 +102,7 @@ def prepare_race_data(race_obj, runner_obj):
         'name': race_obj.name,
         'date': race_obj.date.strftime('%Y-%m-%d'),
         'distance': race_obj.distance,
+        'logo': race_obj.logo if race_obj.logo else '',
     }
     if race_info is None:
         return None
@@ -288,36 +289,14 @@ def runner_stats(request):
     context = {'form': form}
     if request.method == "POST":
         racetotalobj = {}
-        lapsdict = {}
-        runnersobj = {}
         if form.is_valid():
             raceobj = race.objects.filter(status='in_progress').first()
             runnerobj = runners.objects.get(number=form.cleaned_data['runnernumber'], race=form.cleaned_data['racename'])
-            runnerlaps = laps.objects.filter(runner=runnerobj).order_by('lap')
-
-            for lap in runnerlaps:
-                lapdict = {}
-                lapdict['runner'] = lap.runner.number
-                lapdict['time'] = lap.time
-                lapdict['lap'] = lap.lap
-                lapdict['race'] = lap.attach_to_race.name
-                lapdict['duration'] = lap.duration
-                lapdict['average_speed'] = lap.average_speed
-                lapsdict[int(lap.lap)] = lapdict
-
-            racetotalobj['name'] = raceobj.name
-            runnersobj['name'] = runnerobj.first_name + ' ' + runnerobj.last_name
-            runnersobj['number'] = runnerobj.number
-            runnersobj['race'] = runnerobj.race.name
-            runnersobj['race_completed'] = runnerobj.race_completed
-            runnersobj['total_time'] = runnerobj.total_race_time
-            runnersobj['place'] = runnerobj.place
-            runnersobj['race_avg_speed'] = runnerobj.race_avg_speed
-            runnersobj['laps'] = lapsdict
-            racetotalobj['runners'] = runnersobj
+            racetotalobj = prepare_race_data(raceobj, runnerobj)
         else:
             return render(request, 'tracker/runner_stats.html', context=context)
-        response = generate_race_report("test.pdf", racetotalobj)
+        filename = f"race_report_{raceobj.name}_{runnerobj.first_name}_{runnerobj.last_name}.pdf"
+        response = generate_race_report(filename, racetotalobj, "response")
         return response
 
     return render(request, 'tracker/runner_stats.html', context=context)

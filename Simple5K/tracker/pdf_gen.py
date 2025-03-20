@@ -86,10 +86,10 @@ def generate_race_report(filename, race_data, return_type):
     runner_box_width = 2 * inch
     runner_box_height = 1.3 * inch
     runner_info = [
-        f"Type: {race_data['runner']['type']}",
         f"Name: {race_data['runner']['name']}",
-        f"gender: {race_data['runner']['gender']}",
         f"Number: {race_data['runner']['number']}",
+        f"Gender: {race_data['runner']['gender']}",
+        f"Type: {race_data['runner']['type']}",
         f"Total Time: {race_data['runner']['total_time']}",
         f"Avg Pace: {race_data['runner']['avg_pace']}",
         f"Avg Speed: {race_data['runner']['race_avg_speed']} mph",
@@ -104,7 +104,7 @@ def generate_race_report(filename, race_data, return_type):
     c.drawRightString(race_info_x + 2.5 * inch, race_info_y - 0.4 * inch, f"Finishing Place: {race_data['runner']['place']}")
     # --- Lap Times Table ---
     y_pos = runner_box_y - spaceAfter - 0.4 * inch
-    y_pos = draw_paragraph("Lap Information", heading3, c, margin, y_pos)  # Reuse y_pos
+    y_pos = draw_paragraph("Lap Stats", heading3, c, margin, y_pos)  # Reuse y_pos
     y_pos += spaceAfter
     data = [["Lap", "Lap Time", "Avg Pace", "Avg Speed (mph)"],]
     for lap in race_data['laps']:
