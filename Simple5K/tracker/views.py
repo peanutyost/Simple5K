@@ -98,7 +98,6 @@ def prepare_race_data(race_obj, runner_obj):
     Prepares the race data for the PDF report, including runner details,
     lap information, and competitor placings.
     """
-    print(race_obj.logo)
     race_info = {
         'name': race_obj.name,
         'date': race_obj.date.strftime('%Y-%m-%d'),
@@ -156,13 +155,12 @@ def prepare_race_data(race_obj, runner_obj):
         ).order_by('-total_race_time')[:2]
 
         def format_runner(runner):
-            return [runner.first_name + ' ' + runner.last_name, f"{runner.total_race_time}"] if runner else "N/A"
+            return [runner.first_name + ' ' + runner.last_name, f"{str(timedelta(seconds=round(runner.total_race_time.total_seconds())))}"] if runner else "N/A"
 
         competitor_data = {
             'faster_runners': [format_runner(runner) for runner in faster_runners],
             'slower_runners': [format_runner(runner) for runner in slower_runners],
         }
-        print(race_info)
 
     return {
         'race': race_info,
