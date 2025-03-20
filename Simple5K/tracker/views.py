@@ -190,7 +190,7 @@ def send_race_report_email(runner_id, race_id):
 
         # Construct the email
         subject = "Your Race Report"
-        body = f"{runner_obj.first_name} {runner_obj.last_name},\nPlease find attached your race report.\n\n{race_obj.name} Team"
+        body = f"{runner_obj.first_name} {runner_obj.last_name},\nPlease find your race report attached.\n\n{race_obj.name} Team"
         from_email = settings.EMAIL_HOST_USER  # Use the email address configured in settings.py
         recipient_list = [runner_obj.email]  # The runner's email address
 
@@ -381,7 +381,7 @@ def view_shirt_sizes(request, pk):
 def select_race_for_runners(request):
     # Get all races where status is either 'signup_open' or 'signup_closed'
     races = race.objects.filter(
-        Q(status='signup_open') | Q(status='signup_closed')
+        Q(status='signup_open') | Q(status='signup_closed') | Q(status='in_progress') | Q(status='completed')
     )
 
     if request.method == 'POST':
@@ -681,8 +681,6 @@ def assign_numbers(request):
 
         # Get all runners in the race without a number
         runners_without_number = runners.objects.filter(race=race_local, number__isnull=True).order_by('id')
-        print(runners_without_number)
-        print(race_local)
         if runners_without_number.exists():
             # Check if there are any numbers already assigned
             existing_numbers = runners.objects.filter(race=race_local, number__isnull=False).values_list('number', flat=True)
@@ -729,16 +727,27 @@ def race_overview(request):
                 run_laps.append({
                     'lap': lap.lap,
                     'duration': timedelta(seconds=round(lap.duration.total_seconds())),
+                    'average_pace': timedelta(seconds=round(lap.average_pace.total_seconds())),
                     'average_speed': lap.average_speed
                 })
 
             runner_times.append({
                 'number': arunner.number,
                 'name': f"{arunner.first_name} {arunner.last_name}",
-                'total_race_time': timedelta(seconds=round(
-                    arunner.total_race_time.total_seconds())) if not None else "Not Finished",
+                'total_race_time': (
+                    timedelta(seconds=round(trt.total_seconds()))
+                    if (trt := arunner.total_race_time) is not None
+                    else "Not Finished"
+                ),
+                'average_pace': (
+                    timedelta(seconds=round(trt.total_seconds()))
+                    if (trt := arunner.race_avg_pace) is not None
+                    else "Not Finished"
+                ),
                 'average_speed': arunner.race_avg_speed if not None else "Not Finished",
                 'place': arunner.place,
+                'gender': arunner.gender,
+                'type': arunner.type,
                 'laps': run_laps
 
             })

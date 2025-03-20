@@ -2,6 +2,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.shortcuts import render, redirect
 
+
 def register_view(request):
     form = UserCreationForm(request.POST or None)
     if form.is_valid():
@@ -22,7 +23,7 @@ def login_view(request):
             if nxt is not None:
                 return redirect(nxt)
             else:
-                return redirect('/tracker/laps')
+                return redirect('/tracker/')
     else:
         form = AuthenticationForm(request)
     context = {
