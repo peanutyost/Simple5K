@@ -168,3 +168,4 @@ cython_debug/
 *.code-workspace
 .vscode/*
 Simple5K/tracker/templates/tracking.html
+Simple5K/media/images/logo.png
