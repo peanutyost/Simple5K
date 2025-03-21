@@ -20,6 +20,8 @@ from .views import (
     update_rfid,
     get_available_races,
     mark_runner_finished,
+    completed_races_selection, 
+    get_completed_race_overview,
     GenerateRaceReportView,
 )
 
@@ -40,6 +42,8 @@ urlpatterns = [
     path('assign_numbers/', assign_numbers, name='assign_numbers'),
     path('mark_runner_finished/', mark_runner_finished, name='mark_runner_finished'),
     path('race_report/<int:race_id>/<int:runner_id>/', GenerateRaceReportView.as_view(), name='race_report'),
+    path('completed_races_selection/', completed_races_selection, name='completed_races_selection'),
+    path('get_completed_race_overview/<int:race_id>/', get_completed_race_overview, name='get_completed_race_overview'),
     # API endpoints
     path('generate-api-key/', generate_api_key, name='generate-api-key'),
     path('api/record-lap/', record_lap, name='api-record-lap'),

@@ -741,6 +741,68 @@ def race_overview(request):
     return render(request, 'tracker/race_overview.html', context)
 
 
+def format_timedelta(td):
+    total_seconds = int(td.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+
+@cache_unless_authenticated(60)
+def completed_races_selection(request):
+    completed_races = race.objects.filter(status='completed')
+    context = {
+        'completed_races': completed_races
+    }
+    return render(request, 'tracker/completed_races_selection.html', context)
+
+
+def get_completed_race_overview(request, race_id):
+    current_race = get_object_or_404(race, id=race_id, status='completed')
+
+    # Initialize an empty list to store runner times
+    runner_times = []
+    if current_race:
+        runnersall = runners.objects.filter(race=current_race).order_by('place')
+        for arunner in runnersall:
+            run_laps = []
+            alap = laps.objects.filter(runner=arunner).order_by('lap')
+            for lap in alap:
+                run_laps.append({
+                    'lap': lap.lap,
+                    'duration': format_timedelta(lap.duration),
+                    'average_pace': format_timedelta(lap.average_pace),
+                    'average_speed': lap.average_speed
+                })
+            runner_times.append({
+                'number': arunner.number,
+                'name': f"{arunner.first_name} {arunner.last_name}",
+                'total_race_time': (
+                    format_timedelta(td)
+                    if (td := arunner.total_race_time) is not None
+                    else "Not Finished"
+                ),
+                'average_pace': (
+                    format_timedelta(td)
+                    if (td := arunner.race_avg_pace) is not None
+                    else "Not Finished"
+                ),
+                'average_speed': arunner.race_avg_speed if arunner.race_avg_speed is not None else "Not Finished",
+                'place': arunner.place,
+                'gender': arunner.gender,
+                'type': arunner.type,
+                'laps': run_laps
+            })
+
+    context = {
+        'runner_times': runner_times,
+        'race_name': current_race.name,
+        'race_id': race_id,
+    }
+    return JsonResponse(context)
+
+
 def race_signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)

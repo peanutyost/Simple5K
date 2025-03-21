@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-12">
+            <h1 class="text-center mb-4">Select a Completed Race</h1>
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="race_select" class="form-label">Select Race:</label>
+                        <select class="form-control" id="race_select">
+                            <option value="">Select a race</option>
+                            {% for race in completed_races %}
+                            <option value="{{ race.id }}">{{ race.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="race-overview-container mt-4">
+                <!-- Race details will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $("#race_select").change(function() {
+            var raceId = $(this).val();
+            if (raceId) {
+                $.ajax({
+                    url: '/tracker/get_completed_race_overview/' + raceId + '/',  // Ensure this url matches the one in your Django urls.py
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                        $('.race-overview-container').empty(); // Clear any previous content
+                        $('.race-overview-container').append('<h1>' + data.race_name + '</h1>');
+                        $('.race-overview-container').append(getRunnerTable(data.runner_times));
+                    },
+                    error: function(xhr, textStatus, errorThrown) {
+                        console.log("Error: " + errorThrown);
+                        $('.race-overview-container').html("<div class='alert alert-danger'>An error occurred. Please try again.</div>");
+                    }
+                });
+            } else {
+                $('.race-overview-container').empty(); // Clear content if no race is selected
+            }
+        });
+
+        function getRunnerTable(runnerTimes) {
+            var table = '<table class="table table-bordered table-striped sortable">' +
+                '<thead class="thead-light">' +
+                '<tr>' +
+                '<th>Runner</th>' +
+                '<th>Name</th>' +
+                '<th>Lap : Time - Pace - Speed</th>' +
+                '<th>Total Race Time</th>' +
+                '<th>Average Pace</th>' +
+                '<th>Average Speed (MPH)</th>' +
+                '<th data-sort="number">Finished Place</th>' +
+                '</tr>' +
+                '</thead><tbody>';
+
+            runnerTimes.forEach(function(runner) {
+                var lapsHtml = '';
+                runner.laps.forEach(function(lap) {
+                    lapsHtml += '<div class="mb-1">Lap ' + lap.lap + ': ' + lap.duration + ' - ' + lap.average_pace + ' - ' + lap.average_speed + ' MPH</div>';
+                });
+
+                table += '<tr>' +
+                    '<td>' + runner.number + '</td>' +
+                    '<td>' + runner.name + '</td>' +
+                    '<td>' + lapsHtml + '</td>' +
+                    '<td>' + runner.total_race_time + '</td>' +
+                    '<td>' + runner.average_pace + '</td>' +
+                    '<td>' + (runner.average_speed != "Not Finished" ? runner.average_speed + ' MPH' : 'Not Finished') + '</td>' +
+                    '<td sorttable_customkey="' + (runner.place !== null ? runner.place : '999999') + '">' +
+                    (runner.place !== null ? runner.place + (runner.gender === 'female' ? ' F' : runner.gender === 'male' ? ' M' : '') : 'Not Finished') +
+                    '</td>' +
+                    '</tr>';
+            });
+
+            table += '</tbody></table>';
+            return table;
+        }
+    });
+</script>
+{% endblock %}

@@ -30,7 +30,7 @@
     <div id="race-container" class="row g-4 justify-content-center p-3"></div>
     <!-- No races message -->
     <div id="no-races-message" class="alert alert-info d-none text-center w-100">
-        There are currently no upcoming races.
+        There are currently no upcoming races. <a href="{% url 'tracker:completed_races_selection' %}" class="btn btn-secondary">View Past Races</a>
     </div>
 </div>
 <script>
