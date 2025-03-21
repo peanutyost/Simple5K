@@ -109,12 +109,12 @@ def prepare_race_data(race_obj, runner_obj):
 
     # Runner Details
     runner_details = {
-        'name': f"{runner_obj.first_name} {runner_obj.last_name}",
+        'name': f"{runner_obj.first_name.capitalize()} {runner_obj.last_name.capitalize()}",
         'number': runner_obj.number if runner_obj.number else "N/A",
         'age_bracket': runner_obj.age if runner_obj.age else "N/A",
-        'gender': runner_obj.gender if runner_obj.gender else "N/A",
-        'type': runner_obj.type if runner_obj.type else "N/A",
-        'shirt_size': runner_obj.shirt_size if runner_obj.shirt_size else "N/A",
+        'gender': runner_obj.gender.capitalize() if runner_obj.gender else "N/A",
+        'type': runner_obj.type.capitalize() if runner_obj.type else "N/A",
+        'shirt_size': runner_obj.shirt_size.capitalize() if runner_obj.shirt_size else "N/A",
         'total_time': str(timedelta(seconds=round(
             runner_obj.total_race_time.total_seconds()))) if runner_obj.total_race_time else "N/A",
         'race_avg_speed': float(runner_obj.race_avg_speed)if runner_obj.race_avg_speed else "N/A",
