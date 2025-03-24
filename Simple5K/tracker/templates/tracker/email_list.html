@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% load static %}
+
+
+
+{% block content %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<h1>Runner Email List</h1>
+
+<form id="race-select-form" method="post">
+    {% csrf_token %}
+    <label for="race-select">Select Race:</label>
+    <select id="race-select" name="race_id">
+        <option value="">--- Select a Race ---</option>
+        {% for race_obj in races %}
+            <option value="{{ race_obj.id }}" {% if race_obj.id == selected_race_id|add:0 %}selected{% endif %}>
+                {{ race_obj.name }}
+            </option>  <!--added int filter-->
+        {% endfor %}
+    </select>
+    <button type="submit" style='display:none;'>Get Emails</button> <!-- hide the submit and use ajax -->
+</form>
+
+<div id="email-list-container">
+  {% if email_list %}
+    <h2>Emails:</h2>
+    <textarea id="email-textarea" rows="10" cols="50" readonly>{{ email_list }}</textarea>
+    {% endif %}
+</div>
+
+<script>
+  $(document).ready(function() {
+      $('#race-select').change(function() {  // Use change event, no need for submit button
+          var raceId = $(this).val();
+
+          if (raceId) {  // Only make AJAX call if a race is selected.
+              $.ajax({
+                  url: '',  //empty string indicates current URL
+                  type: 'POST',
+                  data: {
+                      'race_id': raceId,
+                      'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val() //always send csrf with post
+                  },
+                  dataType: 'json',
+                  success: function(data) {
+                      if (data.emails) {
+                          $('#email-list-container').html('<h2>Emails:</h2><textarea id="email-textarea" rows="10" cols="50" readonly>' + data.emails + '</textarea>');
+                      } else if (data.error){
+                          $('#email-list-container').html('<p>Error: ' + data.error + '</p>');  // Display error message
+                      }
+                      else{
+                        $('#email-list-container').html(''); //no information, dont show anything
+                      }
+                  },
+                   error: function(xhr, status, error) {
+                        $('#email-list-container').html('<p>An unexpected error occurred.</p>');
+                        console.error("AJAX Error:", status, error);  // Log AJAX errors.
+
+                    }
+              });
+          } else {
+              $('#email-list-container').html(''); // Clear the container if no race is selected
+          }
+      });
+  });
+</script>
+
+{% endblock %}

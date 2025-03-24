@@ -434,6 +434,43 @@ def mark_runner_finished(request):
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
 
+@login_required
+def email_list_view(request):
+    """
+    View to display a dropdown of races and, upon selection, 
+    display a comma-separated list of runner emails for that race.
+    Uses AJAX for a single-page, dynamic update.
+    """
+    races = race.objects.all()
+    selected_race_id = None
+    email_list_string = ""
+
+    if request.method == 'POST':
+        selected_race_id = request.POST.get('race_id')
+        if selected_race_id:
+            try:
+                selected_race = race.objects.get(pk=selected_race_id)
+                runners_in_race = runners.objects.filter(race=selected_race)
+                emails = [runner.email for runner in runners_in_race]
+                email_list_string = "; ".join(emails)
+
+                # Return JSON response for AJAX update
+                return JsonResponse({'emails': email_list_string})
+            except race.DoesNotExist:
+                return JsonResponse({'error': 'Race not found'}, status=404)  # Handle race not found
+            except ValueError:
+                return JsonResponse({'error': 'Invalid Race ID'}, status=400)
+
+    # Initial render (GET request or after POST without valid data)
+    context = {
+        'races': races,
+        'selected_race_id': selected_race_id,  # Pass to repopulate dropdown
+        'email_list': email_list_string,
+    }
+
+    return render(request, 'tracker/email_list.html', context)
+
+
 # ---------------------------API---------------------------------------------
 @csrf_exempt
 @require_api_key

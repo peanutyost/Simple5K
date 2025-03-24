@@ -22,6 +22,7 @@ from .views import (
     mark_runner_finished,
     completed_races_selection, 
     get_completed_race_overview,
+    email_list_view,
     GenerateRaceReportView,
 )
 
@@ -44,6 +45,7 @@ urlpatterns = [
     path('race_report/<int:race_id>/<int:runner_id>/', GenerateRaceReportView.as_view(), name='race_report'),
     path('completed_races_selection/', completed_races_selection, name='completed_races_selection'),
     path('get_completed_race_overview/<int:race_id>/', get_completed_race_overview, name='get_completed_race_overview'),
+    path('email_list/', email_list_view, name='email_list'),
     # API endpoints
     path('generate-api-key/', generate_api_key, name='generate-api-key'),
     path('api/record-lap/', record_lap, name='api-record-lap'),
