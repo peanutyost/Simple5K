@@ -36,7 +36,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     function updateRaces() {
-        fetch('/race-countdown/')
+        fetch('/race-countdown/?_=' + Date.now())
             .then(response => response.json())
             .then(data => {
                 const raceContainer = document.getElementById('race-container');
