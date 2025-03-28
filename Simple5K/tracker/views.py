@@ -99,8 +99,6 @@ def prepare_race_data(race_obj, runner_obj):
     Prepares the race data for the PDF report, including runner details,
     lap information, and competitor placings.
     """
-    print(race_obj)
-    print(runner_obj)
     race_info = {
         'name': race_obj.name,
         'date': race_obj.date.strftime('%Y-%m-%d'),
@@ -127,7 +125,6 @@ def prepare_race_data(race_obj, runner_obj):
         'age_group_placement': calculate_age_bracket_placement(
             runner_obj, race_obj) if calculate_age_bracket_placement(runner_obj, race_obj) else "N/A"
     }
-    print(runner_details)
     if runner_details is None:
         return None
 

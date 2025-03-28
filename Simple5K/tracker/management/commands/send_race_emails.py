@@ -15,7 +15,6 @@ class Command(BaseCommand):
                 race_obj.save()
                 try:
                     runners_list = runners.objects.filter(race=race_obj, email_sent=False).order_by('place')
-                    print(runners_list)
                     if runners_list:
                         # this for loop allows less then 30 emails per minute as not to hit the office 365 limit.
                         # that is why there is a time calc and delay in there.
