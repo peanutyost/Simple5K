@@ -8,7 +8,7 @@ class Command(BaseCommand):
     help = 'Send emails to runners after the race has completed.'
 
     def handle(self, *args, **options):
-        race_id = race.objects.filter(status='completed', all_emails_sent=False)
+        race_id = race.objects.filter(status='completed', all_emails_sent=False).asc(nulls_last=True)
         if race_id:
             for race_obj in race_id:
                 race_obj.all_emails_sent = True
