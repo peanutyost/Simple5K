@@ -135,18 +135,18 @@ class RunnerInfoSelectionForm(forms.Form):
         ('id', 'Runner ID'),
         ('last_name', 'Last Name'),
         ('first_name', 'First Name'),
-        ('number', 'Runner Number'), # Added number as a sort option
+        ('number', 'Runner Number'),  # Added number as a sort option
     )
 
     race = forms.ModelChoiceField(
         queryset=race.objects.order_by('name'),
         empty_label="-- Select a Race --",
         label="Select Race",
-        widget=forms.Select(attrs={'class': 'form-control'}) # Optional styling
+        widget=forms.Select(attrs={'class': 'form-control'})  # Optional styling
     )
     sort_by = forms.ChoiceField(
         choices=SORT_CHOICES,
         initial='last_name',
         label="Sort Runners By",
-        widget=forms.Select(attrs={'class': 'form-control'}) # Optional styling
+        widget=forms.Select(attrs={'class': 'form-control'})  # Optional styling
     )

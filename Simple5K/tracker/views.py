@@ -441,7 +441,7 @@ def mark_runner_finished(request):
 @login_required
 def email_list_view(request):
     """
-    View to display a dropdown of races and, upon selection, 
+    View to display a dropdown of races and, upon selection,
     display a comma-separated list of runner emails for that race.
     Uses AJAX for a single-page, dynamic update.
     """
@@ -956,7 +956,7 @@ def race_countdown(request):
             'entry_fee': f"${r.Entry_fee:.2f}",
             'remaining': remaining
         })
-    return JsonResponse({'races': race_data, 'active_race': active_race_data}, safe=False) # Return json in dictionary structure
+    return JsonResponse({'races': race_data, 'active_race': active_race_data}, safe=False)  # Return json in dictionary structure
 
 
 def race_list(request):

@@ -74,7 +74,7 @@ def generate_race_report(filename, race_data, return_type):
             text_y -= 0.17 * inch  # Line spacing.  Keep this separate from top_padding.
 
     # --- Background Image (Logo) ---
-    #if race_data['race']['logo'] is not None:
+    # if race_data['race']['logo'] is not None:
         try:
             # Open the image using PIL and convert to RGB
             pil_img = PILImage.open(race_data['race']['logo']).convert("RGB")
@@ -217,15 +217,15 @@ def generate_race_report(filename, race_data, return_type):
 def create_runner_pdf(buffer, race_obj, runners_queryset):
     """Generates a PDF report of runners for a given race."""
     doc = SimpleDocTemplate(buffer, pagesize=letter,
-                            leftMargin=0.5*inch, rightMargin=0.5*inch,
-                            topMargin=0.5*inch, bottomMargin=0.5*inch)
+                            leftMargin=0.5 * inch, rightMargin=0.5 * inch,
+                            topMargin=0.5 * inch, bottomMargin=0.5 * inch)
     styles = getSampleStyleSheet()
     story = []
 
     # Title
     title = f"Runner List: {race_obj.name}"
     story.append(Paragraph(title, styles['h1']))
-    story.append(Spacer(1, 0.2*inch))
+    story.append(Spacer(1, 0.2 * inch))
 
     # Table Data Preparation
     # Header Row
@@ -238,14 +238,15 @@ def create_runner_pdf(buffer, race_obj, runners_queryset):
             runner.number if runner.number is not None else 'N/A',
             runner.first_name,
             runner.last_name,
-            runner.get_gender_display() if runner.gender else 'N/A', # Use get_..._display for choices
+            runner.get_gender_display() if runner.gender else 'N/A',  # Use get_..._display for choices
             runner.get_shirt_size_display(),
             runner.get_type_display() if runner.type else 'N/A',
             runner.id
         ])
 
     # Create Table and Style
-    table = Table(data, colWidths=[0.5*inch, 0.8*inch, 1.5*inch, 1.5*inch, 0.8*inch, 1.2*inch, 0.8*inch]) # Adjust widths as needed
+    # Adjust widths as needed
+    table = Table(data, colWidths=[0.5 * inch, 0.8 * inch, 1.5 * inch, 1.5 * inch, 0.8 * inch, 1.2 * inch, 0.8 * inch])
 
     style = TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
@@ -255,10 +256,10 @@ def create_runner_pdf(buffer, race_obj, runners_queryset):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), # Vertical alignment
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),  # Vertical alignment
         # Specific alignment for names if needed
-        ('ALIGN', (2, 1), (3, -1), 'LEFT'), # Align names left
-        ('LEFTPADDING', (2, 1), (3, -1), 6), # Add padding to names
+        ('ALIGN', (2, 1), (3, -1), 'LEFT'),  # Align names left
+        ('LEFTPADDING', (2, 1), (3, -1), 6),  # Add padding to names
     ])
 
     table.setStyle(style)
