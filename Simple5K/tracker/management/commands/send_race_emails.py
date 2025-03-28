@@ -22,7 +22,8 @@ class Command(BaseCommand):
                         for runner in runners_list:
                             start_time = time.time()  # Record the start time of the iteration
                             if laps.objects.filter(runner=runner, attach_to_race=race_obj).exists():
-
+                                print(f"Sending email to {runner.first_name} {runner.last_name}")
+                                print(race_obj.name)
                                 send_race_report_email(runner.pk, race_obj.pk)
                                 runner.email_sent = True
                                 runner.save()
