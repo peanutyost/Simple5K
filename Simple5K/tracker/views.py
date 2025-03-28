@@ -162,10 +162,6 @@ def prepare_race_data(race_obj, runner_obj):
             'faster_runners': [format_runner(runner) for runner in faster_runners],
             'slower_runners': [format_runner(runner) for runner in slower_runners],
         }
-        print(race_info)
-        print(runner_details)
-        print(laps_data)
-        print(competitor_data)
 
     return {
         'race': race_info,
@@ -186,7 +182,7 @@ def send_race_report_email(runner_id, race_id):
         None.  Raises exceptions if email sending fails.
     """
     race_obj = get_object_or_404(race, pk=race_id)
-    runner_obj = get_object_or_404(runners, number=runner_id)
+    runner_obj = get_object_or_404(runners, pk=runner_id)
     # Generate the PDF
     pdf_filename = f"race_report_{race_obj.name}_{runner_obj.first_name}_{runner_obj.last_name}.pdf"
     race_data = prepare_race_data(race_obj, runner_obj)
