@@ -145,7 +145,10 @@ def prepare_race_data(race_obj, runner_obj):
     # Competitor Placement Data (2 faster, 2 slower)
     # Find 2 runners faster
     if runner_obj.total_race_time == "N/A" or runner_obj.total_race_time is None:
-        competitor_data = []
+        competitor_data = {
+            'faster_runners': None,
+            'slower_runners': None,
+        }
     else:
 
         faster_runners = runners.objects.filter(
