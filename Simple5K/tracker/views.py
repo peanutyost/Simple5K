@@ -859,7 +859,7 @@ def get_completed_race_overview(request, race_id):
     # Initialize an empty list to store runner times
     runner_times = []
     if current_race:
-        runnersall = runners.objects.filter(race=current_race).order_by('place')
+        runnersall = runners.objects.filter(race=current_race).order_by('place').asc(nulls_last=True)
         for arunner in runnersall:
             run_laps = []
             alap = laps.objects.filter(runner=arunner).order_by('lap')
