@@ -292,7 +292,7 @@ def runner_stats(request):
     if request.method == "POST":
         racetotalobj = {}
         if form.is_valid():
-            raceobj = race.objects.filter(status='in_progress').first()
+            raceobj = race.objects.get(name=form.cleaned_data['racename'])
             runnerobj = runners.objects.get(number=form.cleaned_data['runnernumber'], race=form.cleaned_data['racename'])
             racetotalobj = prepare_race_data(raceobj, runnerobj)
         else:
