@@ -179,14 +179,14 @@ def generate_race_report(filename, race_data, return_type):
 
     # --- Competitor Table ---
     data = [["Name", "Total Time"]]
-    if race_data['competitors']['faster_runners']:
+    if race_data['competitors']['faster_runners'] is not None:
         data.append(['Before', ''])
-    for competitor in race_data['competitors']['faster_runners']:
-        data.append([competitor[0], competitor[1]])
-    if race_data['competitors']['slower_runners']:
+        for competitor in race_data['competitors']['faster_runners']:
+            data.append([competitor[0], competitor[1]])
+    if race_data['competitors']['slower_runners'] is not None:
         data.append(['After', ''])
-    for competitor in race_data['competitors']['slower_runners']:
-        data.append([competitor[0], competitor[1]])
+        for competitor in race_data['competitors']['slower_runners']:
+            data.append([competitor[0], competitor[1]])
 
     competitor_table = Table(data, colWidths=[2 * inch, 2 * inch])
     competitor_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
