@@ -926,19 +926,25 @@ def signup_success(request, pk):
 
 
 def race_countdown(request):
-    """Get countdown for all upcoming races"""
+    """Get countdown for all upcoming races along with active race information"""
     # Get races that haven't started yet (status is signup_open or signup_closed)
     upcoming_races = race.objects.filter(status__in=['signup_open', 'signup_closed']).order_by('date', 'scheduled_time')
+    # Check for an active race
+    active_race = race.objects.filter(status='in_progress').first()
+    active_race_data = None
 
+    if active_race:
+        active_race_data = {
+            'id': active_race.id,
+            'name': active_race.name,
+        }
     # Calculate remaining time for each race
     race_data = []
     for r in upcoming_races:
         # Combine date and scheduled_time into a datetime object
         start_time = datetime.combine(r.date, r.scheduled_time)
-
         # Get formatted remaining time
         remaining = format_remaining_time(start_time)
-
         race_data.append({
             'id': r.id,
             'name': r.name,
@@ -947,11 +953,11 @@ def race_countdown(request):
             'entry_fee': f"${r.Entry_fee:.2f}",
             'remaining': remaining
         })
-
-    return JsonResponse(race_data, safe=False)
+    return JsonResponse({'races': race_data, 'active_race': active_race_data}, safe=False) # Return json in dictionary structure
 
 
 def race_list(request):
     banners = Banner.objects.filter(active=True)
     """Render the race list page"""
+
     return render(request, 'tracker/race_list.html', context={'banners': banners})
