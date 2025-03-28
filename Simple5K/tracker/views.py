@@ -162,6 +162,10 @@ def prepare_race_data(race_obj, runner_obj):
             'faster_runners': [format_runner(runner) for runner in faster_runners],
             'slower_runners': [format_runner(runner) for runner in slower_runners],
         }
+        print(race_info)
+        print(runner_details)
+        print(laps_data)
+        print(competitor_data)
 
     return {
         'race': race_info,
