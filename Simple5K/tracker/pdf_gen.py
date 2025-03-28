@@ -74,7 +74,7 @@ def generate_race_report(filename, race_data, return_type):
             text_y -= 0.17 * inch  # Line spacing.  Keep this separate from top_padding.
 
     # --- Background Image (Logo) ---
-    if race_data['race']['logo'] is not None:
+    if race_data['race']['logo']:
         try:
             # Open the image using PIL and convert to RGB
             pil_img = PILImage.open(race_data['race']['logo']).convert("RGB")
