@@ -128,3 +128,25 @@ class SignupForm(forms.ModelForm):
 class RaceSelectionForm(forms.Form):
     race = forms.ModelChoiceField(queryset=race.objects.exclude(status='in_progress').exclude(status='completed'),
                                   label="Select Race")
+
+
+class RunnerInfoSelectionForm(forms.Form):
+    SORT_CHOICES = (
+        ('id', 'Runner ID'),
+        ('last_name', 'Last Name'),
+        ('first_name', 'First Name'),
+        ('number', 'Runner Number'), # Added number as a sort option
+    )
+
+    race = forms.ModelChoiceField(
+        queryset=race.objects.order_by('name'),
+        empty_label="-- Select a Race --",
+        label="Select Race",
+        widget=forms.Select(attrs={'class': 'form-control'}) # Optional styling
+    )
+    sort_by = forms.ChoiceField(
+        choices=SORT_CHOICES,
+        initial='last_name',
+        label="Sort Runners By",
+        widget=forms.Select(attrs={'class': 'form-control'}) # Optional styling
+    )

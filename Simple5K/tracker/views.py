@@ -2,8 +2,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
-from django.db.models import F, Q, Window, IntegerField, OrderBy
-from django.db.models.functions import Rank
+from django.db.models import F, Q, Window, IntegerField, OrderBy, Value
+from django.db.models.functions import Rank, Lower, Coalesce
 from django.urls import reverse
 from django.http import Http404, HttpResponse, JsonResponse, HttpResponseNotFound
 from datetime import datetime, timedelta
@@ -16,12 +16,13 @@ from django.views.decorators.cache import cache_page
 from django.core.mail import EmailMessage, send_mail
 from django.conf import settings
 from functools import wraps
+import io
 import json
 import pytz
 
 from .models import race, runners, laps, Banner, ApiKey
-from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm
-from .pdf_gen import generate_race_report
+from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm
+from .pdf_gen import generate_race_report, create_runner_pdf
 
 
 def require_api_key(view_func):
@@ -469,6 +470,63 @@ def email_list_view(request):
     }
 
     return render(request, 'tracker/email_list.html', context)
+
+
+@login_required
+def select_race_for_report(request):
+    """Displays the form to select a race and sort order."""
+    form = RunnerInfoSelectionForm()
+    context = {'form': form}
+    return render(request, 'tracker/select_race_report.html', context)
+
+
+@login_required
+def generate_runner_pdf_report(request):
+    """Handles the form submission and generates the PDF report."""
+    form = RunnerInfoSelectionForm(request.GET or None)  # Use GET data
+
+    if not form.is_valid():
+        # If using GET, invalid data usually means missing parameters.
+        # Redirect back or show an error.
+        messages.error(request, "Invalid selection. Please select a race and sort order.")
+        return redirect('tracker:select_race_report')  # Name this URL pattern
+
+    selected_race = form.cleaned_data['race']
+    sort_by = form.cleaned_data['sort_by']
+
+    # Fetch runners for the selected race
+    runners_list = runners.objects.filter(race=selected_race)
+
+    # Apply sorting
+    if sort_by == 'id':
+        runners_list = runners_list.order_by('id')
+    elif sort_by == 'last_name':
+        runners_list = runners_list.order_by(Lower('last_name'), Lower('first_name'))  # Secondary sort
+    elif sort_by == 'first_name':
+        runners_list = runners_list.order_by(Lower('first_name'), Lower('last_name'))  # Secondary sort
+    elif sort_by == 'number':
+        # Handle potential nulls if sorting by number
+        runners_list = runners_list.order_by(Coalesce('number', Value(999999)))  # Put nulls last
+    else:
+        # Default sort or raise error if sort_by is unexpected
+        runners_list = runners_list.order_by(Lower('last_name'), Lower('first_name'))
+
+    if not runners_list.exists():
+        messages.warning(request, f"No runners found for race '{selected_race.name}'.")
+        return redirect('tracker:select_race_report')
+
+    # Create PDF
+    buffer = io.BytesIO()
+    create_runner_pdf(buffer, selected_race, runners_list)
+    buffer.seek(0)  # Reset buffer position to the beginning
+
+    # Create HTTP response
+    response = HttpResponse(buffer, content_type='application/pdf')
+    # Suggest a filename for the download
+    filename = f"race_{selected_race.id}_runners_{sort_by}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    return response
 
 
 # ---------------------------API---------------------------------------------

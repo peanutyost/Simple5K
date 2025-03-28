@@ -23,6 +23,8 @@ from .views import (
     completed_races_selection, 
     get_completed_race_overview,
     email_list_view,
+    select_race_for_report,
+    generate_runner_pdf_report,
     GenerateRaceReportView,
 )
 
@@ -46,6 +48,8 @@ urlpatterns = [
     path('completed_races_selection/', completed_races_selection, name='completed_races_selection'),
     path('get_completed_race_overview/<int:race_id>/', get_completed_race_overview, name='get_completed_race_overview'),
     path('email_list/', email_list_view, name='email_list'),
+    path('select-race/', select_race_for_report, name='select_race_report'),
+    path('generate-pdf/', generate_runner_pdf_report, name='generate_runner_pdf'),
     # API endpoints
     path('generate-api-key/', generate_api_key, name='generate-api-key'),
     path('api/record-lap/', record_lap, name='api-record-lap'),

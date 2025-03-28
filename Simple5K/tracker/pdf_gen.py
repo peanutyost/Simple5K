@@ -10,7 +10,8 @@ from reportlab.platypus import (
     TableStyle,
     Paragraph,
     Frame,
-    Image
+    Image,
+    Spacer
 )
 from django.http import HttpResponse
 from datetime import date, timedelta  # Import timedelta
@@ -211,3 +212,58 @@ def generate_race_report(filename, race_data, return_type):
         return pdf_data
     else:
         raise ValueError("Invalid return_type.  Must be 'response' or 'file'.")
+
+
+def create_runner_pdf(buffer, race_obj, runners_queryset):
+    """Generates a PDF report of runners for a given race."""
+    doc = SimpleDocTemplate(buffer, pagesize=letter,
+                            leftMargin=0.5*inch, rightMargin=0.5*inch,
+                            topMargin=0.5*inch, bottomMargin=0.5*inch)
+    styles = getSampleStyleSheet()
+    story = []
+
+    # Title
+    title = f"Runner List: {race_obj.name}"
+    story.append(Paragraph(title, styles['h1']))
+    story.append(Spacer(1, 0.2*inch))
+
+    # Table Data Preparation
+    # Header Row
+    header = ['Number', 'First Name', 'Last Name', 'Gender', 'Shirt Size', 'Type', 'Order']
+    data = [header]
+
+    # Data Rows
+    for runner in runners_queryset:
+        data.append([
+            runner.number if runner.number is not None else 'N/A',
+            runner.first_name,
+            runner.last_name,
+            runner.get_gender_display() if runner.gender else 'N/A', # Use get_..._display for choices
+            runner.get_shirt_size_display(),
+            runner.get_type_display() if runner.type else 'N/A',
+            runner.id
+        ])
+
+    # Create Table and Style
+    table = Table(data, colWidths=[0.5*inch, 0.8*inch, 1.5*inch, 1.5*inch, 0.8*inch, 1.2*inch, 0.8*inch]) # Adjust widths as needed
+
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), # Vertical alignment
+        # Specific alignment for names if needed
+        ('ALIGN', (2, 1), (3, -1), 'LEFT'), # Align names left
+        ('LEFTPADDING', (2, 1), (3, -1), 6), # Add padding to names
+    ])
+
+    table.setStyle(style)
+    story.append(table)
+
+    # Build the PDF
+    doc.build(story)
+    # The buffer now contains the PDF data
