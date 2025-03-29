@@ -590,14 +590,17 @@ def record_lap(request):
 
                                 if runner_obj.gender is None:
                                     runner_obj.gender = 'male'
-                                allfinnisher = runners.objects.filter(
-                                    race_completed=True, gender=runner_obj.gender)
+
+                                allfinnisher = runners.objects.filter(race_completed=True, gender=runner_obj.gender)
 
                                 if not allfinnisher.exists():
                                     runner_obj.place = 1
                                 else:
                                     prevfinnisher = allfinnisher.order_by('-place').first()
-                                    runner_obj.place = prevfinnisher.place + 1
+                                    if prevfinnisher.place is None:
+                                        runner_obj.place = 1
+                                    else:
+                                        runner_obj.place = prevfinnisher.place + 1
 
                                 runner_obj.total_race_time = current_time - race_obj.start_time
                                 totalracetimesecond = runner_obj.total_race_time.total_seconds()
