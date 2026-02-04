@@ -24,7 +24,7 @@ import json
 import pytz
 import urllib.parse
 
-from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings
+from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, EmailSendJob
 from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm, SiteSettingsForm
 from .pdf_gen import generate_race_report, create_runner_pdf
 
@@ -643,37 +643,68 @@ def mark_runner_finished(request):
 @login_required
 def email_list_view(request):
     """
-    View to display a dropdown of races and, upon selection,
-    display a comma-separated list of runner emails for that race.
-    Uses AJAX for a single-page, dynamic update.
+    Page to send an email to all runners of a selected race. Form: race, subject, body.
+    On Send: creates EmailSendJob (queued); background worker sends one email per runner
+    with throttling. Confirms that the email has been queued.
     """
-    races = race.objects.all()
-    selected_race_id = None
-    email_list_string = ""
+    races = race.objects.all().order_by('-date', '-scheduled_time')
 
     if request.method == 'POST':
-        selected_race_id = request.POST.get('race_id')
-        if selected_race_id:
+        data = request.POST
+        action = data.get('action')
+        if action == 'send':
+            race_id = data.get('race_id')
+            subject = (data.get('subject') or '').strip()
+            body = (data.get('body') or '').strip()
+            if not race_id:
+                return JsonResponse({'success': False, 'error': 'Please select a race.'}, status=400)
+            if not subject:
+                return JsonResponse({'success': False, 'error': 'Subject is required.'}, status=400)
             try:
-                selected_race = race.objects.get(pk=selected_race_id)
-                runners_in_race = runners.objects.filter(race=selected_race)
-                emails = [runner.email for runner in runners_in_race]
-                email_list_string = "; ".join(emails)
+                race_obj = race.objects.get(pk=race_id)
+            except (race.DoesNotExist, ValueError):
+                return JsonResponse({'success': False, 'error': 'Invalid race.'}, status=400)
+            recipient_count = (
+                runners.objects.filter(race=race_obj)
+                .exclude(email__isnull=True)
+                .exclude(email="")
+                .values_list("email", flat=True)
+                .distinct()
+                .count()
+            )
+            if recipient_count == 0:
+                return JsonResponse({'success': False, 'error': 'This race has no runners with email addresses.'}, status=400)
+            job = EmailSendJob.objects.create(
+                race=race_obj,
+                subject=subject[:255],
+                body=body,
+                status=EmailSendJob.STATUS_QUEUED,
+            )
+            return JsonResponse({
+                'success': True,
+                'message': f'Your email has been queued and will be sent to {recipient_count} runner(s).',
+                'job_id': job.id,
+                'recipient_count': recipient_count,
+            })
+        if action == 'recipient_count':
+            race_id = data.get('race_id')
+            if not race_id:
+                return JsonResponse({'count': 0})
+            try:
+                race_obj = race.objects.get(pk=race_id)
+                count = (
+                    runners.objects.filter(race=race_obj)
+                    .exclude(email__isnull=True)
+                    .exclude(email="")
+                    .values_list("email", flat=True)
+                    .distinct()
+                    .count()
+                )
+                return JsonResponse({'count': count})
+            except (race.DoesNotExist, ValueError):
+                return JsonResponse({'count': 0})
 
-                # Return JSON response for AJAX update
-                return JsonResponse({'emails': email_list_string})
-            except race.DoesNotExist:
-                return JsonResponse({'error': 'Race not found'}, status=404)  # Handle race not found
-            except ValueError:
-                return JsonResponse({'error': 'Invalid Race ID'}, status=400)
-
-    # Initial render (GET request or after POST without valid data)
-    context = {
-        'races': races,
-        'selected_race_id': selected_race_id,  # Pass to repopulate dropdown
-        'email_list': email_list_string,
-    }
-
+    context = {'races': races}
     return render(request, 'tracker/email_list.html', context)
 
 

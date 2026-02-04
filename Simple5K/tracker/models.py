@@ -194,3 +194,27 @@ class SiteSettings(models.Model):
     def get_settings(cls):
         obj, _ = cls.objects.get_or_create(pk=1, defaults={'paypal_enabled': False})
         return obj
+
+
+class EmailSendJob(models.Model):
+    """Queue entry for sending one bulk email to all runners of a race. Processed by background worker."""
+    STATUS_QUEUED = 'queued'
+    STATUS_SENDING = 'sending'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_QUEUED, 'Queued'),
+        (STATUS_SENDING, 'Sending'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+    race = models.ForeignKey(race, on_delete=models.CASCADE)
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_QUEUED, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    error_message = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['created_at']

@@ -3,48 +3,65 @@
 {% block content %}
 <div class="container py-3 py-md-4">
     <div class="row">
-        <div class="col-12">
-            <h1 class="mb-4">Runner Email List</h1>
-            <form id="race-select-form" method="post" action="">
+        <div class="col-12 col-lg-8">
+            <h1 class="mb-4">Send Email to Runners</h1>
+            <p class="text-muted">Select a race, enter subject and message. Each runner receives a separate email. Emails are sent in the background and throttled to stay within provider limits.</p>
+            <form id="send-email-form" method="post" action="">
                 {% csrf_token %}
+                <input type="hidden" name="action" value="send">
                 <div class="mb-3">
-                    <label for="race-select" class="form-label">Select Race</label>
-                    <select id="race-select" name="race_id" class="form-select" aria-label="Select race to view emails">
+                    <label for="race-select" class="form-label">Race <span class="text-danger">*</span></label>
+                    <select id="race-select" name="race_id" class="form-select" required aria-label="Select race">
                         <option value="">--- Select a Race ---</option>
                         {% for race_obj in races %}
-                        <option value="{{ race_obj.id }}" {% if race_obj.id == selected_race_id %}selected{% endif %}>{{ race_obj.name }}</option>
+                        <option value="{{ race_obj.id }}">{{ race_obj.name }}</option>
                         {% endfor %}
                     </select>
+                    <div id="recipient-count" class="form-text text-muted" aria-live="polite"></div>
                 </div>
+                <div class="mb-3">
+                    <label for="email-subject" class="form-label">Subject <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="email-subject" name="subject" maxlength="255" required placeholder="e.g. Race day reminder">
+                </div>
+                <div class="mb-3">
+                    <label for="email-body" class="form-label">Message</label>
+                    <textarea class="form-control" id="email-body" name="body" rows="10" placeholder="Your message to runners..."></textarea>
+                    <p class="form-text small text-muted">A line will be appended: &quot;This is an unmonitored email account. Please do not reply.&quot;</p>
+                </div>
+                <button type="submit" class="btn btn-primary" id="send-btn">Send email</button>
             </form>
-            <div id="email-list-container" role="region" aria-label="Email list">
-                {% if email_list %}
-                <h2 class="h5 mt-3">Emails</h2>
-                <textarea id="email-textarea" class="form-control font-monospace" rows="10" readonly aria-label="Comma-separated runner emails">{{ email_list }}</textarea>
-                {% endif %}
-            </div>
+            <div id="send-result" class="mt-3" role="alert" aria-live="polite"></div>
         </div>
     </div>
 </div>
 <script>
 (function() {
-    var form = document.getElementById('race-select-form');
-    var select = document.getElementById('race-select');
-    var container = document.getElementById('email-list-container');
-    if (!select || !container) return;
-    var csrf = form && form.querySelector('input[name="csrfmiddlewaretoken"]');
+    var form = document.getElementById('send-email-form');
+    var raceSelect = document.getElementById('race-select');
+    var sendResult = document.getElementById('send-result');
+    var sendBtn = document.getElementById('send-btn');
+    var csrfInput = form && form.querySelector('input[name="csrfmiddlewaretoken"]');
+
+    function setResult(html, isError) {
+        if (!sendResult) return;
+        sendResult.innerHTML = html;
+        sendResult.className = 'mt-3 alert ' + (isError ? 'alert-danger' : 'alert-success');
+    }
+
     function escapeHtml(s) {
         if (s == null) return '';
         var d = document.createElement('div');
         d.textContent = String(s);
         return d.innerHTML;
     }
-    function setContent(html) {
-        container.innerHTML = html;
-    }
-    select.addEventListener('change', function() {
-        var raceId = select.value;
-        if (!raceId) { setContent(''); return; }
+
+    function updateRecipientCount() {
+        var countEl = document.getElementById('recipient-count');
+        if (!countEl || !raceSelect || !raceSelect.value) {
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+        countEl.textContent = 'Loading…';
         var xhr = new XMLHttpRequest();
         xhr.open('POST', window.location.href, true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
@@ -53,32 +70,61 @@
             if (xhr.readyState !== 4) return;
             try {
                 var data = JSON.parse(xhr.responseText);
-                if (data.emails != null) {
-                    setContent('');
-                    var h2 = document.createElement('h2');
-                    h2.className = 'h5 mt-3';
-                    h2.textContent = 'Emails';
-                    container.appendChild(h2);
-                    var ta = document.createElement('textarea');
-                    ta.className = 'form-control font-monospace';
-                    ta.rows = 10;
-                    ta.readOnly = true;
-                    ta.setAttribute('aria-label', 'Comma-separated runner emails');
-                    ta.textContent = data.emails;
-                    container.appendChild(ta);
-                } else if (data.error) {
-                    setContent('<p class="text-danger">' + escapeHtml(data.error) + '</p>');
-                } else {
-                    setContent('');
-                }
+                var n = data.count != null ? data.count : 0;
+                countEl.textContent = n === 0 ? 'No runners with email for this race.' : (n + ' runner(s) will receive this email.');
             } catch (e) {
-                setContent('<p class="text-danger">An unexpected error occurred.</p>');
+                countEl.textContent = '';
             }
         };
-        var body = 'race_id=' + encodeURIComponent(raceId);
-        if (csrf) body += '&csrfmiddlewaretoken=' + encodeURIComponent(csrf.value);
+        var body = 'action=recipient_count&race_id=' + encodeURIComponent(raceSelect.value);
+        if (csrfInput) body += '&csrfmiddlewaretoken=' + encodeURIComponent(csrfInput.value);
         xhr.send(body);
-    });
+    }
+
+    if (raceSelect) raceSelect.addEventListener('change', updateRecipientCount);
+
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!raceSelect.value) {
+                setResult('Please select a race.', true);
+                return;
+            }
+            var subject = document.getElementById('email-subject');
+            if (!subject || !subject.value.trim()) {
+                setResult('Subject is required.', true);
+                return;
+            }
+            sendResult.innerHTML = '';
+            if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Queuing…'; }
+            var body = 'action=send&race_id=' + encodeURIComponent(raceSelect.value) +
+                '&subject=' + encodeURIComponent((subject && subject.value) || '') +
+                '&body=' + encodeURIComponent((document.getElementById('email-body') && document.getElementById('email-body').value) || '');
+            if (csrfInput) body += '&csrfmiddlewaretoken=' + encodeURIComponent(csrfInput.value);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action || window.location.href, true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== 4) return;
+                if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send email'; }
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.success && data.message) {
+                        setResult(escapeHtml(data.message), false);
+                        form.reset();
+                        raceSelect.value = '';
+                        document.getElementById('recipient-count').textContent = '';
+                    } else {
+                        setResult(escapeHtml(data.error || 'Send failed.'), true);
+                    }
+                } catch (err) {
+                    setResult('An unexpected error occurred.', true);
+                }
+            };
+            xhr.send(body);
+        });
+    }
 })();
 </script>
 {% endblock %}

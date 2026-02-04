@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings
+from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, EmailSendJob
 
 admin.site.register(ApiKey)
 
@@ -46,3 +46,11 @@ class LapsAdmin(admin.ModelAdmin):
 class SiteSettingsAdmin(admin.ModelAdmin):
     list_display = ('id', 'paypal_enabled', 'paypal_business_email', 'paypal_sandbox')
     list_editable = ('paypal_enabled', 'paypal_business_email', 'paypal_sandbox')
+
+
+@admin.register(EmailSendJob)
+class EmailSendJobAdmin(admin.ModelAdmin):
+    list_display = ('id', 'race', 'subject', 'status', 'created_at', 'updated_at')
+    list_filter = ('status',)
+    readonly_fields = ('created_at', 'updated_at')
+    search_fields = ('subject', 'race__name')
