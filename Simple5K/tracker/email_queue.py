@@ -86,31 +86,6 @@ _worker_started = False
 _worker_lock = threading.Lock()
 
 
-def process_queue():
-    """
-    Process all queued EmailSendJob entries (blocking). Use from management command
-    or cron so emails are sent even when the in-process worker thread is not running.
-    """
-    from .models import EmailSendJob
-
-    while True:
-        job = (
-            EmailSendJob.objects.filter(status=EmailSendJob.STATUS_QUEUED)
-            .order_by("created_at")
-            .first()
-        )
-        if not job:
-            break
-        job.status = EmailSendJob.STATUS_SENDING
-        job.save(update_fields=["status"])
-        try:
-            _process_one_job(job)
-        except Exception as e:
-            job.status = EmailSendJob.STATUS_FAILED
-            job.error_message = str(e)[:2000]
-            job.save(update_fields=["status", "error_message"])
-
-
 def start_email_worker():
     """Start the background email worker thread (idempotent)."""
     global _worker_started
