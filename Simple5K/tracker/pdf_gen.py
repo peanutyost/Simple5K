@@ -268,3 +268,84 @@ def create_runner_pdf(buffer, race_obj, runners_queryset):
     # Build the PDF
     doc.build(story)
     # The buffer now contains the PDF data
+
+
+def generate_race_summary_pdf(buffer, summary_data):
+    """
+    Generates a race summary PDF with two sections: Female Finishers and Male Finishers.
+    Each section lists runners in finish order with name, number, fastest/slowest lap (and lap #),
+    overall time, overall placement, and age group placement.
+    summary_data: dict with 'race_name', 'females' (list of runner dicts), 'males' (list of runner dicts).
+    Each runner dict: name, number, fastest_lap_time, fastest_lap_num, slowest_lap_time, slowest_lap_num,
+    overall_time, overall_place, age_group_place.
+    """
+    doc = SimpleDocTemplate(buffer, pagesize=letter,
+                            leftMargin=0.5 * inch, rightMargin=0.5 * inch,
+                            topMargin=0.5 * inch, bottomMargin=0.5 * inch)
+    styles = getSampleStyleSheet()
+    story = []
+
+    title = Paragraph(f"Race Summary: {summary_data['race_name']}", styles['Title'])
+    story.append(title)
+    story.append(Spacer(1, 0.3 * inch))
+
+    def _format_duration(val):
+        if val is None or val == '' or val == 'N/A':
+            return 'N/A'
+        if hasattr(val, 'total_seconds'):
+            secs = int(round(val.total_seconds()))
+            return str(timedelta(seconds=secs))
+        return str(val)
+
+    def _section_table(section_title, runners_list):
+        header = [
+            'Place', 'Name', 'No.', 'Fastest Lap', 'Lap', 'Slowest Lap', 'Lap',
+            'Overall Time', 'Age Grp'
+        ]
+        data = [header]
+        for r in runners_list:
+            data.append([
+                str(r.get('overall_place') or '—'),
+                r.get('name') or '—',
+                str(r.get('number') or '—'),
+                _format_duration(r.get('fastest_lap_time')),
+                str(r.get('fastest_lap_num') or '—'),
+                _format_duration(r.get('slowest_lap_time')),
+                str(r.get('slowest_lap_num') or '—'),
+                _format_duration(r.get('overall_time')),
+                str(r.get('age_group_place') or '—'),
+            ])
+        col_widths = [
+            0.45 * inch, 1.4 * inch, 0.4 * inch,
+            0.85 * inch, 0.35 * inch, 0.85 * inch, 0.35 * inch,
+            0.9 * inch, 0.5 * inch
+        ]
+        table = Table(data, colWidths=col_widths)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+            ('LEFTPADDING', (1, 1), (1, -1), 4),
+        ]))
+        story.append(Paragraph(section_title, styles['Heading2']))
+        story.append(Spacer(1, 0.15 * inch))
+        story.append(table)
+        story.append(Spacer(1, 0.35 * inch))
+
+    if summary_data.get('females'):
+        _section_table('Female Finishers (by finish order)', summary_data['females'])
+    if summary_data.get('males'):
+        _section_table('Male Finishers (by finish order)', summary_data['males'])
+
+    if not summary_data.get('females') and not summary_data.get('males'):
+        story.append(Paragraph('No finishers with gender recorded for this race.', styles['Normal']))
+
+    doc.build(story)

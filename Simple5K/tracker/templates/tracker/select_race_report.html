@@ -25,6 +25,19 @@
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Generate PDF Report</button>
             </form>
+
+            <hr class="my-4">
+
+            <h2 class="h5 mb-3">Race Summary PDF</h2>
+            <p class="text-muted small">Finishers by gender (finish order): name, number, fastest/slowest lap and lap #, overall time, overall place, age group place.</p>
+            <form method="get" action="{% url 'tracker:generate_race_summary_pdf' %}">
+                <div class="mb-3">
+                    <label for="{{ summary_form.race.id_for_label }}" class="form-label">{{ summary_form.race.label }}</label>
+                    {{ summary_form.race }}
+                    {% if summary_form.race.errors %}<div class="invalid-feedback d-block">{{ summary_form.race.errors|join:", " }}</div>{% endif %}
+                </div>
+                <button type="submit" class="btn btn-outline-primary">Generate Race Summary PDF</button>
+            </form>
         </div>
     </div>
 </div>

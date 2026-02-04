@@ -170,3 +170,13 @@ class RunnerInfoSelectionForm(forms.Form):
         label="Sort Runners By",
         widget=forms.Select(attrs={'class': 'form-control'})  # Optional styling
     )
+
+
+class RaceSummaryForm(forms.Form):
+    """Form to select a race for the race summary PDF (finishers by gender, lap stats, placements)."""
+    race = forms.ModelChoiceField(
+        queryset=race.objects.order_by('name'),
+        empty_label="-- Select a Race --",
+        label="Select Race",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )

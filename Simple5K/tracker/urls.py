@@ -33,6 +33,7 @@ from .views import (
     email_list_view,
     select_race_for_report,
     generate_runner_pdf_report,
+    generate_race_summary_pdf_report,
     GenerateRaceReportView,
 )
 
@@ -66,6 +67,7 @@ urlpatterns = [
     path('email_list/', email_list_view, name='email_list'),
     path('select-race/', select_race_for_report, name='select_race_report'),
     path('generate-pdf/', generate_runner_pdf_report, name='generate_runner_pdf'),
+    path('generate-race-summary-pdf/', generate_race_summary_pdf_report, name='generate_race_summary_pdf'),
     # API endpoints
     path('generate-api-key/', generate_api_key, name='generate-api-key'),
     path('api/record-lap/', record_lap, name='api-record-lap'),

@@ -25,8 +25,8 @@ import pytz
 import urllib.parse
 
 from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, EmailSendJob
-from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm, SiteSettingsForm
-from .pdf_gen import generate_race_report, create_runner_pdf
+from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm, RaceSummaryForm, SiteSettingsForm
+from .pdf_gen import generate_race_report, create_runner_pdf, generate_race_summary_pdf
 
 
 def require_api_key(view_func):
@@ -96,6 +96,47 @@ def calculate_age_bracket_placement(runner, race_obj):
         return runner_rank
     except StopIteration:
         return None  # if no same bracket runner exist
+
+
+def _build_race_summary_data(race_obj):
+    """Build summary data for race summary PDF: finishers by gender with lap stats and placements."""
+    finishers = runners.objects.filter(
+        race=race_obj,
+        total_race_time__isnull=False
+    ).order_by(F('place').asc(nulls_last=True))
+    females = []
+    males = []
+    for runner in finishers:
+        runner_laps = list(laps.objects.filter(runner=runner).order_by('lap'))
+        if runner_laps:
+            fastest = min(runner_laps, key=lambda l: l.duration)
+            slowest = max(runner_laps, key=lambda l: l.duration)
+            fastest_lap_time = fastest.duration
+            fastest_lap_num = fastest.lap
+            slowest_lap_time = slowest.duration
+            slowest_lap_num = slowest.lap
+        else:
+            fastest_lap_time = fastest_lap_num = slowest_lap_time = slowest_lap_num = None
+        row = {
+            'name': f"{runner.first_name} {runner.last_name}".strip(),
+            'number': runner.number,
+            'fastest_lap_time': fastest_lap_time,
+            'fastest_lap_num': fastest_lap_num,
+            'slowest_lap_time': slowest_lap_time,
+            'slowest_lap_num': slowest_lap_num,
+            'overall_time': runner.total_race_time,
+            'overall_place': runner.place,
+            'age_group_place': calculate_age_bracket_placement(runner, race_obj),
+        }
+        if runner.gender == 'female':
+            females.append(row)
+        elif runner.gender == 'male':
+            males.append(row)
+    return {
+        'race_name': race_obj.name,
+        'females': females,
+        'males': males,
+    }
 
 
 def prepare_race_data(race_obj, runner_obj):
@@ -716,7 +757,8 @@ def email_list_view(request):
 def select_race_for_report(request):
     """Displays the form to select a race and sort order."""
     form = RunnerInfoSelectionForm()
-    context = {'form': form}
+    summary_form = RaceSummaryForm()
+    context = {'form': form, 'summary_form': summary_form}
     return render(request, 'tracker/select_race_report.html', context)
 
 
@@ -766,6 +808,25 @@ def generate_runner_pdf_report(request):
     filename = f"race_{selected_race.id}_runners_{sort_by}.pdf"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
+    return response
+
+
+@login_required
+def generate_race_summary_pdf_report(request):
+    """Generates the race summary PDF (finishers by gender, lap stats, placements)."""
+    form = RaceSummaryForm(request.GET or None)
+    if not form.is_valid():
+        messages.error(request, "Please select a race.")
+        return redirect('tracker:select_race_report')
+    selected_race = form.cleaned_data['race']
+    summary_data = _build_race_summary_data(selected_race)
+    buffer = io.BytesIO()
+    generate_race_summary_pdf(buffer, summary_data)
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    safe_name = "".join(c if c.isalnum() or c in " -_" else "_" for c in selected_race.name)
+    filename = f"race_summary_{safe_name}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
 
