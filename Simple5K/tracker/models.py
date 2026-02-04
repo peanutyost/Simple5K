@@ -36,6 +36,20 @@ class race(models.Model):
         return reverse("tracker:edit-race", kwargs={"pk": self.id})
 
 
+class RfidTag(models.Model):
+    """Reusable RFID tag: tag_number matches runner number when auto-assigned. Can be used for multiple runners over time."""
+    tag_number = models.IntegerField(unique=True, help_text="Number used when auto-assigning (same as runner number)")
+    rfid_hex = models.CharField(max_length=512, help_text="Hex string from the physical RFID tag")
+
+    class Meta:
+        ordering = ['tag_number']
+        verbose_name = 'RFID tag'
+        verbose_name_plural = 'RFID tags'
+
+    def __str__(self):
+        return f"Tag {self.tag_number} ({self.rfid_hex[:16]}...)" if len(self.rfid_hex or '') > 16 else f"Tag {self.tag_number}"
+
+
 class runners(models.Model):
     gender = (
         ('male', 'Male'),
@@ -73,7 +87,14 @@ class runners(models.Model):
     gender = models.CharField(
         max_length=50, choices=gender, blank=True, null=True)
     number = models.IntegerField(null=True, blank=True)
-    rfid_tag = models.BinaryField(max_length=496, blank=True, null=True)
+    tag = models.ForeignKey(
+        RfidTag,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='runner_assignments',
+        help_text='Reusable RFID tag; auto-assigned by tag_number when assigning runner numbers',
+    )
     race = models.ForeignKey(race, on_delete=models.PROTECT)
     race_completed = models.BooleanField(null=True, blank=True)
     total_race_time = models.DurationField(blank=True, null=True)
@@ -93,7 +114,7 @@ class runners(models.Model):
 
     @property
     def rfid_tag_hex(self):
-        return self.rfid_tag.hex()
+        return (self.tag.rfid_hex or '') if self.tag else ''
 
 
 class laps(models.Model):

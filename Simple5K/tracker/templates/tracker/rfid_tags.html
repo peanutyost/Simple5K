@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container py-3 py-md-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Manage RFID Tags</h1>
+            <p class="text-muted">Tag number is used when auto-assigning runner numbers: runner 1 gets tag 1, runner 2 gets tag 2, etc. Add tags here so they can be assigned to runners.</p>
+
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="card mb-4">
+                <div class="card-header">Add RFID Tag</div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'tracker:rfid_tags_list' %}">
+                        {% csrf_token %}
+                        <div class="row g-2 align-items-end">
+                            <div class="col-auto">
+                                <label for="tag_number" class="form-label">Tag number</label>
+                                <input type="number" class="form-control" id="tag_number" name="tag_number" min="1" required placeholder="e.g. 1">
+                            </div>
+                            <div class="col flex-grow-1">
+                                <label for="rfid_hex" class="form-label">RFID hex value</label>
+                                <input type="text" class="form-control font-monospace" id="rfid_hex" name="rfid_hex" maxlength="512" required placeholder="e.g. A1B2C3D4...">
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-success">Add Tag</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <h2 class="h5 mb-3">Existing tags</h2>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Tag number</th>
+                            <th scope="col">RFID hex</th>
+                            <th scope="col" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tag in tags %}
+                        <tr>
+                            <td>{{ tag.tag_number }}</td>
+                            <td class="font-monospace small text-break">{{ tag.rfid_hex }}</td>
+                            <td class="text-end">
+                                <form method="post" action="{% url 'tracker:rfid_tags_list' %}" class="d-inline" onsubmit="return confirm('Remove tag {{ tag.tag_number }}?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="delete_id" value="{{ tag.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-muted">No RFID tags yet. Add one above.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

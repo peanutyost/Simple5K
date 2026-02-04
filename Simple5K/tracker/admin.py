@@ -1,8 +1,20 @@
 from django.contrib import admin
-from .models import race, runners, laps, Banner, ApiKey
-# Register your models here.
+from .models import race, runners, laps, Banner, ApiKey, RfidTag
 
 admin.site.register(ApiKey)
+
+
+@admin.register(RfidTag)
+class RfidTagAdmin(admin.ModelAdmin):
+    list_display = ('tag_number', 'rfid_hex_short')
+    ordering = ('tag_number',)
+    search_fields = ('tag_number', 'rfid_hex')
+
+    @admin.display(description='RFID hex')
+    def rfid_hex_short(self, obj):
+        if not obj.rfid_hex:
+            return ''
+        return obj.rfid_hex[:24] + '...' if len(obj.rfid_hex) > 24 else obj.rfid_hex
 
 
 @admin.register(race)
@@ -22,7 +34,7 @@ class BannerAdmin(admin.ModelAdmin):
 
 @admin.register(runners)
 class RunnersAdmin(admin.ModelAdmin):
-    list_display = ('first_name', 'last_name', 'race', 'number', 'rfid_tag_hex')
+    list_display = ('first_name', 'last_name', 'race', 'number', 'tag', 'rfid_tag_hex')
 
 
 @admin.register(laps)

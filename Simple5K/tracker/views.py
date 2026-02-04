@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
+from django.db import IntegrityError
 from django.db.models import F, Q, Window, IntegerField, OrderBy, Value
 from django.db.models.functions import Rank, Lower, Coalesce
 from django.urls import reverse
@@ -20,7 +21,7 @@ import io
 import json
 import pytz
 
-from .models import race, runners, laps, Banner, ApiKey
+from .models import race, runners, laps, Banner, ApiKey, RfidTag
 from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm
 from .pdf_gen import generate_race_report, create_runner_pdf
 
@@ -752,12 +753,16 @@ def record_lap(request):
                 continue
 
             try:
-                runner_rfid = bytes.fromhex(runner_rfid_hex)  # Convert to bytes
-                # Parse the timestamp into a timezone-aware datetime object
                 time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
                 current_time = time_naive.replace(tzinfo=pytz.utc)
-                runner_obj = runners.objects.get(rfid_tag=runner_rfid)  # Get runner object, crucial to keep here
-                race_obj = race.objects.get(id=race_id)  # get race object
+                race_obj = race.objects.get(id=race_id)
+                rfid_tag_obj = RfidTag.objects.filter(
+                    rfid_hex__iexact=runner_rfid_hex.strip()
+                ).first()
+                if not rfid_tag_obj:
+                    results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Tag not found"})
+                    continue
+                runner_obj = runners.objects.get(race=race_obj, tag=rfid_tag_obj)
 
                 if race_obj.min_lap_time is None:
                     race_obj.min_lap_time = timedelta(seconds=0)
@@ -833,8 +838,7 @@ def record_lap(request):
                     results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
 
             except runners.DoesNotExist:
-
-                results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
+                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "No runner in this race has that tag"})
 
             except race.DoesNotExist:
 
@@ -900,7 +904,12 @@ def update_rfid(request):
 
         race_local = race.objects.get(id=race_id)
         runner_obj = runners.objects.filter(number=runner_number).filter(race=race_local).first()
-        runner_obj.rfid_tag = bytes.fromhex(rfid_tag)
+        if not runner_obj:
+            return JsonResponse({'error': 'Runner not found'}, status=404)
+        rfid_tag_obj = RfidTag.objects.filter(rfid_hex__iexact=(rfid_tag or '').strip()).first()
+        if not rfid_tag_obj:
+            return JsonResponse({'error': 'RFID tag not found with that hex value'}, status=400)
+        runner_obj.tag = rfid_tag_obj
         runner_obj.save()
 
         return JsonResponse({
@@ -928,6 +937,43 @@ def get_available_races(request):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+# ----------------------------RFID Tags--------------------------------------
+@login_required
+def rfid_tags_list(request):
+    """List RFID tags and allow adding new ones (and optionally deleting)."""
+    if request.method == 'POST':
+        delete_id = request.POST.get('delete_id')
+        if delete_id:
+            try:
+                tag = RfidTag.objects.get(pk=delete_id)
+                tag.delete()
+                messages.success(request, f'RFID tag {tag.tag_number} removed.')
+            except RfidTag.DoesNotExist:
+                messages.error(request, 'Tag not found.')
+            return redirect('tracker:rfid_tags_list')
+
+        tag_number = request.POST.get('tag_number')
+        rfid_hex = (request.POST.get('rfid_hex') or '').strip()
+        if tag_number is not None and rfid_hex:
+            try:
+                tag_number = int(tag_number)
+                if tag_number < 1:
+                    messages.error(request, 'Tag number must be at least 1.')
+                else:
+                    RfidTag.objects.create(tag_number=tag_number, rfid_hex=rfid_hex)
+                    messages.success(request, f'RFID tag {tag_number} added.')
+            except ValueError:
+                messages.error(request, 'Tag number must be a whole number.')
+            except IntegrityError:
+                messages.error(request, f'Tag number {tag_number} already exists.')
+        else:
+            messages.error(request, 'Tag number and RFID hex are required.')
+        return redirect('tracker:rfid_tags_list')
+
+    tags = RfidTag.objects.all().order_by('tag_number')
+    return render(request, 'tracker/rfid_tags.html', {'tags': tags})
 
 
 # View for generating API keys
@@ -961,6 +1007,11 @@ def assign_numbers(request):
 
             for runner in runners_without_number:
                 runner.number = next_number
+                try:
+                    rfid_tag = RfidTag.objects.get(tag_number=next_number)
+                    runner.tag = rfid_tag
+                except RfidTag.DoesNotExist:
+                    runner.tag = None
                 runner.save()
                 next_number += 1
             messages.success(request, 'Numbers assigned successfully!')
