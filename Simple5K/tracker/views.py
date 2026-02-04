@@ -564,6 +564,14 @@ def edit_runner(request):
             errors.append('Invalid shirt size')
         else:
             runner_obj.shirt_size = v
+    if 'paid' in data:
+        v = data.get('paid')
+        if v in (True, 'true', '1', 1):
+            runner_obj.paid = True
+        elif v in (False, 'false', '0', 0, None, ''):
+            runner_obj.paid = False
+        else:
+            errors.append('Invalid paid value')
     if errors:
         return JsonResponse({'success': False, 'errors': errors}, status=400)
     runner_obj.save()

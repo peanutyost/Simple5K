@@ -30,7 +30,7 @@
                             data-first-name="{{ runner.first_name|escapejs }}"
                             data-last-name="{{ runner.last_name|escapejs }}"
                             data-email="{{ runner.email|escapejs }}"
-                            data-age="{{ runner.age|escapejs }}"
+                            data-age="{{ runner.age }}"
                             data-gender="{{ runner.gender|default:''|escapejs }}"
                             data-number="{{ runner.number|default:'' }}"
                             data-type="{{ runner.type|default:''|escapejs }}"
@@ -194,6 +194,10 @@
         tr.querySelector('.type-cell').querySelector('select').value = type || '';
         tr.querySelector('.shirt-cell').innerHTML = '<select class="form-select form-select-sm edit-shirt">' + selectOptions(choices.shirt_sizes) + '</select>';
         tr.querySelector('.shirt-cell').querySelector('select').value = shirt || (choices.shirt_sizes[0] && choices.shirt_sizes[0].value);
+        var paid = tr.getAttribute('data-paid');
+        tr.querySelector('.paid-cell').innerHTML =
+            '<select class="form-select form-select-sm edit-paid"><option value="0">No</option><option value="1">Yes</option></select>';
+        tr.querySelector('.paid-cell').querySelector('select').value = paid === '1' ? '1' : '0';
         tr.querySelector('.actions-cell').innerHTML =
             '<button type="button" class="btn btn-sm btn-success save-runner-btn me-1">Save</button>' +
             '<button type="button" class="btn btn-sm btn-secondary cancel-runner-btn">Cancel</button>';
@@ -233,6 +237,8 @@
         var type = typeEl && typeEl.value !== '' ? typeEl.value : null;
         var shirtEl = tr.querySelector('.edit-shirt');
         var shirt = shirtEl ? shirtEl.value : '';
+        var paidEl = tr.querySelector('.edit-paid');
+        var paid = paidEl ? (paidEl.value === '1') : false;
 
         var payload = {
             runner_id: parseInt(id, 10),
@@ -242,7 +248,8 @@
             age: age,
             number: number !== null ? (isNaN(parseInt(number, 10)) ? null : parseInt(number, 10)) : null,
             type: type,
-            shirt_size: shirt
+            shirt_size: shirt,
+            paid: paid
         };
         var btn = tr.querySelector('.save-runner-btn');
         if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
