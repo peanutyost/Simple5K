@@ -21,6 +21,7 @@ import hmac
 import hashlib
 import io
 import json
+import logging
 import pytz
 import urllib.parse
 
@@ -1259,6 +1260,9 @@ def paypal_cancel(request):
     return render(request, 'tracker/paypal_cancel.html')
 
 
+logger = logging.getLogger(__name__)
+
+
 @csrf_exempt
 def paypal_ipn(request):
     """
@@ -1267,37 +1271,48 @@ def paypal_ipn(request):
     """
     if request.method != 'POST':
         return HttpResponse(status=405)
-    # Re-POST the exact form data to PayPal with cmd=_notify-validate to verify
     raw_body = request.body
+    if not raw_body:
+        logger.warning('PayPal IPN: empty body')
+        return HttpResponse('ok')
     site_settings = SiteSettings.get_settings()
     use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
     paypal_url = 'https://ipnpb.sandbox.paypal.com/cgi-bin/webscr' if use_sandbox else 'https://ipnpb.paypal.com/cgi-bin/webscr'
-    verify_params = urllib.parse.parse_qsl(raw_body.decode('utf-8'))
-    verify_params.append(('cmd', '_notify-validate'))
-    verify_data = urllib.parse.urlencode(verify_params).encode('utf-8')
+    # Re-POST the raw body back to PayPal with only cmd=_notify-validate appended (no re-encoding)
+    verify_data = raw_body + b'&cmd=_notify-validate'
     try:
         import urllib.request
         req = urllib.request.Request(paypal_url, data=verify_data, method='POST', headers={'Content-Type': 'application/x-www-form-urlencoded'})
         with urllib.request.urlopen(req, timeout=60) as resp:
             verify_result = resp.read().decode('utf-8').strip()
-    except Exception:
+    except Exception as e:
+        logger.exception('PayPal IPN: verification request failed: %s', e)
         return HttpResponse(status=500)
+    logger.info('PayPal IPN: verification result=%s', verify_result)
     if verify_result != 'VERIFIED':
         return HttpResponse(status=400)
-    data = urllib.parse.parse_qs(raw_body.decode('utf-8'))
+    # Parse body for our use (latin-1 never fails on any byte)
+    try:
+        body_str = raw_body.decode('utf-8')
+    except UnicodeDecodeError:
+        body_str = raw_body.decode('latin-1')
+    data = urllib.parse.parse_qs(body_str)
     payment_status = (data.get('payment_status') or [''])[0]
     custom = (data.get('custom') or [''])[0]
-    if payment_status.lower() != 'completed':
+    logger.info('PayPal IPN: payment_status=%s custom=%s', payment_status, custom[:50] + '...' if len(custom) > 50 else custom)
+    if payment_status.lower() not in ('completed', 'processed'):
         return HttpResponse('ok')
     runner_id = _paypal_runner_id_from_custom(custom)
     if runner_id is None:
+        logger.warning('PayPal IPN: could not extract runner_id from custom')
         return HttpResponse('ok')
     try:
         runner_obj = runners.objects.get(pk=runner_id)
         runner_obj.paid = True
         runner_obj.save(update_fields=['paid'])
+        logger.info('PayPal IPN: marked runner_id=%s as paid', runner_id)
     except runners.DoesNotExist:
-        pass
+        logger.warning('PayPal IPN: runner_id=%s not found', runner_id)
     return HttpResponse('ok')
 
 
