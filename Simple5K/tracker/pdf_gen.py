@@ -317,9 +317,9 @@ def generate_race_summary_pdf(buffer, summary_data):
                 str(r.get('age_group_place') or '—'),
             ])
         col_widths = [
-            0.45 * inch, 1.3 * inch, 0.35 * inch,
-            0.75 * inch, 0.3 * inch, 0.75 * inch, 0.3 * inch,
-            0.75 * inch, 0.6 * inch, 0.45 * inch
+            0.5 * inch, 1.35 * inch, 0.4 * inch,
+            0.85 * inch, 0.35 * inch, 0.85 * inch, 0.35 * inch,
+            0.85 * inch, 0.65 * inch, 0.5 * inch
         ]
         table = Table(data, colWidths=col_widths)
         table.setStyle(TableStyle([
@@ -327,8 +327,8 @@ def generate_race_summary_pdf(buffer, summary_data):
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('FONTSIZE', (0, 0), (-1, 0), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -342,9 +342,9 @@ def generate_race_summary_pdf(buffer, summary_data):
         story.append(Spacer(1, 0.35 * inch))
 
     if summary_data.get('females'):
-        _section_table('Women (by finish order)', summary_data['females'])
+        _section_table('Women', summary_data['females'])
     if summary_data.get('males'):
-        _section_table('Men (by finish order)', summary_data['males'])
+        _section_table('Men', summary_data['males'])
 
     if not summary_data.get('females') and not summary_data.get('males'):
         story.append(Paragraph('No finishers with gender recorded for this race.', styles['Normal']))
