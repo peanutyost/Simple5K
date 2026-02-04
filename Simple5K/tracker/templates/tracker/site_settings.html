@@ -41,6 +41,23 @@
                             </div>
                             {% if form.paypal_sandbox.help_text %}<small class="form-text text-muted">{{ form.paypal_sandbox.help_text }}</small>{% endif %}
                         </div>
+                        <hr class="my-4">
+                        <h5 class="mb-3">Signup confirmation email</h5>
+                        <p class="text-muted small mb-4">
+                            After signup we send a confirmation email. If PayPal is enabled, we wait for payment confirmation; if we don't receive it within the timeout below, we send the email anyway and include a link to pay. Set the site base URL so that link works.
+                        </p>
+                        <div class="mb-4">
+                            <label for="{{ form.signup_confirmation_timeout_minutes.id_for_label }}" class="form-label">{{ form.signup_confirmation_timeout_minutes.label }}</label>
+                            {{ form.signup_confirmation_timeout_minutes }}
+                            {% if form.signup_confirmation_timeout_minutes.help_text %}<small class="form-text text-muted">{{ form.signup_confirmation_timeout_minutes.help_text }}</small>{% endif %}
+                            {% if form.signup_confirmation_timeout_minutes.errors %}<div class="invalid-feedback d-block">{{ form.signup_confirmation_timeout_minutes.errors }}</div>{% endif %}
+                        </div>
+                        <div class="mb-4">
+                            <label for="{{ form.site_base_url.id_for_label }}" class="form-label">{{ form.site_base_url.label }}</label>
+                            {{ form.site_base_url }}
+                            {% if form.site_base_url.help_text %}<small class="form-text text-muted">{{ form.site_base_url.help_text }}</small>{% endif %}
+                            {% if form.site_base_url.errors %}<div class="invalid-feedback d-block">{{ form.site_base_url.errors }}</div>{% endif %}
+                        </div>
                         <button type="submit" class="btn btn-primary">Save settings</button>
                     </form>
                 </div>

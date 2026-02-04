@@ -109,6 +109,8 @@ class runners(models.Model):
     notes = models.CharField(max_length=512, null=True, blank=True)
     email_sent = models.BooleanField(default=False)
     paid = models.BooleanField(default=False, help_text='True when PayPal donation/payment completed')
+    created_at = models.DateTimeField(auto_now_add=True)
+    signup_confirmation_sent = models.BooleanField(default=False)
 
     def __str__(self):
         return self.first_name + " " + self.last_name
@@ -181,6 +183,15 @@ class SiteSettings(models.Model):
     paypal_sandbox = models.BooleanField(
         default=False,
         help_text='Use PayPal Sandbox for testing. Turn off for live payments.'
+    )
+    signup_confirmation_timeout_minutes = models.PositiveIntegerField(
+        default=15,
+        help_text='Minutes to wait for PayPal confirmation before sending signup confirmation email. If unpaid after this, email is sent with a link to pay.'
+    )
+    site_base_url = models.URLField(
+        blank=True,
+        max_length=500,
+        help_text='Base URL of this site (e.g. https://example.com). Used for pay-later links in signup confirmation emails.'
     )
 
     class Meta:

@@ -1230,6 +1230,71 @@ def _paypal_runner_id_from_custom(custom_value):
     return runner_id
 
 
+def _pay_link_for_runner(runner):
+    """Build the pay-later URL for a runner, or None if site_base_url is not set."""
+    site_settings = SiteSettings.get_settings()
+    base = (site_settings.site_base_url or '').strip().rstrip('/')
+    if not base:
+        return None
+    custom = _paypal_custom_for_runner(runner.id)
+    _, signature = custom.split(':', 1)
+    path = reverse('tracker:pay-entry', args=[runner.id, signature])
+    return base + path
+
+
+def send_signup_confirmation_email(runner):
+    """
+    Send a single signup confirmation email to the runner.
+    If paid: confirm signup and payment. If not paid: confirm signup and include pay link if site_base_url is set.
+    Marks runner.signup_confirmation_sent = True.
+    """
+    if not runner.email or (runner.email or '').strip() == '':
+        runner.signup_confirmation_sent = True
+        runner.save(update_fields=['signup_confirmation_sent'])
+        return
+    race_obj = runner.race
+    race_name = race_obj.name
+    race_date = race_obj.date
+    race_time = race_obj.scheduled_time
+    entry_fee = float(race_obj.Entry_fee or 0)
+    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'EMAIL_HOST_USER', 'noreply@example.com')
+    subject = f"Signup confirmed: {race_name}"
+    if runner.paid:
+        body = f"Hi {runner.first_name},\n\nYou're signed up for {race_name}."
+        if race_date:
+            body += f" The race is on {race_date}"
+            if race_time:
+                body += f" at {race_time}"
+            body += "."
+        body += "\n\nYour payment has been received. See you on race day!"
+    else:
+        body = f"Hi {runner.first_name},\n\nYou're signed up for {race_name}."
+        if race_date:
+            body += f" The race is on {race_date}"
+            if race_time:
+                body += f" at {race_time}"
+            body += "."
+        if entry_fee > 0:
+            body += f"\n\nThe entry fee is ${entry_fee:.2f}."
+            pay_link = _pay_link_for_runner(runner)
+            if pay_link:
+                body += f"\n\nIf you haven't paid yet, you can pay here: {pay_link}"
+            body += "\n\nYou can also pay on race day when you check in."
+        body += "\n\nSee you on race day!"
+    body += "\n\n---\nThis is an unmonitored email account. Please do not reply."
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=from_email,
+            recipient_list=[runner.email],
+            fail_silently=False,
+        )
+    finally:
+        runner.signup_confirmation_sent = True
+        runner.save(update_fields=['signup_confirmation_sent'])
+
+
 def race_signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)
@@ -1263,6 +1328,8 @@ def race_signup(request):
                 }
                 paypal_url = f"{base_url}/cgi-bin/webscr?{urllib.parse.urlencode(params)}"
                 return redirect(paypal_url)
+            # No PayPal: send signup confirmation immediately
+            send_signup_confirmation_email(runner)
             return redirect(reverse('tracker:signup-success', args=[selected_race.id]))
     else:
         form = SignupForm()
@@ -1336,9 +1403,54 @@ def paypal_ipn(request):
         runner_obj = runners.objects.get(pk=runner_id)
         runner_obj.paid = True
         runner_obj.save(update_fields=['paid'])
+        send_signup_confirmation_email(runner_obj)
     except runners.DoesNotExist:
         pass
     return HttpResponse('ok')
+
+
+def pay_entry(request, runner_id, signature):
+    """
+    Pay-later page: valid link from signup confirmation email. Verifies runner_id + signature
+    then redirects to PayPal with the same flow as at signup.
+    """
+    custom = f"{runner_id}:{signature}"
+    if _paypal_runner_id_from_custom(custom) != runner_id:
+        raise Http404("Invalid or expired pay link.")
+    try:
+        runner_obj = runners.objects.get(pk=runner_id)
+    except runners.DoesNotExist:
+        raise Http404("Runner not found.")
+    if runner_obj.paid:
+        return redirect(reverse('tracker:signup-success', args=[runner_obj.race_id]))
+    site_settings = SiteSettings.get_settings()
+    paypal_email = (site_settings.paypal_business_email or '').strip()
+    if not paypal_email:
+        paypal_email = getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or ''
+    race_obj = runner_obj.race
+    entry_fee = float(race_obj.Entry_fee or 0)
+    if not site_settings.paypal_enabled or not paypal_email or entry_fee <= 0:
+        return redirect(reverse('tracker:signup-success', args=[race_obj.id]))
+    use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
+    base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
+    return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
+    cancel_url = request.build_absolute_uri(reverse('tracker:paypal-cancel'))
+    notify_url = request.build_absolute_uri(reverse('tracker:paypal-ipn'))
+    custom_val = _paypal_custom_for_runner(runner_obj.id)
+    item_name = f"Race entry: {race_obj.name}"
+    params = {
+        'cmd': '_donations',
+        'business': paypal_email,
+        'amount': f'{entry_fee:.2f}',
+        'currency_code': 'USD',
+        'item_name': item_name[:127],
+        'return': return_url,
+        'cancel_return': cancel_url,
+        'notify_url': notify_url,
+        'custom': custom_val[:256],
+    }
+    paypal_url = f"{base_url}/cgi-bin/webscr?{urllib.parse.urlencode(params)}"
+    return redirect(paypal_url)
 
 
 def race_countdown(request):
