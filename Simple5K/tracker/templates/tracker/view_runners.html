@@ -1,11 +1,13 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
+<form id="csrf-form" method="post" action="" style="display: none;">{% csrf_token %}</form>
 <div class="container py-3 py-md-4">
     <div class="row">
         <div class="col-12">
             <h2 class="mb-4">Runners for {{ race.name }}</h2>
             <a href="{% url 'tracker:select_race_runners' %}" class="btn btn-primary mb-3">Back to Race List</a>
+            <p class="text-muted small mb-3">Click a row to edit the runner.</p>
             <div class="table-responsive">
                 <table id="runnersTable" class="table table-striped table-bordered table-hover">
                     <thead class="table-dark">
@@ -15,16 +17,28 @@
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Number</th>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Type</th>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Shirt Size</th>
+                            <th scope="col" class="no-sort">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for runner in runners %}
-                        <tr>
-                            <td>{{ runner.first_name }} {{ runner.last_name }}</td>
-                            <td>{{ runner.age }}</td>
-                            <td>{% if runner.number %}{{ runner.number }}{% else %}—{% endif %}</td>
-                            <td>{{ runner.type|default:"—" }}</td>
-                            <td>{{ runner.shirt_size }}</td>
+                        <tr class="runner-row" data-runner-id="{{ runner.id }}"
+                            data-first-name="{{ runner.first_name|escapejs }}"
+                            data-last-name="{{ runner.last_name|escapejs }}"
+                            data-email="{{ runner.email|escapejs }}"
+                            data-age="{{ runner.age|escapejs }}"
+                            data-gender="{{ runner.gender|default:''|escapejs }}"
+                            data-number="{{ runner.number|default:'' }}"
+                            data-type="{{ runner.type|default:''|escapejs }}"
+                            data-shirt-size="{{ runner.shirt_size|escapejs }}">
+                            <td class="name-cell">{{ runner.first_name }} {{ runner.last_name }}</td>
+                            <td class="age-cell">{{ runner.age }}</td>
+                            <td class="number-cell">{% if runner.number %}{{ runner.number }}{% else %}—{% endif %}</td>
+                            <td class="type-cell">{{ runner.type|default:"—" }}</td>
+                            <td class="shirt-cell">{{ runner.shirt_size }}</td>
+                            <td class="actions-cell">
+                                <button type="button" class="btn btn-sm btn-outline-primary edit-runner-btn" aria-label="Edit runner">Edit</button>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -33,34 +47,196 @@
         </div>
     </div>
 </div>
-<style>
-.sortable-th:hover { cursor: pointer; }
-.sortable-th.sorted_asc::after { content: " \2191"; }
-.sortable-th.sorted_desc::after { content: " \2193"; }
-</style>
+<script id="runner-choices" type="application/json">
+{
+  "age_brackets": [{% for value, label in age_brackets %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
+  "genders": [{"value": "", "label": "—"}, {% for value, label in genders %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
+  "race_types": [{"value": "", "label": "—"}, {% for value, label in race_types %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
+  "shirt_sizes": [{% for value, label in shirt_sizes %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}]
+}
+</script>
 <script>
 (function() {
     var table = document.getElementById('runnersTable');
     if (!table || !table.tHead) return;
-    var headers = table.tHead.querySelectorAll('th');
-    headers.forEach(function(header, colIdx) {
-        header.addEventListener('click', function() { sort(colIdx); });
+    var choicesEl = document.getElementById('runner-choices');
+    var choices = choicesEl ? JSON.parse(choicesEl.textContent) : { age_brackets: [], genders: [], race_types: [], shirt_sizes: [] };
+    var editRunnerUrl = '{% url "tracker:edit_runner" %}';
+    function getCsrf() {
+        var x = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (x && x.value) return x.value;
+        var m = document.cookie.match(/csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1].trim()) : '';
+    }
+
+    function selectOptions(opts) {
+        var html = '';
+        (opts || []).forEach(function(o) { html += '<option value="' + escapeAttr(o.value) + '">' + escapeHtml(o.label) + '</option>'; });
+        return html;
+    }
+    function escapeHtml(s) {
+        if (s == null) return '';
+        var d = document.createElement('div');
+        d.textContent = String(s);
+        return d.innerHTML;
+    }
+    function escapeAttr(s) {
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function enterEditMode(tr) {
+        if (tr.classList.contains('editing')) return;
+        tr.classList.add('editing');
+        var id = tr.getAttribute('data-runner-id');
+        var firstName = tr.getAttribute('data-first-name') || '';
+        var lastName = tr.getAttribute('data-last-name') || '';
+        var email = tr.getAttribute('data-email') || '';
+        var age = tr.getAttribute('data-age') || '';
+        var gender = tr.getAttribute('data-gender') || '';
+        var number = tr.getAttribute('data-number') || '';
+        var type = tr.getAttribute('data-type') || '';
+        var shirt = tr.getAttribute('data-shirt-size') || '';
+
+        tr.querySelector('.name-cell').innerHTML =
+            '<input type="text" class="form-control form-control-sm edit-first" value="' + escapeAttr(firstName) + '" placeholder="First" maxlength="50"> ' +
+            '<input type="text" class="form-control form-control-sm edit-last mt-1" value="' + escapeAttr(lastName) + '" placeholder="Last" maxlength="50"> ' +
+            '<input type="email" class="form-control form-control-sm edit-email mt-1" value="' + escapeAttr(email) + '" placeholder="Email" maxlength="254">';
+        tr.querySelector('.age-cell').innerHTML = '<select class="form-select form-select-sm edit-age">' + selectOptions(choices.age_brackets) + '</select>';
+        tr.querySelector('.age-cell').querySelector('select').value = age || (choices.age_brackets[0] && choices.age_brackets[0].value);
+        tr.querySelector('.number-cell').innerHTML = '<input type="number" class="form-control form-control-sm edit-number" value="' + escapeAttr(number) + '" min="0" placeholder="—">';
+        tr.querySelector('.type-cell').innerHTML = '<select class="form-select form-select-sm edit-type">' + selectOptions(choices.race_types) + '</select>';
+        tr.querySelector('.type-cell').querySelector('select').value = type || '';
+        tr.querySelector('.shirt-cell').innerHTML = '<select class="form-select form-select-sm edit-shirt">' + selectOptions(choices.shirt_sizes) + '</select>';
+        tr.querySelector('.shirt-cell').querySelector('select').value = shirt || (choices.shirt_sizes[0] && choices.shirt_sizes[0].value);
+        tr.querySelector('.actions-cell').innerHTML =
+            '<button type="button" class="btn btn-sm btn-success save-runner-btn me-1">Save</button>' +
+            '<button type="button" class="btn btn-sm btn-secondary cancel-runner-btn">Cancel</button>';
+        tr.querySelector('.save-runner-btn').addEventListener('click', function() { saveRunner(tr); });
+        tr.querySelector('.cancel-runner-btn').addEventListener('click', function() { cancelEdit(tr); });
+    }
+
+    function cancelEdit(tr) {
+        if (!tr.classList.contains('editing')) return;
+        var firstName = tr.getAttribute('data-first-name') || '';
+        var lastName = tr.getAttribute('data-last-name') || '';
+        var age = tr.getAttribute('data-age') || '';
+        var number = tr.getAttribute('data-number');
+        var type = tr.getAttribute('data-type') || '';
+        var shirt = tr.getAttribute('data-shirt-size') || '';
+        tr.classList.remove('editing');
+        tr.querySelector('.name-cell').textContent = (firstName + ' ' + lastName).trim() || '—';
+        tr.querySelector('.age-cell').textContent = age || '—';
+        tr.querySelector('.number-cell').textContent = number !== '' && number != null ? number : '—';
+        tr.querySelector('.type-cell').textContent = type || '—';
+        tr.querySelector('.shirt-cell').textContent = shirt || '—';
+        tr.querySelector('.actions-cell').innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary edit-runner-btn" aria-label="Edit runner">Edit</button>';
+        tr.querySelector('.edit-runner-btn').addEventListener('click', function(e) { e.stopPropagation(); enterEditMode(tr); });
+    }
+
+    function saveRunner(tr) {
+        var id = tr.getAttribute('data-runner-id');
+        var first = (tr.querySelector('.edit-first') && tr.querySelector('.edit-first').value) || '';
+        var last = (tr.querySelector('.edit-last') && tr.querySelector('.edit-last').value) || '';
+        var email = (tr.querySelector('.edit-email') && tr.querySelector('.edit-email').value) || '';
+        var age = (tr.querySelector('.edit-age') && tr.querySelector('.edit-age').value) || '';
+        var numberEl = tr.querySelector('.edit-number');
+        var number = numberEl && numberEl.value !== '' ? numberEl.value : null;
+        var typeEl = tr.querySelector('.edit-type');
+        var type = typeEl && typeEl.value !== '' ? typeEl.value : null;
+        var shirtEl = tr.querySelector('.edit-shirt');
+        var shirt = shirtEl ? shirtEl.value : '';
+
+        var payload = {
+            runner_id: parseInt(id, 10),
+            first_name: first.trim(),
+            last_name: last.trim(),
+            email: email.trim(),
+            age: age,
+            number: number !== null ? (isNaN(parseInt(number, 10)) ? null : parseInt(number, 10)) : null,
+            type: type,
+            shirt_size: shirt
+        };
+        var btn = tr.querySelector('.save-runner-btn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+        fetch(editRunnerUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrf(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload),
+            credentials: 'same-origin'
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+            if (data.success && data.runner) {
+                var r = data.runner;
+                tr.setAttribute('data-first-name', r.first_name || '');
+                tr.setAttribute('data-last-name', r.last_name || '');
+                tr.setAttribute('data-email', r.email || '');
+                tr.setAttribute('data-age', r.age || '');
+                tr.setAttribute('data-number', r.number != null ? r.number : '');
+                tr.setAttribute('data-type', r.type || '');
+                tr.setAttribute('data-shirt-size', r.shirt_size || '');
+                tr.classList.remove('editing');
+                tr.querySelector('.name-cell').textContent = ((r.first_name || '') + ' ' + (r.last_name || '')).trim() || '—';
+                tr.querySelector('.age-cell').textContent = r.age || '—';
+                tr.querySelector('.number-cell').textContent = r.number != null ? r.number : '—';
+                tr.querySelector('.type-cell').textContent = r.type || '—';
+                tr.querySelector('.shirt-cell').textContent = r.shirt_size || '—';
+                tr.querySelector('.actions-cell').innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary edit-runner-btn" aria-label="Edit runner">Edit</button>';
+                tr.querySelector('.edit-runner-btn').addEventListener('click', function(e) { e.stopPropagation(); enterEditMode(tr); });
+            } else {
+                var msg = (data.errors && data.errors.length) ? data.errors.join(' ') : 'Save failed';
+                tr.querySelector('.actions-cell').innerHTML = '<span class="text-danger small">' + escapeHtml(msg) + '</span> <button type="button" class="btn btn-sm btn-secondary cancel-runner-btn ms-1">Cancel</button>';
+                tr.querySelector('.cancel-runner-btn').addEventListener('click', function() { cancelEdit(tr); });
+            }
+        }).catch(function() {
+            if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+            tr.querySelector('.actions-cell').innerHTML = '<span class="text-danger small">Network error</span> <button type="button" class="btn btn-sm btn-secondary cancel-runner-btn ms-1">Cancel</button>';
+            tr.querySelector('.cancel-runner-btn').addEventListener('click', function() { cancelEdit(tr); });
+        });
+    }
+
+    table.querySelectorAll('tbody tr.runner-row').forEach(function(tr) {
+        tr.querySelector('.edit-runner-btn').addEventListener('click', function(e) { e.stopPropagation(); enterEditMode(tr); });
+        tr.addEventListener('click', function(e) {
+            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
+            if (!tr.classList.contains('editing')) enterEditMode(tr);
+        });
     });
+
+    var headers = table.tHead.querySelectorAll('th.sortable-th');
     var sortDir = 1;
     var sortCol = 0;
-    function sort(colIdx) {
-        if (sortCol === colIdx) sortDir = -sortDir; else { sortCol = colIdx; sortDir = 1; }
-        headers.forEach(function(h) { h.classList.remove('sorted_asc', 'sorted_desc'); });
-        headers[colIdx].classList.add(sortDir === 1 ? 'sorted_asc' : 'sorted_desc');
-        var tbody = table.querySelector('tbody');
-        var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
-        rows.sort(function(a, b) {
-            var av = (a.cells[colIdx] && a.cells[colIdx].textContent) ? a.cells[colIdx].textContent.trim() : '';
-            var bv = (b.cells[colIdx] && b.cells[colIdx].textContent) ? b.cells[colIdx].textContent.trim() : '';
-            return sortDir * av.localeCompare(bv);
+    headers.forEach(function(th, colIdx) {
+        th.addEventListener('click', function() {
+            sortDir = (sortCol === colIdx) ? -sortDir : 1;
+            sortCol = colIdx;
+            var tbody = table.querySelector('tbody');
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+            rows.sort(function(a, b) {
+                var av = (a.cells[colIdx] && a.cells[colIdx].textContent) ? a.cells[colIdx].textContent.trim() : '';
+                var bv = (b.cells[colIdx] && b.cells[colIdx].textContent) ? b.cells[colIdx].textContent.trim() : '';
+                return sortDir * av.localeCompare(bv, undefined, { numeric: true });
+            });
+            rows.forEach(function(r) { tbody.appendChild(r); });
         });
-        rows.forEach(function(r) { tbody.appendChild(r); });
-    }
+    });
 })();
 </script>
+<style>
+.sortable-th:hover { cursor: pointer; }
+.sortable-th.sorted_asc::after { content: " \2191"; }
+.sortable-th.sorted_desc::after { content: " \2193"; }
+.runner-row { cursor: pointer; }
+.runner-row.editing { cursor: default; }
+.runner-row.editing .name-cell { min-width: 180px; }
+</style>
 {% endblock %}

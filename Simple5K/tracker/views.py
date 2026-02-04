@@ -387,7 +387,110 @@ def select_race_for_runners(request):
 def show_runners(request, pk):
     selected_race = get_object_or_404(race, pk=pk)
     race_runners = runners.objects.filter(race_id=pk)
-    return render(request, 'tracker/view_runners.html', {'race': selected_race, 'runners': race_runners})
+    context = {
+        'race': selected_race,
+        'runners': race_runners,
+        'age_brackets': runners.age_bracket,
+        'genders': runners.gender,
+        'race_types': runners.race_type,
+        'shirt_sizes': runners.shirt_size,
+    }
+    return render(request, 'tracker/view_runners.html', context)
+
+
+@login_required
+def edit_runner(request):
+    """POST: update runner fields. Expects runner_id and editable fields. Returns JSON."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'errors': ['Method not allowed']}, status=405)
+    try:
+        data = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        data = request.POST.dict()
+    runner_id = data.get('runner_id')
+    if not runner_id:
+        return JsonResponse({'success': False, 'errors': ['runner_id required']}, status=400)
+    runner_obj = get_object_or_404(runners, pk=runner_id)
+    errors = []
+    if 'first_name' in data:
+        v = (data.get('first_name') or '').strip()
+        if not v:
+            errors.append('First name is required')
+        elif len(v) > 50:
+            errors.append('First name too long')
+        else:
+            runner_obj.first_name = v
+    if 'last_name' in data:
+        v = (data.get('last_name') or '').strip()
+        if not v:
+            errors.append('Last name is required')
+        elif len(v) > 50:
+            errors.append('Last name too long')
+        else:
+            runner_obj.last_name = v
+    if 'email' in data:
+        v = (data.get('email') or '').strip()
+        if not v:
+            errors.append('Email is required')
+        elif len(v) > 254:
+            errors.append('Email too long')
+        else:
+            runner_obj.email = v
+    if 'age' in data:
+        v = (data.get('age') or '').strip()
+        valid_ages = [c[0] for c in runners.age_bracket]
+        if v not in valid_ages:
+            errors.append('Invalid age bracket')
+        else:
+            runner_obj.age = v
+    if 'gender' in data:
+        v = (data.get('gender') or '').strip() or None
+        if v is not None and v not in [c[0] for c in runners.gender]:
+            errors.append('Invalid gender')
+        else:
+            runner_obj.gender = v
+    if 'number' in data:
+        v = data.get('number')
+        if v is None or v == '':
+            runner_obj.number = None
+        else:
+            try:
+                n = int(v)
+                if n < 0:
+                    errors.append('Number must be non-negative')
+                else:
+                    runner_obj.number = n
+            except (TypeError, ValueError):
+                errors.append('Number must be an integer')
+    if 'type' in data:
+        v = (data.get('type') or '').strip() or None
+        if v is not None and v not in [c[0] for c in runners.race_type]:
+            errors.append('Invalid type')
+        else:
+            runner_obj.type = v
+    if 'shirt_size' in data:
+        v = (data.get('shirt_size') or '').strip()
+        if not v or v not in [c[0] for c in runners.shirt_size]:
+            errors.append('Invalid shirt size')
+        else:
+            runner_obj.shirt_size = v
+    if errors:
+        return JsonResponse({'success': False, 'errors': errors}, status=400)
+    runner_obj.save()
+    return JsonResponse({
+        'success': True,
+        'runner': {
+            'id': runner_obj.id,
+            'first_name': runner_obj.first_name,
+            'last_name': runner_obj.last_name,
+            'email': runner_obj.email,
+            'age': runner_obj.age,
+            'gender': runner_obj.gender or '',
+            'number': runner_obj.number,
+            'type': runner_obj.type or '',
+            'shirt_size': runner_obj.shirt_size,
+        }
+    })
 
 
 def format_remaining_time(end_time):
