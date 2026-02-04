@@ -400,6 +400,90 @@ def show_runners(request, pk):
 
 
 @login_required
+def add_runner(request):
+    """POST: create a new runner for the given race. Expects race_id and runner fields. Returns JSON."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'errors': ['Method not allowed']}, status=405)
+    try:
+        data = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        data = request.POST.dict()
+    race_id = data.get('race_id')
+    if not race_id:
+        return JsonResponse({'success': False, 'errors': ['race_id required']}, status=400)
+    race_obj = get_object_or_404(race, pk=race_id)
+    errors = []
+    first_name = (data.get('first_name') or '').strip()
+    last_name = (data.get('last_name') or '').strip()
+    email = (data.get('email') or '').strip()
+    age = (data.get('age') or '').strip()
+    gender = (data.get('gender') or '').strip() or None
+    number = data.get('number')
+    if number is not None and number != '':
+        try:
+            number = int(number)
+            if number < 0:
+                errors.append('Number must be non-negative')
+        except (TypeError, ValueError):
+            errors.append('Number must be an integer')
+    else:
+        number = None
+    runner_type = (data.get('type') or '').strip() or None
+    shirt_size = (data.get('shirt_size') or '').strip()
+    notes = (data.get('notes') or '').strip() or None
+
+    if not first_name:
+        errors.append('First name is required')
+    elif len(first_name) > 50:
+        errors.append('First name too long')
+    if not last_name:
+        errors.append('Last name is required')
+    elif len(last_name) > 50:
+        errors.append('Last name too long')
+    if not email:
+        errors.append('Email is required')
+    elif len(email) > 254:
+        errors.append('Email too long')
+    if not age or age not in [c[0] for c in runners.age_bracket]:
+        errors.append('Valid age bracket is required')
+    if gender is not None and gender not in [c[0] for c in runners._meta.get_field('gender').choices]:
+        errors.append('Invalid gender')
+    if runner_type is not None and runner_type not in [c[0] for c in runners.race_type]:
+        errors.append('Invalid type')
+    if not shirt_size or shirt_size not in [c[0] for c in runners._meta.get_field('shirt_size').choices]:
+        errors.append('Valid shirt size is required')
+
+    if errors:
+        return JsonResponse({'success': False, 'errors': errors}, status=400)
+    runner_obj = runners.objects.create(
+        race=race_obj,
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        age=age,
+        gender=gender,
+        number=number,
+        type=runner_type,
+        shirt_size=shirt_size,
+        notes=notes,
+    )
+    return JsonResponse({
+        'success': True,
+        'runner': {
+            'id': runner_obj.id,
+            'first_name': runner_obj.first_name,
+            'last_name': runner_obj.last_name,
+            'email': runner_obj.email,
+            'age': runner_obj.age,
+            'gender': runner_obj.gender or '',
+            'number': runner_obj.number,
+            'type': runner_obj.type or '',
+            'shirt_size': runner_obj.shirt_size,
+        }
+    })
+
+
+@login_required
 def edit_runner(request):
     """POST: update runner fields. Expects runner_id and editable fields. Returns JSON."""
     if request.method != 'POST':
@@ -446,7 +530,7 @@ def edit_runner(request):
             runner_obj.age = v
     if 'gender' in data:
         v = (data.get('gender') or '').strip() or None
-        if v is not None and v not in [c[0] for c in runners.gender]:
+        if v is not None and v not in [c[0] for c in runners._meta.get_field('gender').choices]:
             errors.append('Invalid gender')
         else:
             runner_obj.gender = v
@@ -471,7 +555,7 @@ def edit_runner(request):
             runner_obj.type = v
     if 'shirt_size' in data:
         v = (data.get('shirt_size') or '').strip()
-        if not v or v not in [c[0] for c in runners.shirt_size]:
+        if not v or v not in [c[0] for c in runners._meta.get_field('shirt_size').choices]:
             errors.append('Invalid shirt size')
         else:
             runner_obj.shirt_size = v
