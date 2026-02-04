@@ -1,68 +1,84 @@
 {% extends 'base.html' %}
 {% load static %}
-
-
-
 {% block content %}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<h1>Runner Email List</h1>
-
-<form id="race-select-form" method="post">
-    {% csrf_token %}
-    <label for="race-select">Select Race:</label>
-    <select id="race-select" name="race_id">
-        <option value="">--- Select a Race ---</option>
-        {% for race_obj in races %}
-            <option value="{{ race_obj.id }}" {% if race_obj.id == selected_race_id|add:0 %}selected{% endif %}>
-                {{ race_obj.name }}
-            </option>  <!--added int filter-->
-        {% endfor %}
-    </select>
-    <button type="submit" style='display:none;'>Get Emails</button> <!-- hide the submit and use ajax -->
-</form>
-
-<div id="email-list-container">
-  {% if email_list %}
-    <h2>Emails:</h2>
-    <textarea id="email-textarea" rows="10" cols="50" readonly>{{ email_list }}</textarea>
-    {% endif %}
+<div class="container py-3 py-md-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Runner Email List</h1>
+            <form id="race-select-form" method="post" action="">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="race-select" class="form-label">Select Race</label>
+                    <select id="race-select" name="race_id" class="form-select" aria-label="Select race to view emails">
+                        <option value="">--- Select a Race ---</option>
+                        {% for race_obj in races %}
+                        <option value="{{ race_obj.id }}" {% if race_obj.id == selected_race_id %}selected{% endif %}>{{ race_obj.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+            <div id="email-list-container" role="region" aria-label="Email list">
+                {% if email_list %}
+                <h2 class="h5 mt-3">Emails</h2>
+                <textarea id="email-textarea" class="form-control font-monospace" rows="10" readonly aria-label="Comma-separated runner emails">{{ email_list }}</textarea>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
-
 <script>
-  $(document).ready(function() {
-      $('#race-select').change(function() {  // Use change event, no need for submit button
-          var raceId = $(this).val();
-
-          if (raceId) {  // Only make AJAX call if a race is selected.
-              $.ajax({
-                  url: '',  //empty string indicates current URL
-                  type: 'POST',
-                  data: {
-                      'race_id': raceId,
-                      'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val() //always send csrf with post
-                  },
-                  dataType: 'json',
-                  success: function(data) {
-                      if (data.emails) {
-                          $('#email-list-container').html('<h2>Emails:</h2><textarea id="email-textarea" rows="10" cols="50" readonly>' + data.emails + '</textarea>');
-                      } else if (data.error){
-                          $('#email-list-container').html('<p>Error: ' + data.error + '</p>');  // Display error message
-                      }
-                      else{
-                        $('#email-list-container').html(''); //no information, dont show anything
-                      }
-                  },
-                   error: function(xhr, status, error) {
-                        $('#email-list-container').html('<p>An unexpected error occurred.</p>');
-                        console.error("AJAX Error:", status, error);  // Log AJAX errors.
-
-                    }
-              });
-          } else {
-              $('#email-list-container').html(''); // Clear the container if no race is selected
-          }
-      });
-  });
+(function() {
+    var form = document.getElementById('race-select-form');
+    var select = document.getElementById('race-select');
+    var container = document.getElementById('email-list-container');
+    if (!select || !container) return;
+    var csrf = form && form.querySelector('input[name="csrfmiddlewaretoken"]');
+    function escapeHtml(s) {
+        if (s == null) return '';
+        var d = document.createElement('div');
+        d.textContent = String(s);
+        return d.innerHTML;
+    }
+    function setContent(html) {
+        container.innerHTML = html;
+    }
+    select.addEventListener('change', function() {
+        var raceId = select.value;
+        if (!raceId) { setContent(''); return; }
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', window.location.href, true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState !== 4) return;
+            try {
+                var data = JSON.parse(xhr.responseText);
+                if (data.emails != null) {
+                    setContent('');
+                    var h2 = document.createElement('h2');
+                    h2.className = 'h5 mt-3';
+                    h2.textContent = 'Emails';
+                    container.appendChild(h2);
+                    var ta = document.createElement('textarea');
+                    ta.className = 'form-control font-monospace';
+                    ta.rows = 10;
+                    ta.readOnly = true;
+                    ta.setAttribute('aria-label', 'Comma-separated runner emails');
+                    ta.textContent = data.emails;
+                    container.appendChild(ta);
+                } else if (data.error) {
+                    setContent('<p class="text-danger">' + escapeHtml(data.error) + '</p>');
+                } else {
+                    setContent('');
+                }
+            } catch (e) {
+                setContent('<p class="text-danger">An unexpected error occurred.</p>');
+            }
+        };
+        var body = 'race_id=' + encodeURIComponent(raceId);
+        if (csrf) body += '&csrfmiddlewaretoken=' + encodeURIComponent(csrf.value);
+        xhr.send(body);
+    });
+})();
 </script>
-
 {% endblock %}

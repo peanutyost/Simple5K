@@ -1,52 +1,31 @@
 {% extends 'base.html' %}
 {% load static %}
-
-
-
 {% block content %}
-<style>
-    body { padding: 20px; }
-    .form-container { max-width: 500px; margin: auto; }
-</style>
-<div class="form-container">
-    <h1 class="mb-4">Generate Runner PDF Report</h1>
-
-    {% if messages %}
-        <div class="messages mb-3">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}" role="alert">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-
-    <form method="GET" action="{% url 'tracker:generate_runner_pdf' %}" >
-        {% csrf_token %} {# Still good practice even for GET, though not strictly needed for security here #}
-
-        <div class="mb-3">
-            <label for="{{ form.race.id_for_label }}" class="form-label">{{ form.race.label }}</label>
-            {{ form.race }}
-            {% if form.race.errors %}
-                <div class="invalid-feedback d-block">
-                    {{ form.race.errors|join:", " }}
-                </div>
+<div class="container py-3 py-md-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8 col-xl-6">
+            <h1 class="mb-4">Generate Runner PDF Report</h1>
+            {% if messages %}
+            <div class="messages mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+                {% endfor %}
+            </div>
             {% endif %}
-        </div>
-
-         <div class="mb-3">
-            <label for="{{ form.sort_by.id_for_label }}" class="form-label">{{ form.sort_by.label }}</label>
-            {{ form.sort_by }}
-             {% if form.sort_by.errors %}
-                <div class="invalid-feedback d-block">
-                    {{ form.sort_by.errors|join:", " }}
+            <form method="get" action="{% url 'tracker:generate_runner_pdf' %}">
+                <div class="mb-3">
+                    <label for="{{ form.race.id_for_label }}" class="form-label">{{ form.race.label }}</label>
+                    {{ form.race }}
+                    {% if form.race.errors %}<div class="invalid-feedback d-block">{{ form.race.errors|join:", " }}</div>{% endif %}
                 </div>
-            {% endif %}
+                <div class="mb-3">
+                    <label for="{{ form.sort_by.id_for_label }}" class="form-label">{{ form.sort_by.label }}</label>
+                    {{ form.sort_by }}
+                    {% if form.sort_by.errors %}<div class="invalid-feedback d-block">{{ form.sort_by.errors|join:", " }}</div>{% endif %}
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Generate PDF Report</button>
+            </form>
         </div>
-
-        <button type="submit" class="btn btn-primary w-100">Generate PDF Report</button>
-    </form>
+    </div>
 </div>
-
-
 {% endblock %}

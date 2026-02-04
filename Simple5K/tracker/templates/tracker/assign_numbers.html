@@ -1,34 +1,32 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block content %}
-<h1>Assign Runner Numbers</h1>
-
-<form method="post">
-    {% csrf_token %}
-    <div class="mb-3">
-        <label for="race">Select Race:</label>
-        <select name="race" id="race" class="form-control">
-            <option value="">Choose a race...</option>
-            {% for race in races %}
-            <option value="{{ race.id }}">{{ race }}</option>
-            {% endfor %}
-        </select>
+<div class="container py-3 py-md-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <h1 class="mb-4">Assign Runner Numbers</h1>
+            <form method="post" action="">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="race" class="form-label">Select Race</label>
+                    <select name="race" id="race" class="form-select" required aria-required="true">
+                        <option value="">Choose a race...</option>
+                        {% for race in races %}
+                        <option value="{{ race.id }}">{{ race.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if error_message %}
+                <div class="alert alert-danger" role="alert">{{ error_message }}</div>
+                {% endif %}
+                {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+                {% endfor %}
+                {% endif %}
+                <button type="submit" class="btn btn-primary">Assign Numbers</button>
+            </form>
+        </div>
     </div>
-    
-    {% if error_message %}
-    <div class="alert alert-danger">{{ error_message }}</div>
-    {% endif %}
-
-    {% if messages %}
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">
-        {{ message }}
-    </div>
-    {% endfor %}
-    {% endif %}
-    
-    
-    <button type="submit" class="btn btn-primary">Assign Numbers</button>
-</form>
-
+</div>
 {% endblock %}

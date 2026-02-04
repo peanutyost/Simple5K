@@ -1,101 +1,67 @@
 {% extends 'base.html' %}
 {% load static %}
-
-
-
 {% block content %}
-<head>
-    <title>List of Races</title>
-    
-    <style>
-        .sortable-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        
-        .sortable-table th {
-            cursor: pointer;
-            background-color: #f8f9fa;
-        }
-
-        .sortable-table td, .sortable-table th {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .sortable-table tr:hover {
-            background-color: #f5f6fa;
-        }
-    </style>
-
-    <script>
-        $(document).ready(function(){
-            $('.sortable-table th').click(function(e){
-                var index = $(this).index();
-                var orderBy = $(this).attr('data-order-by');
-                var orderDirection = $(this).attr('data-order-direction') || 'asc';
-                
-                // Get the current sort direction
-                if(orderDirection === 'asc'){
-                    $(this).find('span').text('↑');
-                    orderDirection = 'desc';
-                } else{
-                    $(this).find('span').text('↓');
-                    orderDirection = 'asc';
-                }
-                
-                // Apply sorting to all rows except the header
-                $('.sortable-table tbody tr').sort(function(a, b) {
-                    var aValue = $(a).find('td:eq(' + index + ')').text().trim();
-                    var bValue = $(b).find('td:eq(' + index + ')').text().trim();
-                    
-                    // Convert to lowercase for case-insensitive comparison
-                    if(aValue < bValue) return -1;
-                    else if(aValue > bValue) return 1;
-                    return 0;
-                }).appendTo('.sortable-table tbody');
-            });
+<div class="container py-3 py-md-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">List of Races</h1>
+            {% if object_list %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover sortable-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" data-order-by="name" data-order-direction="asc">Name <span aria-hidden="true">↑</span></th>
+                            <th scope="col" data-order-by="date">Date</th>
+                            <th scope="col" data-order-by="status">Status</th>
+                            <th scope="col" data-order-by="distance">Distance (m)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for race in object_list %}
+                        <tr>
+                            <td><a href="{{ race.get_absolute_edit_url }}" class="text-decoration-none">{{ race.name }}</a></td>
+                            <td>{{ race.date }}</td>
+                            <td>{{ race.get_status_display|default:race.status }}</td>
+                            <td>{{ race.distance }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No races found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var table = document.querySelector('.sortable-table');
+    if (!table || !table.tHead) return;
+    var ths = table.tHead.querySelectorAll('th');
+    ths.forEach(function(th, index) {
+        th.setAttribute('tabindex', '0');
+        th.setAttribute('role', 'button');
+        th.addEventListener('click', function() { sortTable(index); });
+    });
+    function sortTable(colIndex) {
+        var tbody = table.querySelector('tbody');
+        if (!tbody) return;
+        var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+        var dir = (tbody.getAttribute('data-sort-dir') === 'asc' && parseInt(tbody.getAttribute('data-sort-col'), 10) === colIndex) ? -1 : 1;
+        tbody.setAttribute('data-sort-col', colIndex);
+        tbody.setAttribute('data-sort-dir', dir === 1 ? 'asc' : 'desc');
+        rows.sort(function(a, b) {
+            var aVal = (a.cells[colIndex] && a.cells[colIndex].textContent) ? a.cells[colIndex].textContent.trim() : '';
+            var bVal = (b.cells[colIndex] && b.cells[colIndex].textContent) ? b.cells[colIndex].textContent.trim() : '';
+            return dir * (aVal < bVal ? -1 : aVal > bVal ? 1 : 0);
         });
-    </script>
-</head>
-<body>
-    <h1>List of Races</h1>
-    
-   {% if object_list %}
-    <table class="sortable-table">
-        <thead>
-            <tr>
-                <!-- Add header columns here -->
-                <th data-order-by="name">Name <span style="cursor: pointer;">↑</span></th>
-                <th data-order-by="date">Date</th>
-                <th data-order-by="Status">Status</th>
-                <th data-order-by="Distance">Distance (m)</th>
-
-
-                <!-- Add more columns as needed -->
-            </tr>
-        </thead>
-        <tbody>
-            {% for race in object_list %}
-                <tr>
-                    <td>
-                        <a href="{{ race.get_absolute_edit_url }}"
-                            class="text-decoration-none link-primary fw-medium">
-                            {{ race.name }}
-                        </a>
-                    </td>
-
-                    <td>{{ race.date }}</td>
-                    <td>{{ race.status }}</td>
-                    <td>{{ race.distance }}</td>
-                    <!-- Add corresponding data cells here -->
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-   {% endif %}
-
-</body>
+        rows.forEach(function(r) { tbody.appendChild(r); });
+        ths.forEach(function(th, i) {
+            var span = th.querySelector('span');
+            if (span) span.textContent = (i === colIndex) ? (dir === 1 ? '↑' : '↓') : '↑';
+        });
+    }
+})();
+</script>
 {% endblock %}

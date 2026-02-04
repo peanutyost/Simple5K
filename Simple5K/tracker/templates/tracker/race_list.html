@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+{% load static %}
 {% block content %}
 <style>
     @import url('https://fonts.googleapis.com/css2?family=BioRhyme:wght@200..800&display=swap');
@@ -7,17 +7,16 @@
 
 {% if banners %}
 <div class="container">
-    <div class="row justify-content-center mt-5">
-        <div class="col-md-12">
-            <div class="banner-container h-100 d-flex align-items-center" style="height: 400px;">
+    <div class="row justify-content-center mt-3 mt-md-5">
+        <div class="col-12">
+            <div class="banner-container min-vh-25 d-flex align-items-center rounded" style="min-height: 280px;">
                 {% for banner in banners %}
-                <div class="banner w-100 text-center text-dark" style="background-color: {{ banner.background_color }}">
-                    <div class="banner-content">
-                        <h1 class="display-4 mb-4">{{ banner.title }}</h1>
-                        <p class="lead mb-5">{{ banner.subtitle }}</p>
+                <div class="banner w-100 text-center text-dark rounded" style="background-color: {{ banner.background_color }};">
+                    <div class="banner-content p-3 p-md-4">
+                        <h1 class="display-5 display-md-4 mb-3 mb-md-4">{{ banner.title }}</h1>
+                        <p class="lead mb-4 mb-md-5">{{ banner.subtitle }}</p>
                         {% if banner.image %}
-                        <img src="{{ banner.image.url }}" alt="{{ banner.title }}" class="img-fluid mx-auto d-block rounded mb-4"
-                            style="max-width: 300px;">
+                        <img src="{{ banner.image.url }}" alt="{{ banner.title|escape }}" class="img-fluid mx-auto d-block rounded mb-3 mb-md-4" style="max-width: 100%; width: 300px;">
                         {% endif %}
                     </div>
                 </div>
@@ -31,95 +30,81 @@
 <div class="container mt-4">
     <h1 class="text-center mb-4" style="font-family: 'BioRhyme', serif;">Upcoming Races</h1>
 
-    <!-- Active Race Alert -->
     <div id="active-race-alert" class="alert alert-warning text-center d-none" role="alert">
-        There is currently an active race: <strong id="active-race-name"></strong>! <a href="{% url 'tracker:race-overview' %}"
-            class="alert-link">Go to Race Tracker</a>
+        There is currently an active race: <strong id="active-race-name"></strong>! <a href="{% url 'tracker:race-overview' %}" class="alert-link">Go to Race Tracker</a>
     </div>
 
-    <div id="race-container" class="row g-4 justify-content-center p-3"></div>
+    <div id="race-container" class="row g-3 g-md-4 justify-content-center"></div>
 
-    <!-- No races message -->
-    <div id="no-races-message" class="alert alert-info d-none text-center w-100">
+    <div id="no-races-message" class="alert alert-info d-none text-center" role="status">
         There are currently no upcoming races. <a href="{% url 'tracker:completed_races_selection' %}" class="btn btn-secondary">View Past Races</a>
     </div>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        function updateRaces() {
-            fetch('/race-countdown/?_=' + Date.now())
-                .then(response => response.json())
-                .then(data => {
-                    const raceContainer = document.getElementById('race-container');
-                    const noRacesMessage = document.getElementById('no-races-message');
-                    const activeRaceAlert = document.getElementById('active-race-alert');
-                    const activeRaceName = document.getElementById('active-race-name');
+(function() {
+    var raceOverviewUrl = '{% url "tracker:race-overview" %}';
+    function escapeHtml(s) {
+        if (s == null) return '';
+        var div = document.createElement('div');
+        div.textContent = String(s);
+        return div.innerHTML;
+    }
+    function updateRaces() {
+        fetch('/race-countdown/?_=' + Date.now(), { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var raceContainer = document.getElementById('race-container');
+                var noRacesMessage = document.getElementById('no-races-message');
+                var activeRaceAlert = document.getElementById('active-race-alert');
+                var activeRaceName = document.getElementById('active-race-name');
 
-                    // Clear previous content
-                    raceContainer.innerHTML = '';
-                    noRacesMessage.classList.add('d-none'); // Hide on every update
-                    activeRaceAlert.classList.add('d-none');    //Hide it on all updates.
+                raceContainer.innerHTML = '';
+                noRacesMessage.classList.add('d-none');
+                activeRaceAlert.classList.add('d-none');
 
-                    // Handle Active Race
-                    if (data.active_race) {
-                        activeRaceName.textContent = data.active_race.name;
-                        activeRaceAlert.classList.remove('d-none'); // Show if there is an active race
-                    }
-                    // Handle No Races Data
-                    if (data.races.length === 0) {
-                        noRacesMessage.classList.remove('d-none');
-                        return;
-                    }
-                                        // Handle Race Data
-                    data.races.forEach(race => {
-                        let countdownHTML = `
-                            <div class="col-md-4">
-                                <div class="card h-100 border-black border-3 rounded-2 race-card" style="background-color: rgba(180, 121, 43, 0.7);">
-                                    <div class="card-body text-center p-4">
-                                        <h3 class="card-title mb-3">${race.name}</h3>
-                                        <p class="card-text">
-                                            <strong>Distance:</strong> ${race.distance}<br>
-                                            <strong>Laps:</strong> ${race.laps_count}<br>
-                                            <strong>Entry Fee:</strong> ${race.entry_fee}
-                                        </p>
-                                        <div id="countdown-${race.id}" class="text-center mb-3">
-                                            <h4 class="text-white">
-                                                Race Starts In: <br>
-                                                <span class="fs-3 fw-bold me-2">${race.remaining.days}d</span>:
-                                                <span class="fs-3 fw-bold me-2">${race.remaining.hours}h</span>:
-                                                <span class="fs-3 fw-bold me-2">${race.remaining.minutes}m</span>:
-                                                <span class="fs-3 fw-bold">${race.remaining.seconds}s</span>
-                                            </h4>
-                                        </div>
-                        `;
-
-                        // Check if race is in progress or done based on the remaining properties
-                        const remaining = race.remaining;
-                        if (remaining.days === 0 && remaining.hours === 0 &&
-                            remaining.minutes === 0 && remaining.seconds === 0) {
-                            countdownHTML += `
-                                <p class="text-muted">
-                                    Race is either in progress or completed.
-                                    <a href="/tracker/" class="btn btn-primary">View Live Races</a>
-                                </p>
-                            `;
-                        }
-
-                        countdownHTML += `
-                                </div>
-                            </div>
-                        </div>`;
-
-                        raceContainer.innerHTML += countdownHTML;
-                    });
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        // Update the races immediately and then every 1 seconds
+                if (data.active_race) {
+                    activeRaceName.textContent = data.active_race.name;
+                    activeRaceAlert.classList.remove('d-none');
+                }
+                if (!data.races || data.races.length === 0) {
+                    noRacesMessage.classList.remove('d-none');
+                    return;
+                }
+                data.races.forEach(function(race) {
+                    var col = document.createElement('div');
+                    col.className = 'col-12 col-md-6 col-lg-4';
+                    var remaining = race.remaining || {};
+                    var name = escapeHtml(race.name);
+                    var distance = escapeHtml(race.distance);
+                    var lapsCount = escapeHtml(race.laps_count);
+                    var entryFee = escapeHtml(race.entry_fee);
+                    var d = remaining.days || 0, h = remaining.hours || 0, m = remaining.minutes || 0, s = remaining.seconds || 0;
+                    var done = (d === 0 && h === 0 && m === 0 && s === 0);
+                    col.innerHTML =
+                        '<div class="card h-100 border-2 border-dark rounded-2" style="background-color: rgba(180,121,43,0.7);">' +
+                        '<div class="card-body text-center p-3 p-md-4">' +
+                        '<h3 class="card-title h5 mb-3">' + name + '</h3>' +
+                        '<p class="card-text small">' +
+                        '<strong>Distance:</strong> ' + distance + '<br><strong>Laps:</strong> ' + lapsCount + '<br><strong>Entry Fee:</strong> ' + entryFee +
+                        '</p>' +
+                        '<div class="mb-3">' +
+                        '<h4 class="h6 text-white">Race Starts In:</h4>' +
+                        '<span class="fs-5 fw-bold">' + d + 'd : ' + h + 'h : ' + m + 'm : ' + s + 's</span>' +
+                        '</div>' +
+                        (done ? '<p class="text-muted small mb-0"><a href="' + escapeHtml(raceOverviewUrl) + '" class="btn btn-primary btn-sm">View Live Races</a></p>' : '') +
+                        '</div></div>';
+                    raceContainer.appendChild(col);
+                });
+            })
+            .catch(function(err) { console.error('Error:', err); });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { updateRaces(); setInterval(updateRaces, 1000); });
+    } else {
         updateRaces();
         setInterval(updateRaces, 1000);
-    });
+    }
+})();
 </script>
 {% endblock %}

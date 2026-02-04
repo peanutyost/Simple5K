@@ -1,100 +1,71 @@
 {% extends 'base.html' %}
-
 {% load static %}
 {% block content %}
 <style>
     @import url('https://fonts.googleapis.com/css2?family=BioRhyme:wght@200..800&display=swap');
 </style>
-    {% if banners %}
-        <div class="container">
-            <div class="row justify-content-center mt-5">
-                <div class="col-md-12">
-                    <div class="banner-container h-100 d-flex align-items-center" style="height: 400px;">
-                        {% for banner in banners %}
-                            <div class="banner w-100 text-center text-dark" style="background-color: {{ banner.background_color }}">
-                                <div class="banner-content">
-                                    <h1 class="display-4 mb-4">{{ banner.title }}</h1>
-                                    <p class="lead mb-5">{{ banner.subtitle }}</p>
-                                    {% if banner.image %}
-                                        <img src="{{ banner.image.url }}" alt="{{ banner.title }}" class="img-fluid mx-auto d-block rounded mb-4" style="max-width: 300px;">
-                                    {% endif %}
-                                </div>
-                            </div>
-                        {% endfor %}
+{% if banners %}
+<div class="container">
+    <div class="row justify-content-center mt-3 mt-md-5">
+        <div class="col-12">
+            <div class="banner-container d-flex align-items-center rounded" style="min-height: 280px;">
+                {% for banner in banners %}
+                <div class="banner w-100 text-center text-dark rounded" style="background-color: {{ banner.background_color }};">
+                    <div class="banner-content p-3 p-md-4">
+                        <h1 class="display-5 display-md-4 mb-3 mb-md-4">{{ banner.title }}</h1>
+                        <p class="lead mb-4 mb-md-5">{{ banner.subtitle }}</p>
+                        {% if banner.image %}
+                        <img src="{{ banner.image.url }}" alt="{{ banner.title|escape }}" class="img-fluid mx-auto d-block rounded mb-3" style="max-width: 100%; width: 300px;">
+                        {% endif %}
                     </div>
                 </div>
-            </div>
-        </div>
-    {% endif %}
-
-    <div class="container">
-        <div class="row">
-            <!-- Races List -->
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                       Future Races
-                    </div>
-                    <ul class="list-group list-group-flush">
-                        {% for race in current_races %}
-                            <li class="list-group-item">
-                                <h5 class="mb-1">{{ race.name }}</h5>
-                                <p class="text-muted small mb-0">
-                                   Date: {{ race.date|date:"D M d Y" }}<br>
-                                   Time: {% if race.scheduled_time %}{{ race.scheduled_time }}{% else %}Not available{% endif %}<br>
-                                   Entry Fee: ${{ race.Entry_fee }}
-                                    {% if race.notes %}<br>Additional Info:<br> {{ race.notes }}{% endif %}
-                                </p>
-                            </li>
-                        {% empty %}
-                            <li class="list-group-item">
-                               No races currently available.
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-            <!-- Signup Form -->
-            <div class="col-md-8">
-                <h1 class="text-center mb-4" style="font-family: 'BioRhyme', serif;">Sign Up for a Race</h1>
-                <form method="post">
-                    {% csrf_token %}
-                    {% if form.errors %}
-                        <div class="alert alert-danger">
-                           Please correct the errors below.
-                        </div>
-                    {% endif %}
-                    {% for field in form %}
-                        <div class="mb-3">
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% if field.help_text %}
-                                <small class="form-text text-muted">{{ field.help_text }}</small>
-                            {% endif %}
-                            {% if field.errors %}
-                                <div class="invalid-feedback">
-                                    {% for error in field.errors %}{{ error }}{% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                    <button data-umami-event="Signup button" type="submit" class="btn btn-primary">Submit</button>
-                </form>
+                {% endfor %}
             </div>
         </div>
     </div>
+</div>
+{% endif %}
 
-    <script>
-        function showNextBanner() {
-            const banners = document.querySelectorAll('.banner');
-            const currentIndex = Array.from(banners).findIndex(banner => banner.style.display === 'block');
-            
-            if (currentIndex !== -1) {
-                banners[currentIndex].style.display = 'none';
-            }
-            
-            const nextIndex = (currentIndex + 1) % banners.length;
-            banners[nextIndex].style.display = 'block';
-        }
-    </script>
+<div class="container py-3 py-md-4">
+    <div class="row g-4">
+        <div class="col-12 col-md-4 order-md-1">
+            <div class="card h-100">
+                <div class="card-header">Future Races</div>
+                <ul class="list-group list-group-flush">
+                    {% for race in current_races %}
+                    <li class="list-group-item">
+                        <h5 class="h6 mb-1">{{ race.name }}</h5>
+                        <p class="text-muted small mb-0">
+                            Date: {{ race.date|date:"D M d Y" }}<br>
+                            Time: {% if race.scheduled_time %}{{ race.scheduled_time }}{% else %}Not available{% endif %}<br>
+                            Entry Fee: ${{ race.Entry_fee }}
+                            {% if race.notes %}<br>Additional Info:<br>{{ race.notes }}{% endif %}
+                        </p>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item">No races currently available.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="col-12 col-md-8 order-md-0">
+            <h1 class="text-center mb-4 h2" style="font-family: 'BioRhyme', serif;">Sign Up for a Race</h1>
+            <form method="post" action="">
+                {% csrf_token %}
+                {% if form.errors %}
+                <div class="alert alert-danger" role="alert">Please correct the errors below.</div>
+                {% endif %}
+                {% for field in form %}
+                <div class="mb-3">
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                    {% if field.errors %}<div class="invalid-feedback d-block">{% for error in field.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

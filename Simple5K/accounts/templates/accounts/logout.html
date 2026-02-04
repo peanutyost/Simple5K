@@ -1,17 +1,20 @@
 {% extends "base.html" %}
-
-
+{% load static %}
 {% block content %}
-
-{% if request.user.is_authenticated %}
-    <div style='margin-top:30px;'>
-        <form method='POST'>{% csrf_token %}
-            <p>Are you sure you want to logout?</p>
-            <button type='submit'>Yes, logout.</button>
-        </form>
+<div class="container py-3 py-md-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            {% if request.user.is_authenticated %}
+            <h1 class="mb-4">Logout</h1>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <p class="mb-3">Are you sure you want to logout?</p>
+                <button type="submit" class="btn btn-primary">Yes, logout</button>
+            </form>
+            {% else %}
+            <p class="mb-0">You are not logged in. <a href="{% url 'login' %}">Login</a>?</p>
+            {% endif %}
+        </div>
     </div>
-{% else %}
-<p>You're not logged in. Would you like to <a href='/login/'>login</a>?</p>
-{% endif %}
-
+</div>
 {% endblock %}
