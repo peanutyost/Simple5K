@@ -1,0 +1,304 @@
+# Simple5K — Design Reference
+
+This document describes the current design of the Simple5K race-tracking application as implemented in the codebase. Use it as a reference for consistency when adding or changing features.
+
+---
+
+## 1. Project Overview
+
+**Simple5K** is a Django web application for managing 5K (and similar) races: signups, lap timing (including RFID), live results, past results, PDF reports, and email delivery of runner reports.
+
+- **Framework:** Django 4.2+
+- **Python:** 3.x
+- **Frontend:** Bootstrap 5.3, Bootstrap Icons 1.11, jQuery (CDN), vanilla JS
+- **Static:** WhiteNoise for static files; optional `tracking.html` for analytics (template_exists check)
+
+---
+
+## 2. Application Structure
+
+### 2.1 Django Apps
+
+| App        | Purpose |
+|-----------|---------|
+| **Simple5K** | Project package: `settings`, `urls`, `wsgi`, `asgi` |
+| **tracker**  | Core app: races, runners, laps, banners, API keys, PDFs, signup, results |
+| **accounts** | Auth: login, logout, register (register URL commented out in root urls) |
+
+### 2.2 Key Directories
+
+```
+Simple5K/
+├── Simple5K/           # Project config
+├── accounts/           # Auth views & templates
+├── tracker/           # Main app
+│   ├── management/commands/   # send_race_emails
+│   ├── migrations/
+│   ├── templates/tracker/      # Page templates
+│   ├── templatetags/           # template_exists
+│   ├── admin.py, forms.py, models.py, views.py, urls.py, pdf_gen.py
+├── static/
+│   ├── images/logo.png
+│   └── sorttable.js
+└── media/              # User uploads (logos, banners)
+```
+
+---
+
+## 3. URL Design
+
+### 3.1 Root URLs (`Simple5K/urls.py`)
+
+| Path            | View / Include        | Name / Notes |
+|-----------------|-----------------------|--------------|
+| `/`             | `race_list`           | Home: race list + countdown |
+| `/races/`       | `race_list`           | `race-until` (nav “Home”) |
+| `/race-countdown/` | `race_countdown`   | JSON: upcoming races + active race |
+| `/tracker/`     | `include(tracker.urls)` | All tracker routes |
+| `/signup/`      | Redirect → `/tracker/signup/` | |
+| `/login/`       | `login_view`          | `login` |
+| `/logout/`      | `logout_view`         | `logout` |
+| `/admin/`       | admin                 | |
+| `/captcha/`     | captcha               | django-simple-captcha |
+
+### 3.2 Tracker URLs (`tracker/urls.py`, namespace `tracker:`)
+
+| Path | View / Class | Name | Auth |
+|------|--------------|------|------|
+| `''` | `race_overview` | `race-overview` | Cache 60s anon |
+| `race_add/` | `RaceAdd` (FormView) | `race-add` | Login |
+| `race_edit/<int:pk>/` | `RaceEdit` (UpdateView) | `edit-race` | Login |
+| `list_races/` | `ListRaces` (ListView) | `list-races` | Login |
+| `race-start` | `race_start_view` | `race-start` | Login |
+| `runner-stats` | `runner_stats` | `runner-stats` | Login |
+| `signup/` | `race_signup` | `race-signup` | Public |
+| `signup_success/<int:pk>` | `signup_success` | `signup-success` | Public |
+| `select_race/` | `select_race` | `select_race` | Login |
+| `shirt_view/<int:pk>/` | `view_shirt_sizes` | `view_shirts` | Login |
+| `runners_view/<int:pk>/` | `show_runners` | `view_runners` | Login |
+| `select_race_runners` | `select_race_for_runners` | `select_race_runners` | Login |
+| `assign_numbers/` | `assign_numbers` | `assign_numbers` | Login |
+| `mark_runner_finished/` | `mark_runner_finished` | `mark_runner_finished` | Login |
+| `race_report/<int:race_id>/<int:runner_id>/` | `GenerateRaceReportView` | `race_report` | Login |
+| `completed_races_selection/` | `completed_races_selection` | `completed_races_selection` | Cache 60s anon |
+| `get_completed_race_overview/<int:race_id>/` | `get_completed_race_overview` | `get_completed_race_overview` | Public (JSON) |
+| `email_list/` | `email_list_view` | `email_list` | Login |
+| `select-race/` | `select_race_for_report` | `select_race_report` | Login |
+| `generate-pdf/` | `generate_runner_pdf_report` | `generate_runner_pdf` | Login |
+| `generate-api-key/` | `generate_api_key` | `generate-api-key` | Login |
+| `api/record-lap/` | `record_lap` | `api-record-lap` | API key |
+| `api/update-race-time/` | `update_race_time` | `api-update-race-time` | API key |
+| `api/update-rfid/` | `update_rfid` | `api-update-rfid` | API key |
+| `api/available-races/` | `get_available_races` | `api-available-races` | API key |
+
+---
+
+## 4. Data Models
+
+### 4.1 `race`
+
+| Field | Type | Notes |
+|-------|------|--------|
+| name | CharField(255), unique | |
+| status | CharField(20) | `signup_closed`, `signup_open`, `in_progress`, `completed` |
+| Entry_fee | DecimalField(10,2) | |
+| date | DateField | |
+| distance | IntegerField | meters |
+| laps_count | IntegerField | |
+| max_runners | IntegerField, null/blank | |
+| number_start | IntegerField, null/blank | First bib number |
+| scheduled_time | TimeField, null/blank | |
+| start_time | DateTimeField, null/blank | |
+| end_time | DateTimeField, null/blank | |
+| min_lap_time | DurationField | Minimum time between laps |
+| notes | CharField(1024), null/blank | |
+| logo | ImageField(upload_to='images/'), null/blank | |
+| all_emails_sent | BooleanField, default False | |
+
+Methods: `__str__` → name; `get_absolute_edit_url()` → edit URL.
+
+### 4.2 `runners`
+
+| Field | Type | Notes |
+|-------|------|--------|
+| first_name, last_name | CharField(50) | |
+| email | EmailField(254) | |
+| age | CharField(50), choices | 0-12, 12-17, 18-34, 35-49, 50+ |
+| gender | CharField(50), choices, null/blank | male, female |
+| number | IntegerField, null/blank | Bib number |
+| rfid_tag | BinaryField(496), null/blank | |
+| race | ForeignKey(race, PROTECT) | |
+| race_completed | BooleanField, null/blank | |
+| total_race_time | DurationField, null/blank | |
+| race_avg_speed | DecimalField(10,2), null/blank | MPH |
+| race_avg_pace | DurationField, null/blank | |
+| place | IntegerField, null/blank | Gender-based place |
+| type | CharField(64), choices, null/blank | running, walking |
+| shirt_size | CharField(64), choices | Kids XS–XXL, Extra Small–XXL |
+| notes | CharField(512), null/blank | |
+| email_sent | BooleanField, default False | |
+
+Property: `rfid_tag_hex` (hex string of `rfid_tag`).
+
+### 4.3 `laps`
+
+| Field | Type | Notes |
+|-------|------|--------|
+| runner | ForeignKey(runners, CASCADE) | |
+| time | DateTimeField | Lap timestamp |
+| lap | IntegerField | Lap number |
+| attach_to_race | ForeignKey(race, CASCADE) | |
+| duration | DurationField | |
+| average_speed | DecimalField(10,2) | MPH |
+| average_pace | DurationField | |
+
+### 4.4 `Banner`
+
+| Field | Type | Notes |
+|-------|------|--------|
+| title | CharField(200), blank | |
+| subtitle | CharField(1024), blank | |
+| background_color | CharField(30), default '#ffffff' | |
+| image | ImageField(upload_to='banners/'), blank | |
+| active | BooleanField, default False | |
+| pages | CharField(20), choices, default 'all' | all, signup, results, countdown |
+
+### 4.5 `ApiKey`
+
+| Field | Type | Notes |
+|-------|------|--------|
+| name | CharField(255) | |
+| key | CharField(64), unique | Auto-generated if empty on save |
+| created_at | DateTimeField, auto_now_add | |
+| is_active | BooleanField, default True | |
+
+---
+
+## 5. Template Design
+
+### 5.1 Base Layout
+
+- **base.html**: `header.html` (in `<head>`), `nav.html`, `{% block content %}`, `footer.html`.
+- **header.html**:
+  - Title: "Simple 5K"
+  - Optional `tracking.html` include (via `template_exists` tag)
+  - Bootstrap 5.3 CSS + Bootstrap Icons 1.11
+  - Inline styles: navbar brand img height 40px; mobile navbar bg; `.form-group`, `.captcha-container`; full-page background: logo.png with gradient overlay, `background-size: contain`, `z-index: -1`
+- **nav.html**: Bootstrap navbar (light), logo → `race-until`, links: Home, Races (dropdown when authenticated), Signup, Active Race, View Past Races; right: user dropdown (Admin, Generate API Key, Logout) or Login.
+- **footer.html**: Single line "Simple5K" in container, `small text-muted`.
+
+### 5.2 Page-Specific Patterns
+
+- **Extend:** All pages `{% extends 'base.html' %}` and fill `{% block content %}`.
+- **Containers:** Main content in `<div class="container">` or `<div class="container mt-4">`; rows/columns use Bootstrap grid (`row`, `col-md-*`).
+- **Forms:** Bootstrap form controls (`form-control`, `form-label`, `mb-3`), `{% csrf_token %}`, error blocks (`alert alert-danger`, `invalid-feedback`), submit `btn btn-primary`.
+- **Tables:** `table table-bordered table-striped`; sortable tables use class `sortable` and `static/sorttable.js` where needed (e.g. race_overview, list_races uses custom sortable-table).
+- **Cards:** `card`, `card-body`, `card-title`, `card-header` for sections (e.g. race list countdown cards, signup “Future Races”).
+- **Typography:** Headings `h1`, `h2`; centered titles often `text-center mb-4`; custom font: BioRhyme (Google Fonts) on race_list and signup for headings.
+- **Banners:** If `banners` exist: container with `banner-container`, each banner has `background_color`, `title`, `subtitle`, optional `image` (max-width 300px, rounded).
+
+### 5.3 Key Templates
+
+| Template | Purpose |
+|----------|---------|
+| base.html, header.html, nav.html, footer.html | Layout and global UI |
+| tracker/race_list.html | Home: banners + upcoming races (countdown via JS fetch to `/race-countdown/`) |
+| tracker/race_overview.html | Active race: sortable table of runners/laps; auth users get “Mark Runner as Finished” form + 30s refresh |
+| tracker/signup.html | Signup form + “Future Races” list; optional banners |
+| tracker/signup_success.html | Thank-you + entry fee, date, time |
+| tracker/list_races.html | Sortable table of races (name→edit, date, status, distance) |
+| tracker/race_add.html | Race create/edit form (shared by RaceAdd, RaceEdit) |
+| tracker/select_race.html | Radio list of races, POST to view_shirts or view_runners |
+| tracker/view_shirts.html | Shirt size counts table + total runners |
+| tracker/view_runners.html | Table of runners (sortable headers, JS sort) |
+| tracker/assign_numbers.html | Race dropdown, assign numbers, messages |
+| tracker/completed_races_selection.html | Dropdown of completed races; AJAX loads race overview table |
+| tracker/email_list.html | Race dropdown; AJAX loads semicolon-separated emails in textarea |
+| tracker/select_race_report.html | Race + sort (id/last_name/first_name/number), GET to generate-pdf |
+| tracker/race_start.html | Form to pick race and “start” (uses legacy field names in form) |
+| tracker/runner_stats.html | Form: race + runner number → PDF report |
+| tracker/generate_api_key.html | Name input; on success shows key with warning to save |
+| accounts/login.html | `form.as_p`, Login button; redirect if already logged in |
+
+---
+
+## 6. Forms
+
+- **RaceForm:** ModelForm for race (name, status, Entry_fee, date, scheduled_time, number_start, max_runners, distance, laps_count, notes, min_lap_time, logo); placeholders and help_text set.
+- **SignupForm:** ModelForm for runners (first_name, last_name, email, age, gender, race, type, shirt_size, notes) + CaptchaField; race queryset = `status='signup_open'`; Bootstrap classes on widgets.
+- **LapForm:** Integer runnernumber (e.g. manual lap entry).
+- **raceStart:** Dynamic ModelChoiceField for race (all races).
+- **runnerStats:** Race (initial = current in-progress race) + runnernumber.
+- **RaceSelectionForm:** ModelChoiceField for races excluding in_progress and completed.
+- **RunnerInfoSelectionForm:** Race (all, ordered by name) + sort_by (id, last_name, first_name, number).
+
+---
+
+## 7. Views / Business Logic (Summary)
+
+- **Auth:** Login required for admin-style views; `cache_unless_authenticated(60)` for race_overview and completed_races_selection for anonymous users.
+- **Current race:** Single “in progress” race: `race.objects.filter(status='in_progress').first()`.
+- **Place:** Per-gender place assigned when runner completes final lap in `record_lap` API.
+- **PDFs:** `pdf_gen.generate_race_report` (single-runner report); `pdf_gen.create_runner_pdf` (race runner list). Report includes race info, runner details, laps, age-bracket placement, “before/after” competitors.
+- **Email:** `send_race_report_email(runner_id, race_id)` builds PDF and sends via Django email (SMTP); management command `send_race_emails` processes completed races and marks `email_sent` / `all_emails_sent`.
+- **API:** All under `require_api_key` (header `X-API-Key`). Endpoints: record-lap (JSON list), update-race-time (start/stop), update-rfid, available-races (GET).
+- **Countdown:** `race_countdown` returns JSON: upcoming races (with remaining time) and active_race; race_list page polls every 1s.
+
+---
+
+## 8. Static Assets & Styling
+
+- **CSS:** Bootstrap 5.3 + Bootstrap Icons; inline styles in header for navbar, body background, form-group, captcha.
+- **JS:** jQuery 3.6 (CDN) on several pages; sorttable.js for sortable tables; page-specific inline scripts for AJAX, countdown, sorting.
+- **Images:** `/static/images/logo.png` (navbar + body background).
+- **Fonts:** BioRhyme (Google Fonts) for selected headings on race list and signup.
+
+---
+
+## 9. Settings & Environment
+
+- **Database:** Configurable via env (default SQLite); ENGINE, NAME, USER, PASSWORD, HOST, PORT.
+- **Secret/DEBUG/ALLOWED_HOSTS/CSRF_TRUSTED_ORIGINS:** From environment.
+- **Static:** STATIC_URL `/static/`, STATIC_ROOT `staticfiles`, STATICFILES_DIRS includes `static/`; WhiteNoise CompressedManifest for staticfiles.
+- **Media:** MEDIA_URL `/media/`, MEDIA_ROOT `media/`.
+- **Cache:** DummyCache (no-op), TIMEOUT 60 (used by cache_page in decorator).
+- **i18n:** LANGUAGE_CODE en-us, TIME_ZONE America/Chicago, USE_TZ True.
+- **Captcha:** django-simple-captcha; image size, colors, font size in settings.
+- **Email:** SMTP (e.g. Office 365); host, port, TLS, user, password, DEFAULT_FROM_EMAIL from env.
+
+---
+
+## 10. Admin
+
+- **race:** list_display name, date, status; full field set in fields.
+- **runners:** list_display first_name, last_name, race, number, rfid_tag_hex.
+- **laps:** list_display runner, lap, time.
+- **Banner:** list_display title, subtitle, background_color, active.
+- **ApiKey:** registered with default admin.
+
+---
+
+## 11. Known Inconsistencies / Legacy Notes
+
+- **race_start_view** still references `is_current` on the race model, which was removed in migration 0020. This view will raise errors until updated to use `status` (e.g. set race to `in_progress` and set `start_time`) and remove `is_current`.
+- **select_race.html** uses `value="{{ race }}"` (race `__str__` = name); views that use it expect `race` by name (e.g. `race.objects.get(name=selected_race_id)`).
+- **Banner model** defines a tuple `pages` for choices and then a CharField `pages`; the field shadows the tuple (choices come from the tuple in the same scope).
+- **get_completed_race_overview:** Uses `.asc(nulls_last=True)` which is invalid on QuerySet (should be `.order_by(F('place').asc(nulls_last=True))` or similar); and passes `format_timedelta` (string) for lap duration/pace in runner dict, while race_overview uses timedelta objects for lap display.
+- **create_runner_pdf:** References `runner.get_gender_display()` and `runner.get_type_display()` (correct for choice fields).
+- **accounts register:** URL is commented out in root urls; register_view and template still exist.
+
+---
+
+## 12. Conventions to Follow
+
+1. Use Bootstrap 5 classes for layout and components; keep inline styles minimal and only where needed (e.g. banner colors, body background).
+2. Tracker pages extend `base.html` and use the shared nav/footer.
+3. Forms use `{% csrf_token %}`, Bootstrap form classes, and consistent error/success messaging (Django messages or alert divs).
+4. Tables that need sorting use class `sortable` and sorttable.js, or the existing custom sortable-table pattern where already used.
+5. Public-facing pages that list races or results use caching for anonymous users (e.g. 60s) and avoid heavy per-request queries.
+6. API endpoints require `X-API-Key` and return JSON; use `@csrf_exempt` and `@require_api_key` as in existing API views.
+7. New race/runner/lap logic should preserve existing semantics: status flow (signup_open → in_progress → completed), gender-based place, min_lap_time, and RFID-based lap recording.
+
+---
+
+*Document generated from codebase review. Update this file when making significant design or structure changes.*
