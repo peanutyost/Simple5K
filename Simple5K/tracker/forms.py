@@ -1,8 +1,5 @@
 from django import forms
-from .models import (laps,
-                     runners,
-                     race,
-                     )
+from .models import laps, runners, race, SiteSettings
 from captcha.fields import CaptchaField
 
 BOOL_CHECKLIST_OPTIONS = (
@@ -123,6 +120,22 @@ class SignupForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Filter the race choices to only show current races
         self.fields['race'].queryset = race.objects.filter(status='signup_open')
+
+
+class SiteSettingsForm(forms.ModelForm):
+    class Meta:
+        model = SiteSettings
+        fields = ['paypal_enabled', 'paypal_business_email', 'paypal_sandbox']
+        widgets = {
+            'paypal_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'paypal_business_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'you@example.com'}),
+            'paypal_sandbox': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'paypal_enabled': 'Enable PayPal donation at signup',
+            'paypal_business_email': 'PayPal business email',
+            'paypal_sandbox': 'Use PayPal Sandbox (testing)',
+        }
 
 
 class RaceSelectionForm(forms.Form):

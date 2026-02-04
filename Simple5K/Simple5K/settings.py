@@ -172,3 +172,8 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')  # Your Microsoft 365 email address
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # Your Microsoft 365 password or app password
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')  # The email address you want to send from
+
+# PayPal donation flow (signup → redirect to PayPal → IPN marks runner as paid)
+PAYPAL_BUSINESS_EMAIL = os.environ.get('PAYPAL_BUSINESS_EMAIL', '')  # Your PayPal email for receiving donations
+PAYPAL_SANDBOX = os.environ.get('PAYPAL_SANDBOX', 'False').upper() in ('1', 'TRUE', 'YES')  # Use sandbox for testing
+PAYPAL_CUSTOM_SECRET = os.environ.get('PAYPAL_CUSTOM_SECRET', SECRET_KEY)  # Used to sign runner_id in custom field

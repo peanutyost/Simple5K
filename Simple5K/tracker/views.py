@@ -17,12 +17,15 @@ from django.views.decorators.cache import cache_page
 from django.core.mail import EmailMessage, send_mail
 from django.conf import settings
 from functools import wraps
+import hmac
+import hashlib
 import io
 import json
 import pytz
+import urllib.parse
 
-from .models import race, runners, laps, Banner, ApiKey, RfidTag
-from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm
+from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings
+from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm, SiteSettingsForm
 from .pdf_gen import generate_race_report, create_runner_pdf
 
 
@@ -939,6 +942,22 @@ def get_available_races(request):
         return JsonResponse({'error': str(e)}, status=400)
 
 
+# ----------------------------Site Settings--------------------------------------
+@login_required
+def site_settings_view(request):
+    """Settings page: PayPal on/off and PayPal options."""
+    site_settings = SiteSettings.get_settings()
+    if request.method == 'POST':
+        form = SiteSettingsForm(request.POST, instance=site_settings)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Settings saved.')
+            return redirect('tracker:site-settings')
+    else:
+        form = SiteSettingsForm(instance=site_settings)
+    return render(request, 'tracker/site_settings.html', {'form': form, 'site_settings': site_settings})
+
+
 # ----------------------------RFID Tags--------------------------------------
 @login_required
 def rfid_tags_list(request):
@@ -1143,13 +1162,63 @@ def get_completed_race_overview(request, race_id):
     return JsonResponse(context)
 
 
+def _paypal_custom_for_runner(runner_id):
+    """Build signed custom value for PayPal (runner_id + HMAC)."""
+    secret = getattr(settings, 'PAYPAL_CUSTOM_SECRET', settings.SECRET_KEY)
+    payload = str(runner_id).encode('utf-8')
+    sig = hmac.new(secret.encode('utf-8') if isinstance(secret, str) else secret, payload, hashlib.sha256).hexdigest()
+    return f"{runner_id}:{sig}"
+
+
+def _paypal_runner_id_from_custom(custom_value):
+    """Verify and extract runner_id from PayPal IPN custom field. Returns runner_id or None."""
+    if not custom_value or ':' not in custom_value:
+        return None
+    runner_id_str, sig = custom_value.strip().split(':', 1)
+    try:
+        runner_id = int(runner_id_str)
+    except ValueError:
+        return None
+    expected = _paypal_custom_for_runner(runner_id)
+    if not hmac.compare_digest(custom_value.strip(), expected):
+        return None
+    return runner_id
+
+
 def race_signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)
         if form.is_valid():
-            selected_race_id = form.cleaned_data['race'].id
-            form.save()
-            return redirect(reverse('tracker:signup-success', args=[selected_race_id]))  # You'll need to define this URL
+            selected_race = form.cleaned_data['race']
+            runner = form.save()
+            site_settings = SiteSettings.get_settings()
+            paypal_email = (site_settings.paypal_business_email or '').strip()
+            if not paypal_email:
+                paypal_email = getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or ''
+            entry_fee = float(selected_race.Entry_fee or 0)
+            if site_settings.paypal_enabled and paypal_email and entry_fee > 0:
+                # Redirect to PayPal donation with entry fee pre-filled
+                use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
+                base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
+                return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
+                cancel_url = request.build_absolute_uri(reverse('tracker:paypal-cancel'))
+                notify_url = request.build_absolute_uri(reverse('tracker:paypal-ipn'))
+                custom = _paypal_custom_for_runner(runner.id)
+                item_name = f"Race entry: {selected_race.name}"
+                params = {
+                    'cmd': '_donations',
+                    'business': paypal_email,
+                    'amount': f'{entry_fee:.2f}',
+                    'currency_code': 'USD',
+                    'item_name': item_name[:127],
+                    'return': return_url,
+                    'cancel_return': cancel_url,
+                    'notify_url': notify_url,
+                    'custom': custom[:256],
+                }
+                paypal_url = f"{base_url}/cgi-bin/webscr?{urllib.parse.urlencode(params)}"
+                return redirect(paypal_url)
+            return redirect(reverse('tracker:signup-success', args=[selected_race.id]))
     else:
         form = SignupForm()
     current_races = race.objects.filter(status='signup_open').order_by('date', 'scheduled_time')
@@ -1168,6 +1237,58 @@ def signup_success(request, pk):
         context = {'error': 'Race not found.'}
 
     return render(request, 'tracker/signup_success.html', context)
+
+
+def paypal_return(request):
+    """Shown after user completes (or abandons) PayPal; payment is confirmed via IPN."""
+    return render(request, 'tracker/paypal_return.html')
+
+
+def paypal_cancel(request):
+    """Shown when user cancels PayPal payment. Runner remains registered but unpaid."""
+    return render(request, 'tracker/paypal_cancel.html')
+
+
+@csrf_exempt
+def paypal_ipn(request):
+    """
+    PayPal IPN (Instant Payment Notification). PayPal POSTs here when a payment completes.
+    Verify the request with PayPal, then mark the runner as paid if payment_status=Completed.
+    """
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    # Re-POST the exact form data to PayPal with cmd=_notify-validate to verify
+    raw_body = request.body
+    site_settings = SiteSettings.get_settings()
+    use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
+    paypal_url = 'https://ipnpb.sandbox.paypal.com/cgi-bin/webscr' if use_sandbox else 'https://ipnpb.paypal.com/cgi-bin/webscr'
+    verify_params = urllib.parse.parse_qsl(raw_body.decode('utf-8'))
+    verify_params.append(('cmd', '_notify-validate'))
+    verify_data = urllib.parse.urlencode(verify_params).encode('utf-8')
+    try:
+        import urllib.request
+        req = urllib.request.Request(paypal_url, data=verify_data, method='POST', headers={'Content-Type': 'application/x-www-form-urlencoded'})
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            verify_result = resp.read().decode('utf-8').strip()
+    except Exception:
+        return HttpResponse(status=500)
+    if verify_result != 'VERIFIED':
+        return HttpResponse(status=400)
+    data = urllib.parse.parse_qs(raw_body.decode('utf-8'))
+    payment_status = (data.get('payment_status') or [''])[0]
+    custom = (data.get('custom') or [''])[0]
+    if payment_status.lower() != 'completed':
+        return HttpResponse('ok')
+    runner_id = _paypal_runner_id_from_custom(custom)
+    if runner_id is None:
+        return HttpResponse('ok')
+    try:
+        runner_obj = runners.objects.get(pk=runner_id)
+        runner_obj.paid = True
+        runner_obj.save(update_fields=['paid'])
+    except runners.DoesNotExist:
+        pass
+    return HttpResponse('ok')
 
 
 def race_countdown(request):

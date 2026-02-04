@@ -108,6 +108,7 @@ class runners(models.Model):
         max_length=64, choices=shirt_size)
     notes = models.CharField(max_length=512, null=True, blank=True)
     email_sent = models.BooleanField(default=False)
+    paid = models.BooleanField(default=False, help_text='True when PayPal donation/payment completed')
 
     def __str__(self):
         return self.first_name + " " + self.last_name
@@ -162,3 +163,34 @@ class ApiKey(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.key[:10]}..."
+
+
+class SiteSettings(models.Model):
+    """
+    Singleton settings for the site (PayPal, etc.). Use get_settings() to get the one instance.
+    """
+    paypal_enabled = models.BooleanField(
+        default=False,
+        help_text='When on, signup redirects to PayPal with entry fee; when off, signup goes to success page only.'
+    )
+    paypal_business_email = models.EmailField(
+        max_length=254,
+        blank=True,
+        help_text='PayPal email that receives entry fee donations.'
+    )
+    paypal_sandbox = models.BooleanField(
+        default=False,
+        help_text='Use PayPal Sandbox for testing. Turn off for live payments.'
+    )
+
+    class Meta:
+        verbose_name = 'Site settings'
+        verbose_name_plural = 'Site settings'
+
+    def __str__(self):
+        return 'Site settings'
+
+    @classmethod
+    def get_settings(cls):
+        obj, _ = cls.objects.get_or_create(pk=1, defaults={'paypal_enabled': False})
+        return obj

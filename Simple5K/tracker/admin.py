@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import race, runners, laps, Banner, ApiKey, RfidTag
+from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings
 
 admin.site.register(ApiKey)
 
@@ -34,9 +34,15 @@ class BannerAdmin(admin.ModelAdmin):
 
 @admin.register(runners)
 class RunnersAdmin(admin.ModelAdmin):
-    list_display = ('first_name', 'last_name', 'race', 'number', 'tag', 'rfid_tag_hex')
+    list_display = ('first_name', 'last_name', 'race', 'number', 'paid', 'tag', 'rfid_tag_hex')
 
 
 @admin.register(laps)
 class LapsAdmin(admin.ModelAdmin):
     list_display = ('runner', 'lap', 'time')
+
+
+@admin.register(SiteSettings)
+class SiteSettingsAdmin(admin.ModelAdmin):
+    list_display = ('id', 'paypal_enabled', 'paypal_business_email', 'paypal_sandbox')
+    list_editable = ('paypal_enabled', 'paypal_business_email', 'paypal_sandbox')

@@ -51,6 +51,7 @@
                               {{ user.get_full_name|default:user.username }}
                           </button>
                           <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
+                              <li><a class="dropdown-item" href="{% url 'tracker:site-settings' %}">Settings</a></li>
                               <li><a class="dropdown-item" href="{% url 'admin:index' %}">Admin</a></li>
                               <li><hr class="dropdown-divider"></li>
                               <li><a class="dropdown-item" href="{% url 'tracker:generate-api-key' %}">Generate API Key</a></li>
