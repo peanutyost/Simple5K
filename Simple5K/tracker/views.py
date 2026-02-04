@@ -653,42 +653,42 @@ def email_list_view(request):
         data = request.POST
         action = data.get('action')
         if action == 'send':
-            race_id = data.get('race_id')
-            subject = (data.get('subject') or '').strip()
-            body = (data.get('body') or '').strip()
-            if not race_id:
-                return JsonResponse({'success': False, 'error': 'Please select a race.'}, status=400)
-            if not subject:
-                return JsonResponse({'success': False, 'error': 'Subject is required.'}, status=400)
             try:
-                race_obj = race.objects.get(pk=race_id)
-            except (race.DoesNotExist, ValueError):
-                return JsonResponse({'success': False, 'error': 'Invalid race.'}, status=400)
-            recipient_count = (
-                runners.objects.filter(race=race_obj)
-                .exclude(email__isnull=True)
-                .exclude(email="")
-                .values_list("email", flat=True)
-                .distinct()
-                .count()
-            )
-            if recipient_count == 0:
-                return JsonResponse({'success': False, 'error': 'This race has no runners with email addresses.'}, status=400)
-            try:
+                race_id = data.get('race_id')
+                subject = (data.get('subject') or '').strip()
+                body = (data.get('body') or '').strip()
+                if not race_id:
+                    return JsonResponse({'success': False, 'error': 'Please select a race.'}, status=400)
+                if not subject:
+                    return JsonResponse({'success': False, 'error': 'Subject is required.'}, status=400)
+                try:
+                    race_obj = race.objects.get(pk=race_id)
+                except (race.DoesNotExist, ValueError):
+                    return JsonResponse({'success': False, 'error': 'Invalid race.'}, status=400)
+                recipient_count = (
+                    runners.objects.filter(race=race_obj)
+                    .exclude(email__isnull=True)
+                    .exclude(email="")
+                    .values_list("email", flat=True)
+                    .distinct()
+                    .count()
+                )
+                if recipient_count == 0:
+                    return JsonResponse({'success': False, 'error': 'This race has no runners with email addresses.'}, status=400)
                 job = EmailSendJob.objects.create(
                     race=race_obj,
                     subject=subject[:255],
                     body=body,
                     status=EmailSendJob.STATUS_QUEUED,
                 )
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Your email has been queued and will be sent to {recipient_count} runner(s).',
+                    'job_id': job.id,
+                    'recipient_count': recipient_count,
+                })
             except Exception as e:
-                return JsonResponse({'success': False, 'error': f'Could not queue email: {e}'}, status=500)
-            return JsonResponse({
-                'success': True,
-                'message': f'Your email has been queued and will be sent to {recipient_count} runner(s).',
-                'job_id': job.id,
-                'recipient_count': recipient_count,
-            })
+                return JsonResponse({'success': False, 'error': str(e)}, status=500)
         if action == 'recipient_count':
             race_id = data.get('race_id')
             if not race_id:
