@@ -6,7 +6,7 @@
         <div class="col-12 col-lg-8">
             <h1 class="mb-4">Send Email to Runners</h1>
             <p class="text-muted">Select a race, enter subject and message. Each runner receives a separate email. Emails are sent in the background and throttled to stay within provider limits.</p>
-            <form id="send-email-form" method="post" action="">
+            <form id="send-email-form" method="post" action="{% url 'tracker:email_list' %}">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="send">
                 <div class="mb-3">
@@ -70,7 +70,7 @@
         }
         countEl.textContent = 'Loading…';
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', window.location.href, true);
+        xhr.open('POST', document.getElementById('send-email-form').action || window.location.href, true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
