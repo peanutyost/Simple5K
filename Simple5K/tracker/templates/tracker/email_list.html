@@ -42,6 +42,13 @@
     var sendBtn = document.getElementById('send-btn');
     var csrfInput = form && form.querySelector('input[name="csrfmiddlewaretoken"]');
 
+    function getCsrfToken() {
+        var name = 'csrftoken';
+        var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        if (match) return match[2];
+        return csrfInput ? csrfInput.value : '';
+    }
+
     function setResult(html, isError) {
         if (!sendResult) return;
         sendResult.innerHTML = html;
@@ -66,6 +73,7 @@
         xhr.open('POST', window.location.href, true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
         xhr.onreadystatechange = function() {
             if (xhr.readyState !== 4) return;
             try {
@@ -76,8 +84,7 @@
                 countEl.textContent = '';
             }
         };
-        var body = 'action=recipient_count&race_id=' + encodeURIComponent(raceSelect.value);
-        if (csrfInput) body += '&csrfmiddlewaretoken=' + encodeURIComponent(csrfInput.value);
+        var body = 'action=recipient_count&race_id=' + encodeURIComponent(raceSelect.value) + '&csrfmiddlewaretoken=' + encodeURIComponent(getCsrfToken());
         xhr.send(body);
     }
 
@@ -99,12 +106,13 @@
             if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Queuing…'; }
             var body = 'action=send&race_id=' + encodeURIComponent(raceSelect.value) +
                 '&subject=' + encodeURIComponent((subject && subject.value) || '') +
-                '&body=' + encodeURIComponent((document.getElementById('email-body') && document.getElementById('email-body').value) || '');
-            if (csrfInput) body += '&csrfmiddlewaretoken=' + encodeURIComponent(csrfInput.value);
+                '&body=' + encodeURIComponent((document.getElementById('email-body') && document.getElementById('email-body').value) || '') +
+                '&csrfmiddlewaretoken=' + encodeURIComponent(getCsrfToken());
             var xhr = new XMLHttpRequest();
             xhr.open('POST', form.action || window.location.href, true);
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
             xhr.onreadystatechange = function() {
                 if (xhr.readyState !== 4) return;
                 if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send email'; }
@@ -127,7 +135,7 @@
                             if (errData.error) msg = errData.error;
                         } catch (e2) {}
                     }
-                    if (!msg) msg = 'Server error. Run migrations? (python manage.py migrate)';
+                    if (!msg) msg = 'Server error (status ' + (xhr.status || '?') + '). If 403, try refreshing the page and sending again.';
                 }
                 setResult(escapeHtml(msg), true);
             };
