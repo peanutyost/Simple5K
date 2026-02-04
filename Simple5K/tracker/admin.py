@@ -50,7 +50,13 @@ class SiteSettingsAdmin(admin.ModelAdmin):
 
 @admin.register(EmailSendJob)
 class EmailSendJobAdmin(admin.ModelAdmin):
-    list_display = ('id', 'race', 'subject', 'status', 'created_at', 'updated_at')
+    list_display = ('id', 'race', 'subject', 'status', 'error_message_short', 'created_at', 'updated_at')
     list_filter = ('status',)
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at', 'error_message')
     search_fields = ('subject', 'race__name')
+
+    @admin.display(description='Error')
+    def error_message_short(self, obj):
+        if not obj.error_message:
+            return ''
+        return obj.error_message[:80] + '…' if len(obj.error_message) > 80 else obj.error_message

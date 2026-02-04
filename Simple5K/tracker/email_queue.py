@@ -60,6 +60,7 @@ def _worker_loop():
     from .models import EmailSendJob
 
     while True:
+        job = None
         try:
             job = (
                 EmailSendJob.objects.filter(status=EmailSendJob.STATUS_QUEUED)
@@ -70,13 +71,44 @@ def _worker_loop():
                 job.status = EmailSendJob.STATUS_SENDING
                 job.save(update_fields=["status"])
                 _process_one_job(job)
-        except Exception:
-            pass
+        except Exception as e:
+            if job is not None:
+                try:
+                    job.status = EmailSendJob.STATUS_FAILED
+                    job.error_message = str(e)[:2000]
+                    job.save(update_fields=["status", "error_message"])
+                except Exception:
+                    pass
         time.sleep(5)
 
 
 _worker_started = False
 _worker_lock = threading.Lock()
+
+
+def process_queue():
+    """
+    Process all queued EmailSendJob entries (blocking). Use from management command
+    or cron so emails are sent even when the in-process worker thread is not running.
+    """
+    from .models import EmailSendJob
+
+    while True:
+        job = (
+            EmailSendJob.objects.filter(status=EmailSendJob.STATUS_QUEUED)
+            .order_by("created_at")
+            .first()
+        )
+        if not job:
+            break
+        job.status = EmailSendJob.STATUS_SENDING
+        job.save(update_fields=["status"])
+        try:
+            _process_one_job(job)
+        except Exception as e:
+            job.status = EmailSendJob.STATUS_FAILED
+            job.error_message = str(e)[:2000]
+            job.save(update_fields=["status", "error_message"])
 
 
 def start_email_worker():

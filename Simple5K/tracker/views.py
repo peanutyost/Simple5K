@@ -707,7 +707,8 @@ def email_list_view(request):
             except (race.DoesNotExist, ValueError):
                 return JsonResponse({'count': 0})
 
-    context = {'races': races}
+    recent_jobs = EmailSendJob.objects.order_by('-created_at')[:10]
+    context = {'races': races, 'recent_jobs': recent_jobs}
     return render(request, 'tracker/email_list.html', context)
 
 
