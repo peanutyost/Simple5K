@@ -126,6 +126,7 @@ def _build_race_summary_data(race_obj):
             'slowest_lap_num': slowest_lap_num,
             'overall_time': runner.total_race_time,
             'overall_place': runner.place,
+            'age_group': runner.get_age_display() if runner.age else None,
             'age_group_place': calculate_age_bracket_placement(runner, race_obj),
         }
         if runner.gender == 'female':

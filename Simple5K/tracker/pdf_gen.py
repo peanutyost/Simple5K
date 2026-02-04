@@ -272,12 +272,12 @@ def create_runner_pdf(buffer, race_obj, runners_queryset):
 
 def generate_race_summary_pdf(buffer, summary_data):
     """
-    Generates a race summary PDF with two sections: Female Finishers and Male Finishers.
+    Generates a race summary PDF with two sections: Women and Men.
     Each section lists runners in finish order with name, number, fastest/slowest lap (and lap #),
-    overall time, overall placement, and age group placement.
+    overall time, age group, and age group placement.
     summary_data: dict with 'race_name', 'females' (list of runner dicts), 'males' (list of runner dicts).
     Each runner dict: name, number, fastest_lap_time, fastest_lap_num, slowest_lap_time, slowest_lap_num,
-    overall_time, overall_place, age_group_place.
+    overall_time, overall_place, age_group, age_group_place.
     """
     doc = SimpleDocTemplate(buffer, pagesize=letter,
                             leftMargin=0.5 * inch, rightMargin=0.5 * inch,
@@ -300,7 +300,7 @@ def generate_race_summary_pdf(buffer, summary_data):
     def _section_table(section_title, runners_list):
         header = [
             'Place', 'Name', 'No.', 'Fastest Lap', 'Lap', 'Slowest Lap', 'Lap',
-            'Overall Time', 'Age Grp'
+            'Overall Time', 'Age Group', 'Age Grp'
         ]
         data = [header]
         for r in runners_list:
@@ -313,12 +313,13 @@ def generate_race_summary_pdf(buffer, summary_data):
                 _format_duration(r.get('slowest_lap_time')),
                 str(r.get('slowest_lap_num') or '—'),
                 _format_duration(r.get('overall_time')),
+                r.get('age_group') or '—',
                 str(r.get('age_group_place') or '—'),
             ])
         col_widths = [
-            0.45 * inch, 1.4 * inch, 0.4 * inch,
-            0.85 * inch, 0.35 * inch, 0.85 * inch, 0.35 * inch,
-            0.9 * inch, 0.5 * inch
+            0.45 * inch, 1.3 * inch, 0.35 * inch,
+            0.75 * inch, 0.3 * inch, 0.75 * inch, 0.3 * inch,
+            0.75 * inch, 0.6 * inch, 0.45 * inch
         ]
         table = Table(data, colWidths=col_widths)
         table.setStyle(TableStyle([
@@ -341,9 +342,9 @@ def generate_race_summary_pdf(buffer, summary_data):
         story.append(Spacer(1, 0.35 * inch))
 
     if summary_data.get('females'):
-        _section_table('Female Finishers (by finish order)', summary_data['females'])
+        _section_table('Women (by finish order)', summary_data['females'])
     if summary_data.get('males'):
-        _section_table('Male Finishers (by finish order)', summary_data['males'])
+        _section_table('Men (by finish order)', summary_data['males'])
 
     if not summary_data.get('females') and not summary_data.get('males'):
         story.append(Paragraph('No finishers with gender recorded for this race.', styles['Normal']))
