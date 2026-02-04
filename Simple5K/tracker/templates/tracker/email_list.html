@@ -8,7 +8,7 @@
             <p class="text-muted">Select a race, enter subject and message. Each runner receives a separate email. Emails are sent in the background and throttled to stay within provider limits.</p>
             <form id="send-email-form" method="post" action="{% url 'tracker:email_list' %}">
                 {% csrf_token %}
-                <input type="hidden" name="action" value="send">
+                <!-- Do not use name="action" - it shadows form.action and breaks the submit URL -->
                 <div class="mb-3">
                     <label for="race-select" class="form-label">Race <span class="text-danger">*</span></label>
                     <select id="race-select" name="race_id" class="form-select" required aria-label="Select race">
