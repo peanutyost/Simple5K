@@ -108,19 +108,28 @@
             xhr.onreadystatechange = function() {
                 if (xhr.readyState !== 4) return;
                 if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send email'; }
+                var msg = '';
                 try {
                     var data = JSON.parse(xhr.responseText);
                     if (data.success && data.message) {
                         setResult(escapeHtml(data.message), false);
                         form.reset();
                         raceSelect.value = '';
-                        document.getElementById('recipient-count').textContent = '';
-                    } else {
-                        setResult(escapeHtml(data.error || 'Send failed.'), true);
+                        var rc = document.getElementById('recipient-count');
+                        if (rc) rc.textContent = '';
+                        return;
                     }
+                    msg = data.error || 'Send failed.';
                 } catch (err) {
-                    setResult('An unexpected error occurred.', true);
+                    if (xhr.status >= 400 && xhr.responseText) {
+                        try {
+                            var errData = JSON.parse(xhr.responseText);
+                            if (errData.error) msg = errData.error;
+                        } catch (e2) {}
+                    }
+                    if (!msg) msg = 'Server error. Run migrations? (python manage.py migrate)';
                 }
+                setResult(escapeHtml(msg), true);
             };
             xhr.send(body);
         });

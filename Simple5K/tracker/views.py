@@ -674,12 +674,15 @@ def email_list_view(request):
             )
             if recipient_count == 0:
                 return JsonResponse({'success': False, 'error': 'This race has no runners with email addresses.'}, status=400)
-            job = EmailSendJob.objects.create(
-                race=race_obj,
-                subject=subject[:255],
-                body=body,
-                status=EmailSendJob.STATUS_QUEUED,
-            )
+            try:
+                job = EmailSendJob.objects.create(
+                    race=race_obj,
+                    subject=subject[:255],
+                    body=body,
+                    status=EmailSendJob.STATUS_QUEUED,
+                )
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': f'Could not queue email: {e}'}, status=500)
             return JsonResponse({
                 'success': True,
                 'message': f'Your email has been queued and will be sent to {recipient_count} runner(s).',
