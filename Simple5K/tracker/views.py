@@ -483,6 +483,7 @@ def add_runner(request):
             'number': runner_obj.number,
             'type': runner_obj.type or '',
             'shirt_size': runner_obj.shirt_size,
+            'paid': runner_obj.paid,
         }
     })
 
@@ -578,6 +579,7 @@ def edit_runner(request):
             'number': runner_obj.number,
             'type': runner_obj.type or '',
             'shirt_size': runner_obj.shirt_size,
+            'paid': runner_obj.paid,
         }
     })
 

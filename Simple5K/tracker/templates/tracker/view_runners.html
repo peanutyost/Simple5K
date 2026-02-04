@@ -20,6 +20,7 @@
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Number</th>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Type</th>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Shirt Size</th>
+                            <th scope="col" class="sortable-th" tabindex="0" role="button">Paid</th>
                             <th scope="col" class="no-sort">Actions</th>
                         </tr>
                     </thead>
@@ -33,12 +34,14 @@
                             data-gender="{{ runner.gender|default:''|escapejs }}"
                             data-number="{{ runner.number|default:'' }}"
                             data-type="{{ runner.type|default:''|escapejs }}"
-                            data-shirt-size="{{ runner.shirt_size|escapejs }}">
+                            data-shirt-size="{{ runner.shirt_size|escapejs }}"
+                            data-paid="{{ runner.paid|yesno:'1,0' }}">
                             <td class="name-cell">{{ runner.first_name }} {{ runner.last_name }}</td>
                             <td class="age-cell">{{ runner.age }}</td>
                             <td class="number-cell">{% if runner.number %}{{ runner.number }}{% else %}—{% endif %}</td>
                             <td class="type-cell">{{ runner.type|default:"—" }}</td>
                             <td class="shirt-cell">{{ runner.shirt_size }}</td>
+                            <td class="paid-cell">{% if runner.paid %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
                             <td class="actions-cell">
                                 <button type="button" class="btn btn-sm btn-outline-primary edit-runner-btn" aria-label="Edit runner">Edit</button>
                             </td>
@@ -206,12 +209,14 @@
         var number = tr.getAttribute('data-number');
         var type = tr.getAttribute('data-type') || '';
         var shirt = tr.getAttribute('data-shirt-size') || '';
+        var paid = tr.getAttribute('data-paid');
         tr.classList.remove('editing');
         tr.querySelector('.name-cell').textContent = (firstName + ' ' + lastName).trim() || '—';
         tr.querySelector('.age-cell').textContent = age || '—';
         tr.querySelector('.number-cell').textContent = number !== '' && number != null ? number : '—';
         tr.querySelector('.type-cell').textContent = type || '—';
         tr.querySelector('.shirt-cell').textContent = shirt || '—';
+        tr.querySelector('.paid-cell').innerHTML = paid === '1' ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>';
         tr.querySelector('.actions-cell').innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary edit-runner-btn" aria-label="Edit runner">Edit</button>';
         tr.querySelector('.edit-runner-btn').addEventListener('click', function(e) { e.stopPropagation(); enterEditMode(tr); });
     }
@@ -261,12 +266,14 @@
                 tr.setAttribute('data-number', r.number != null ? r.number : '');
                 tr.setAttribute('data-type', r.type || '');
                 tr.setAttribute('data-shirt-size', r.shirt_size || '');
+                tr.setAttribute('data-paid', r.paid ? '1' : '0');
                 tr.classList.remove('editing');
                 tr.querySelector('.name-cell').textContent = ((r.first_name || '') + ' ' + (r.last_name || '')).trim() || '—';
                 tr.querySelector('.age-cell').textContent = r.age || '—';
                 tr.querySelector('.number-cell').textContent = r.number != null ? r.number : '—';
                 tr.querySelector('.type-cell').textContent = r.type || '—';
                 tr.querySelector('.shirt-cell').textContent = r.shirt_size || '—';
+                tr.querySelector('.paid-cell').innerHTML = r.paid ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>';
                 tr.querySelector('.actions-cell').innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary edit-runner-btn" aria-label="Edit runner">Edit</button>';
                 tr.querySelector('.edit-runner-btn').addEventListener('click', function(e) { e.stopPropagation(); enterEditMode(tr); });
             } else {
@@ -347,12 +354,14 @@
                     tr.setAttribute('data-number', r.number != null ? r.number : '');
                     tr.setAttribute('data-type', r.type || '');
                     tr.setAttribute('data-shirt-size', r.shirt_size || '');
+                    tr.setAttribute('data-paid', r.paid ? '1' : '0');
                     tr.innerHTML =
                         '<td class="name-cell">' + escapeHtml(((r.first_name || '') + ' ' + (r.last_name || '')).trim() || '—') + '</td>' +
                         '<td class="age-cell">' + escapeHtml(r.age || '—') + '</td>' +
                         '<td class="number-cell">' + (r.number != null ? escapeHtml(String(r.number)) : '—') + '</td>' +
                         '<td class="type-cell">' + escapeHtml(r.type || '—') + '</td>' +
                         '<td class="shirt-cell">' + escapeHtml(r.shirt_size || '') + '</td>' +
+                        '<td class="paid-cell">' + (r.paid ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>') + '</td>' +
                         '<td class="actions-cell"><button type="button" class="btn btn-sm btn-outline-primary edit-runner-btn" aria-label="Edit runner">Edit</button></td>';
                     tbody.appendChild(tr);
                     attachRowHandlers(tr);
