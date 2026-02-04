@@ -387,13 +387,14 @@ def select_race_for_runners(request):
 def show_runners(request, pk):
     selected_race = get_object_or_404(race, pk=pk)
     race_runners = runners.objects.filter(race_id=pk)
+    # Use field.choices for attributes that are shadowed by model fields (gender, shirt_size)
     context = {
         'race': selected_race,
         'runners': race_runners,
         'age_brackets': runners.age_bracket,
-        'genders': runners.gender,
+        'genders': runners._meta.get_field('gender').choices,
         'race_types': runners.race_type,
-        'shirt_sizes': runners.shirt_size,
+        'shirt_sizes': runners._meta.get_field('shirt_size').choices,
     }
     return render(request, 'tracker/view_runners.html', context)
 
