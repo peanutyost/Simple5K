@@ -21,7 +21,6 @@ import hmac
 import hashlib
 import io
 import json
-import logging
 import pytz
 import urllib.parse
 
@@ -1260,9 +1259,6 @@ def paypal_cancel(request):
     return render(request, 'tracker/paypal_cancel.html')
 
 
-logger = logging.getLogger(__name__)
-
-
 @csrf_exempt
 def paypal_ipn(request):
     """
@@ -1273,7 +1269,6 @@ def paypal_ipn(request):
         return HttpResponse(status=405)
     raw_body = request.body
     if not raw_body:
-        logger.warning('PayPal IPN: empty body')
         return HttpResponse('ok')
     site_settings = SiteSettings.get_settings()
     use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
@@ -1285,10 +1280,8 @@ def paypal_ipn(request):
         req = urllib.request.Request(paypal_url, data=verify_data, method='POST', headers={'Content-Type': 'application/x-www-form-urlencoded'})
         with urllib.request.urlopen(req, timeout=60) as resp:
             verify_result = resp.read().decode('utf-8').strip()
-    except Exception as e:
-        logger.exception('PayPal IPN: verification request failed: %s', e)
+    except Exception:
         return HttpResponse(status=500)
-    logger.info('PayPal IPN: verification result=%s', verify_result)
     if verify_result != 'VERIFIED':
         return HttpResponse(status=400)
     # Parse body for our use (latin-1 never fails on any byte)
@@ -1299,20 +1292,17 @@ def paypal_ipn(request):
     data = urllib.parse.parse_qs(body_str)
     payment_status = (data.get('payment_status') or [''])[0]
     custom = (data.get('custom') or [''])[0]
-    logger.info('PayPal IPN: payment_status=%s custom=%s', payment_status, custom[:50] + '...' if len(custom) > 50 else custom)
     if payment_status.lower() not in ('completed', 'processed'):
         return HttpResponse('ok')
     runner_id = _paypal_runner_id_from_custom(custom)
     if runner_id is None:
-        logger.warning('PayPal IPN: could not extract runner_id from custom')
         return HttpResponse('ok')
     try:
         runner_obj = runners.objects.get(pk=runner_id)
         runner_obj.paid = True
         runner_obj.save(update_fields=['paid'])
-        logger.info('PayPal IPN: marked runner_id=%s as paid', runner_id)
     except runners.DoesNotExist:
-        logger.warning('PayPal IPN: runner_id=%s not found', runner_id)
+        pass
     return HttpResponse('ok')
 
 
