@@ -6,6 +6,9 @@
         <div class="col-12 col-md-8 col-lg-6">
             <h1 class="mb-4">Payment Cancelled</h1>
             <p>You are still registered for the race. Your payment was not completed.</p>
+            {% if sent %}
+            <div class="alert alert-success">We've sent a confirmation email to your inbox with a link to pay when you're ready. Check your spam folder if you don't see it.</div>
+            {% endif %}
             <p>You can pay the entry fee on race day when you check in.</p>
             <p class="mb-0">See you at the race!</p>
         </div>

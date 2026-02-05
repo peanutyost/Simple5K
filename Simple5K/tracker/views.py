@@ -1393,6 +1393,7 @@ def race_signup(request):
                     'notify_url': notify_url,
                     'custom': custom[:256],
                 }
+                request.session['paypal_pending_runner_id'] = runner.id
                 paypal_url = f"{base_url}/cgi-bin/webscr?{urllib.parse.urlencode(params)}"
                 return redirect(paypal_url)
             # No PayPal: send signup confirmation immediately
@@ -1424,8 +1425,34 @@ def paypal_return(request):
 
 
 def paypal_cancel(request):
-    """Shown when user cancels PayPal payment. Runner remains registered but unpaid."""
-    return render(request, 'tracker/paypal_cancel.html')
+    """Shown when user cancels PayPal payment. Runner remains registered but unpaid.
+    Sends signup confirmation email automatically (with pay-later link). Only GET; no form.
+    """
+    if request.GET.get('sent') == '1':
+        return render(request, 'tracker/paypal_cancel.html', {'sent': True})
+
+    runner = None
+    session_id = request.session.get('paypal_pending_runner_id')
+    if session_id is not None:
+        runner = runners.objects.filter(pk=session_id).first()
+        if runner:
+            request.session.pop('paypal_pending_runner_id', None)
+    if runner is None:
+        rid_get = request.GET.get('runner_id')
+        sig_get = (request.GET.get('sig') or '').strip()
+        if rid_get and sig_get:
+            try:
+                rid = int(rid_get)
+            except (TypeError, ValueError):
+                rid = None
+            if rid is not None and _paypal_runner_id_from_custom(f"{rid}:{sig_get}") == rid:
+                runner = runners.objects.filter(pk=rid).first()
+
+    if runner is not None:
+        send_signup_confirmation_email(runner)
+        return redirect(reverse('tracker:paypal-cancel') + '?sent=1')
+
+    return render(request, 'tracker/paypal_cancel.html', {'sent': False})
 
 
 @csrf_exempt
@@ -1502,6 +1529,7 @@ def pay_entry(request, runner_id, signature):
     base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
     return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
     cancel_url = request.build_absolute_uri(reverse('tracker:paypal-cancel'))
+    cancel_url += '?' + urllib.parse.urlencode({'runner_id': runner_obj.id, 'sig': signature})
     notify_url = request.build_absolute_uri(reverse('tracker:paypal-ipn'))
     custom_val = _paypal_custom_for_runner(runner_obj.id)
     item_name = f"Race entry: {race_obj.name}"
