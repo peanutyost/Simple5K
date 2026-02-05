@@ -1483,6 +1483,8 @@ def paypal_ipn(request):
     PayPal IPN (Instant Payment Notification). PayPal POSTs here when a payment completes.
     Verify the request with PayPal, then mark the runner as paid if payment_status=Completed.
     """
+    import logging
+    logger = logging.getLogger(__name__)
     if request.method != 'POST':
         return HttpResponse(status=405)
     raw_body = request.body
@@ -1491,16 +1493,26 @@ def paypal_ipn(request):
     site_settings = SiteSettings.get_settings()
     use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
     paypal_url = 'https://ipnpb.sandbox.paypal.com/cgi-bin/webscr' if use_sandbox else 'https://ipnpb.paypal.com/cgi-bin/webscr'
-    # Re-POST the raw body back to PayPal with only cmd=_notify-validate appended (no re-encoding)
-    verify_data = raw_body + b'&cmd=_notify-validate'
+    # PayPal spec: PREFIX the message with cmd=_notify-validate (do not append)
+    verify_data = b'cmd=_notify-validate&' + raw_body
     try:
         import urllib.request
-        req = urllib.request.Request(paypal_url, data=verify_data, method='POST', headers={'Content-Type': 'application/x-www-form-urlencoded'})
+        req = urllib.request.Request(
+            paypal_url,
+            data=verify_data,
+            method='POST',
+            headers={
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'Simple5K-IPN-Listener',
+            },
+        )
         with urllib.request.urlopen(req, timeout=60) as resp:
             verify_result = resp.read().decode('utf-8').strip()
-    except Exception:
+    except Exception as e:
+        logger.exception('PayPal IPN verification request failed: %s', e)
         return HttpResponse(status=500)
     if verify_result != 'VERIFIED':
+        logger.warning('PayPal IPN verification failed: result=%r', verify_result)
         return HttpResponse(status=400)
     # Parse body for our use (latin-1 never fails on any byte)
     try:
@@ -1511,17 +1523,21 @@ def paypal_ipn(request):
     payment_status = (data.get('payment_status') or [''])[0]
     custom = (data.get('custom') or [''])[0]
     if payment_status.lower() not in ('completed', 'processed'):
+        logger.info('PayPal IPN ignored: payment_status=%r', payment_status)
         return HttpResponse('ok')
     runner_id = _paypal_runner_id_from_custom(custom)
     if runner_id is None:
+        logger.warning('PayPal IPN: invalid or missing custom field')
         return HttpResponse('ok')
     try:
         runner_obj = runners.objects.get(pk=runner_id)
         runner_obj.paid = True
         runner_obj.save(update_fields=['paid'])
-        send_signup_confirmation_email(runner_obj)
+        if not runner_obj.signup_confirmation_sent:
+            send_signup_confirmation_email(runner_obj)
+        logger.info('PayPal IPN processed: runner_id=%s marked paid', runner_id)
     except runners.DoesNotExist:
-        pass
+        logger.warning('PayPal IPN: runner_id=%s not found', runner_id)
     return HttpResponse('ok')
 
 
