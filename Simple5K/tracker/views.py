@@ -1469,8 +1469,10 @@ def paypal_cancel(request):
                 runner = runners.objects.filter(pk=rid).first()
 
     if runner is not None:
-        send_signup_confirmation_email(runner)
-        return redirect(reverse('tracker:paypal-cancel') + '?sent=1')
+        # Only send if they haven't already had one (e.g. they came from pay-later link and already got the email)
+        if not runner.signup_confirmation_sent:
+            send_signup_confirmation_email(runner)
+            return redirect(reverse('tracker:paypal-cancel') + '?sent=1')
 
     return render(request, 'tracker/paypal_cancel.html', {'sent': False})
 
