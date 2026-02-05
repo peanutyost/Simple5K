@@ -34,7 +34,7 @@
             {% if recent_jobs %}
             <div class="mt-4">
                 <h2 class="h6 text-muted mb-2">Last send job</h2>
-                <p class="small text-muted">Emails are sent in the background. Check Admin → EmailSendJob if a job shows Failed.</p>
+                <p class="small text-muted">Emails are sent in the background. If a job stays on &quot;Sending&quot;, open the Send Email page again (to start the worker), or run <code>python manage.py reset_stuck_email_jobs</code>, or in Admin → EmailSendJob use the action &quot;Reset stuck (Sending → Failed)&quot;.</p>
                 <ul class="list-group list-group-flush small">
                     {% for job in recent_jobs %}
                     <li class="list-group-item d-flex justify-content-between align-items-start px-0">

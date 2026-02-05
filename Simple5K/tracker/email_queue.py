@@ -9,12 +9,18 @@ import time
 # Throttle: seconds between each email (30/min = 1 every 2 sec)
 EMAIL_SEND_INTERVAL_SECONDS = 2
 
+# SMTP connection timeout (seconds) so we don't hang forever
+EMAIL_TIMEOUT_SECONDS = 60
+
+# Jobs stuck in SENDING longer than this are reset to FAILED (worker may have stopped)
+STUCK_SENDING_MINUTES = 15
+
 # Footer appended to every email
 EMAIL_FOOTER = "\n\n---\nThis is an unmonitored email account. Please do not reply."
 
 
 def _process_one_job(job):
-    from django.core.mail import send_mail
+    from django.core.mail import get_connection, EmailMessage
     from django.conf import settings
     from django.db import connection
 
@@ -33,13 +39,15 @@ def _process_one_job(job):
         from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or settings.EMAIL_HOST_USER
         for email in recipient_list:
             try:
-                send_mail(
+                conn = get_connection(fail_silently=False, timeout=EMAIL_TIMEOUT_SECONDS)
+                msg = EmailMessage(
                     subject=job.subject,
-                    message=body,
+                    body=body,
                     from_email=from_email,
-                    recipient_list=[email],
-                    fail_silently=False,
+                    to=[email],
                 )
+                conn.send_messages([msg])
+                conn.close()
             except Exception as e:
                 job.status = EmailSendJob.STATUS_FAILED
                 job.error_message = str(e)[:2000]
@@ -57,11 +65,24 @@ def _process_one_job(job):
 
 
 def _worker_loop():
+    from django.utils import timezone
+    from datetime import timedelta
+
     from .models import EmailSendJob
 
     while True:
         job = None
         try:
+            # Reset jobs stuck in SENDING (e.g. after server restart) so they don't stay stuck
+            stuck_cutoff = timezone.now() - timedelta(minutes=STUCK_SENDING_MINUTES)
+            EmailSendJob.objects.filter(
+                status=EmailSendJob.STATUS_SENDING,
+                updated_at__lt=stuck_cutoff,
+            ).update(
+                status=EmailSendJob.STATUS_FAILED,
+                error_message="Reset: job was stuck in Sending (worker may have stopped). Re-send from the email page if needed.",
+            )
+
             job = (
                 EmailSendJob.objects.filter(status=EmailSendJob.STATUS_QUEUED)
                 .order_by("created_at")

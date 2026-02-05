@@ -54,9 +54,19 @@ class EmailSendJobAdmin(admin.ModelAdmin):
     list_filter = ('status',)
     readonly_fields = ('created_at', 'updated_at', 'error_message')
     search_fields = ('subject', 'race__name')
+    actions = ['reset_stuck_sending']
 
     @admin.display(description='Error')
     def error_message_short(self, obj):
         if not obj.error_message:
             return ''
         return obj.error_message[:80] + '…' if len(obj.error_message) > 80 else obj.error_message
+
+    @admin.action(description='Reset stuck (Sending → Failed)')
+    def reset_stuck_sending(self, request, queryset):
+        stuck = queryset.filter(status=EmailSendJob.STATUS_SENDING)
+        count = stuck.update(
+            status=EmailSendJob.STATUS_FAILED,
+            error_message='Reset: job was stuck in Sending. Re-send from the email page if needed.',
+        )
+        self.message_user(request, f'Reset {count} stuck job(s) to Failed.')

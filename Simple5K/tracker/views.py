@@ -689,6 +689,11 @@ def email_list_view(request):
     On Send: creates EmailSendJob (queued); background worker sends one email per runner
     with throttling. Confirms that the email has been queued.
     """
+    try:
+        from .email_queue import start_email_worker
+        start_email_worker()
+    except Exception:
+        pass
     races = race.objects.all().order_by('-date', '-scheduled_time')
 
     if request.method == 'POST':
