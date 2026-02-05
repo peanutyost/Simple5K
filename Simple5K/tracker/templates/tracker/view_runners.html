@@ -1,19 +1,115 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=BioRhyme:wght@200..800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
+
+    .admin-page {
+        --page-card-bg: rgba(255, 255, 255, 0.55);
+        --page-border: rgba(0, 0, 0, 0.1);
+        --page-heading: #1a1a2e;
+        --page-muted: #5a5a72;
+    }
+
+    .admin-page .page-heading {
+        font-family: 'BioRhyme', serif;
+        font-weight: 700;
+        color: var(--page-heading);
+        letter-spacing: -0.02em;
+    }
+
+    .admin-page .card-panel {
+        background: var(--page-card-bg);
+        border: 1px solid var(--page-border);
+        border-radius: 1rem;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+    }
+
+    .admin-page .runners-table thead th {
+        background: rgba(0, 0, 0, 0.06);
+        border-bottom: 1px solid var(--page-border);
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        padding: 0.75rem 0.875rem;
+        color: var(--page-heading);
+    }
+
+    .admin-page .runners-table tbody td {
+        padding: 0.625rem 0.875rem;
+        border-color: var(--page-border);
+        font-size: 0.9375rem;
+        vertical-align: middle;
+    }
+
+    .admin-page .runners-table .sortable-th:hover { cursor: pointer; }
+    .admin-page .runners-table .sortable-th.sorted_asc::after { content: " \2191"; }
+    .admin-page .runners-table .sortable-th.sorted_desc::after { content: " \2193"; }
+    .admin-page .runner-row { cursor: pointer; }
+    .admin-page .runner-row.editing { cursor: default; }
+    .admin-page .runner-row.editing .name-cell { min-width: 180px; }
+
+    .admin-page .btn-toolbar .btn {
+        border-radius: 0.5rem;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        min-height: 2.5rem;
+    }
+
+    #addRunnerModal .modal-content {
+        background: rgba(255, 255, 255, 0.55);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 1rem;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    #addRunnerModal .modal-header {
+        border-bottom-color: rgba(0, 0, 0, 0.1);
+        padding: 1rem 1.25rem;
+    }
+
+    #addRunnerModal .modal-body .form-control,
+    #addRunnerModal .modal-body .form-select {
+        min-height: 2.75rem;
+        border-radius: 0.5rem;
+        border-color: rgba(0, 0, 0, 0.1);
+        background: rgba(255, 255, 255, 0.7);
+    }
+
+    #addRunnerModal .modal-footer {
+        border-top-color: rgba(0, 0, 0, 0.1);
+        padding: 1rem 1.25rem;
+    }
+
+    @media (max-width: 767.98px) {
+        .admin-page .container { padding-left: 1rem; padding-right: 1rem; }
+        .admin-page .runners-table thead th,
+        .admin-page .runners-table tbody td { padding: 0.5rem 0.625rem; font-size: 0.875rem; }
+        .admin-page .btn-toolbar { flex-direction: column; align-items: stretch; }
+        .admin-page .btn-toolbar .btn { width: 100%; }
+    }
+
+    @media (max-width: 575.98px) {
+        .admin-page .runners-table .name-cell,
+        .admin-page .runners-table .actions-cell { min-width: 100px; }
+    }
+</style>
 <form id="csrf-form" method="post" action="" style="display: none;">{% csrf_token %}</form>
+<div class="admin-page">
 <div class="container py-3 py-md-4">
     <div class="row">
         <div class="col-12">
-            <h2 class="mb-4">Runners for {{ race.name }}</h2>
-            <div class="d-flex flex-wrap gap-2 mb-3">
+            <h1 class="page-heading mb-3 mb-md-4" style="font-size: clamp(1.25rem, 4vw, 1.75rem);">Runners for {{ race.name }}</h1>
+            <div class="d-flex flex-wrap gap-2 mb-3 btn-toolbar">
                 <a href="{% url 'tracker:select_race_runners' %}" class="btn btn-primary">Back to Race List</a>
                 <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addRunnerModal" aria-label="Add runner">Add Runner</button>
             </div>
             <p class="text-muted small mb-3">Click a row to edit the runner.</p>
+            <div class="card card-panel">
             <div class="table-responsive">
-                <table id="runnersTable" class="table table-striped table-bordered table-hover">
-                    <thead class="table-dark">
+                <table id="runnersTable" class="table runners-table table-hover mb-0">
+                    <thead>
                         <tr>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Name</th>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Age</th>
@@ -50,13 +146,15 @@
                     </tbody>
                 </table>
             </div>
+            </div>
         </div>
     </div>
+</div>
 </div>
 
 <!-- Add Runner Modal -->
 <div class="modal fade" id="addRunnerModal" tabindex="-1" aria-labelledby="addRunnerModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addRunnerModalLabel">Add Runner</h5>
@@ -408,12 +506,4 @@
     });
 })();
 </script>
-<style>
-.sortable-th:hover { cursor: pointer; }
-.sortable-th.sorted_asc::after { content: " \2191"; }
-.sortable-th.sorted_desc::after { content: " \2193"; }
-.runner-row { cursor: pointer; }
-.runner-row.editing { cursor: default; }
-.runner-row.editing .name-cell { min-width: 180px; }
-</style>
 {% endblock %}

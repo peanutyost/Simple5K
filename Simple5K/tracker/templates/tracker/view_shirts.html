@@ -1,35 +1,115 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
-<div class="container py-3 py-md-4">
-    <div class="row">
-        <div class="col-12">
-            <h1 class="mb-4">Shirt Size Distribution for Selected Race</h1>
-            <a href="{% url 'tracker:select_race' %}" class="btn btn-primary mb-3">Back to Race List</a>
-            <p class="mb-3"><strong>Total Runners:</strong> {{ total_runners }}</p>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col">Shirt Size</th>
-                            <th scope="col">Quantity</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for size, count in shirt_size_counts.items %}
-                        <tr>
-                            <td>{{ size }}</td>
-                            <td>{{ count }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                    <tfoot class="table-secondary">
-                        <tr>
-                            <th scope="row">Total Runners</th>
-                            <td>{{ total_runners }}</td>
-                        </tr>
-                    </tfoot>
-                </table>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=BioRhyme:wght@200..800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
+
+    .admin-page {
+        --page-card-bg: rgba(255, 255, 255, 0.55);
+        --page-border: rgba(0, 0, 0, 0.1);
+        --page-heading: #1a1a2e;
+        --page-muted: #5a5a72;
+    }
+
+    .admin-page .page-heading {
+        font-family: 'BioRhyme', serif;
+        font-weight: 700;
+        color: var(--page-heading);
+        letter-spacing: -0.02em;
+    }
+
+    .admin-page .card-panel {
+        background: var(--page-card-bg);
+        border: 1px solid var(--page-border);
+        border-radius: 1rem;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+    }
+
+    .admin-page .shirt-table {
+        margin-bottom: 0;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    .admin-page .shirt-table thead th {
+        background: rgba(0, 0, 0, 0.05);
+        border-bottom: 1px solid var(--page-border);
+        font-weight: 600;
+        font-size: 0.9375rem;
+        color: var(--page-heading);
+        padding: 0.875rem 1rem;
+    }
+
+    .admin-page .shirt-table tbody td {
+        padding: 0.75rem 1rem;
+        border-color: var(--page-border);
+        vertical-align: middle;
+    }
+
+    .admin-page .shirt-table tfoot th,
+    .admin-page .shirt-table tfoot td {
+        background: rgba(0, 0, 0, 0.04);
+        border-top: 2px solid var(--page-border);
+        font-weight: 600;
+        padding: 0.875rem 1rem;
+    }
+
+    .admin-page .btn-back {
+        font-weight: 500;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .admin-page .total-runners {
+        font-size: 1rem;
+        color: var(--page-muted);
+    }
+
+    @media (max-width: 575.98px) {
+        .admin-page .container { padding-left: 1rem; padding-right: 1rem; }
+        .admin-page .shirt-table thead th,
+        .admin-page .shirt-table tbody td,
+        .admin-page .shirt-table tfoot th,
+        .admin-page .shirt-table tfoot td { padding: 0.625rem 0.75rem; font-size: 0.9375rem; }
+        .admin-page .action-row { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+        .admin-page .btn-back { width: 100%; }
+    }
+</style>
+<div class="admin-page">
+    <div class="container py-3 py-md-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="page-heading mb-3 mb-md-4" style="font-size: clamp(1.5rem, 4vw, 2rem);">Shirt Size Distribution</h1>
+                <div class="d-flex flex-wrap align-items-center gap-2 gap-md-3 mb-3 action-row">
+                    <a href="{% url 'tracker:select_race' %}" class="btn btn-primary btn-back">Back to Race List</a>
+                    <p class="total-runners mb-0"><strong>Total Runners:</strong> {{ total_runners }}</p>
+                </div>
+                <div class="card card-panel">
+                    <div class="table-responsive">
+                        <table class="table shirt-table table-hover">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Shirt Size</th>
+                                    <th scope="col">Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for size, count in shirt_size_counts.items %}
+                                <tr>
+                                    <td>{{ size }}</td>
+                                    <td>{{ count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th scope="row">Total Runners</th>
+                                    <td>{{ total_runners }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
