@@ -1378,9 +1378,10 @@ def race_signup(request):
                 use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
                 base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
                 return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
-                cancel_url = request.build_absolute_uri(reverse('tracker:paypal-cancel'))
-                notify_url = request.build_absolute_uri(reverse('tracker:paypal-ipn'))
                 custom = _paypal_custom_for_runner(runner.id)
+                cancel_url = request.build_absolute_uri(reverse('tracker:paypal-cancel'))
+                cancel_url += '?' + urllib.parse.urlencode({'runner_id': runner.id, 'sig': custom.split(':', 1)[1]})
+                notify_url = request.build_absolute_uri(reverse('tracker:paypal-ipn'))
                 item_name = f"Race entry: {selected_race.name}"
                 params = {
                     'cmd': '_donations',
@@ -1393,7 +1394,6 @@ def race_signup(request):
                     'notify_url': notify_url,
                     'custom': custom[:256],
                 }
-                request.session['paypal_pending_runner_id'] = runner.id
                 paypal_url = f"{base_url}/cgi-bin/webscr?{urllib.parse.urlencode(params)}"
                 return redirect(paypal_url)
             # No PayPal: send signup confirmation immediately
