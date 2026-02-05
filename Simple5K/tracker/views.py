@@ -1377,8 +1377,9 @@ def race_signup(request):
                 # Redirect to PayPal donation with entry fee pre-filled
                 use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
                 base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
-                return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
                 custom = _paypal_custom_for_runner(runner.id)
+                return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
+                return_url += '?' + urllib.parse.urlencode({'runner_id': runner.id, 'sig': custom.split(':', 1)[1]})
                 cancel_url = request.build_absolute_uri(reverse('tracker:paypal-cancel'))
                 cancel_url += '?' + urllib.parse.urlencode({'runner_id': runner.id, 'sig': custom.split(':', 1)[1]})
                 notify_url = request.build_absolute_uri(reverse('tracker:paypal-ipn'))
@@ -1420,7 +1421,26 @@ def signup_success(request, pk):
 
 
 def paypal_return(request):
-    """Shown after user completes (or abandons) PayPal; payment is confirmed via IPN."""
+    """Shown after user completes (or abandons) PayPal. Payment is normally confirmed via IPN.
+    When we have runner_id+sig in the URL (from our redirect), we treat the return as proof of payment:
+    mark runner paid if not already, and send confirmation email if not already sent.
+    This covers both (1) IPN ran but email failed and (2) IPN never reached us (e.g. localhost).
+    """
+    rid_get = request.GET.get('runner_id')
+    sig_get = (request.GET.get('sig') or '').strip()
+    if rid_get and sig_get:
+        try:
+            rid = int(rid_get)
+        except (TypeError, ValueError):
+            rid = None
+        if rid is not None and _paypal_runner_id_from_custom(f"{rid}:{sig_get}") == rid:
+            runner = runners.objects.filter(pk=rid).first()
+            if runner:
+                if not runner.paid:
+                    runner.paid = True
+                    runner.save(update_fields=['paid'])
+                if not runner.signup_confirmation_sent:
+                    send_signup_confirmation_email(runner)
     return render(request, 'tracker/paypal_return.html')
 
 
@@ -1528,6 +1548,7 @@ def pay_entry(request, runner_id, signature):
     use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
     base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
     return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
+    return_url += '?' + urllib.parse.urlencode({'runner_id': runner_obj.id, 'sig': signature})
     cancel_url = request.build_absolute_uri(reverse('tracker:paypal-cancel'))
     cancel_url += '?' + urllib.parse.urlencode({'runner_id': runner_obj.id, 'sig': signature})
     notify_url = request.build_absolute_uri(reverse('tracker:paypal-ipn'))
