@@ -80,19 +80,23 @@ def generate_race_report(filename, race_data, return_type):
         canvas_obj.line(x, y - 0.08 * inch, x + width, y - 0.08 * inch)
         return y - 0.2 * inch
 
-    def draw_runner_card(canvas_obj, x, y, width, height, text_lines, top_padding=0.2 * inch):
-        """Draws a card-style box with light fill and text."""
+    def draw_runner_card(canvas_obj, x, y, width, height, name, detail_lines, top_padding=0.22 * inch):
+        """Draws a card-style box: name in large type, then detail lines."""
         canvas_obj.setFillColor(row_alt)
         canvas_obj.rect(x, y, width, height, fill=1, stroke=0)
         canvas_obj.setStrokeColor(grid_light)
         canvas_obj.setLineWidth(0.5)
         canvas_obj.rect(x, y, width, height, fill=0, stroke=1)
+        text_x = x + 0.18 * inch
         text_y = y + height - top_padding
         canvas_obj.setFillColor(colors.black)
-        for line in text_lines:
-            canvas_obj.setFont("Helvetica", 10)
-            canvas_obj.drawString(x + 0.15 * inch, text_y, line)
-            text_y -= 0.18 * inch
+        canvas_obj.setFont("Helvetica-Bold", 16)
+        canvas_obj.drawString(text_x, text_y, name)
+        text_y -= 0.28 * inch
+        canvas_obj.setFont("Helvetica", 10)
+        for line in detail_lines:
+            canvas_obj.drawString(text_x, text_y, line)
+            text_y -= 0.2 * inch
 
     # --- Background Image (Logo) ---
     if race_data['race'].get('logo'):
@@ -129,17 +133,17 @@ def generate_race_report(filename, race_data, return_type):
     # --- Runner summary card (left) ---
     runner_box_x = margin
     runner_box_y = usable_height - 0.5 * inch
-    runner_box_width = 2.4 * inch
-    runner_box_height = 1.45 * inch
+    runner_box_width = 2.6 * inch
+    runner_box_height = 1.5 * inch
     rs = race_data['runner']
     avg_speed_str = f"{rs['race_avg_speed']:.2f} mph" if isinstance(rs.get('race_avg_speed'), (int, float)) else f"{rs.get('race_avg_speed', 'N/A')}"
-    runner_info = [
-        rs['name'],
-        f"Bib #{rs['number']}  ·  {rs['gender']}  ·  {rs['type']}",
-        f"Total time  {rs['total_time']}",
-        f"Avg pace  {rs['avg_pace']}  ·  {avg_speed_str}",
+    runner_name = rs['name']
+    runner_details = [
+        f"Bib #{rs['number']}  ·  {rs['type']}",
+        f"Total time   {rs['total_time']}",
+        f"Avg pace   {rs['avg_pace']}   {avg_speed_str}",
     ]
-    draw_runner_card(c, runner_box_x, runner_box_y, runner_box_width, runner_box_height, runner_info, top_padding=0.2 * inch)
+    draw_runner_card(c, runner_box_x, runner_box_y, runner_box_width, runner_box_height, runner_name, runner_details, top_padding=0.22 * inch)
 
     # --- Header: Race name, date, place (right-aligned) ---
     race_info_x = letter[0] - margin
