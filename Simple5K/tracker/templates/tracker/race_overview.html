@@ -1,110 +1,306 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=BioRhyme:wght@200..800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap');
+
+    .active-race-page {
+        --page-card-bg: rgba(255, 255, 255, 0.92);
+        --page-border: rgba(0, 0, 0, 0.08);
+        --page-heading: #1a1a2e;
+        --page-muted: #5a5a72;
+        --page-accent: #2563eb;
+    }
+
+    .active-race-page .page-heading {
+        font-family: 'BioRhyme', serif;
+        font-weight: 700;
+        color: var(--page-heading);
+        letter-spacing: -0.02em;
+        font-size: clamp(1.5rem, 4vw, 2rem);
+    }
+
+    .active-race-page .card-panel {
+        background: var(--page-card-bg);
+        border: 1px solid var(--page-border);
+        border-radius: 1rem;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+    }
+
+    .active-race-page .race-table thead th {
+        background: rgba(0, 0, 0, 0.05);
+        border-bottom: 2px solid var(--page-border);
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        font-size: 0.875rem;
+        padding: 0.75rem 1rem;
+        color: var(--page-heading);
+        white-space: nowrap;
+    }
+
+    .active-race-page .race-table tbody td {
+        padding: 0.75rem 1rem;
+        border-color: var(--page-border);
+        font-size: 0.9375rem;
+        vertical-align: middle;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    .active-race-page .race-table tbody tr:hover {
+        background: rgba(37, 99, 235, 0.04);
+    }
+
+    .active-race-page .race-table .sortable-th:hover {
+        cursor: pointer;
+        background: rgba(0, 0, 0, 0.08);
+    }
+
+    .active-race-page .race-table .lap-cell {
+        font-size: 0.8125rem;
+        color: var(--page-muted);
+    }
+
+    .active-race-page .race-table .lap-cell div {
+        margin-bottom: 0.25rem;
+    }
+
+    .active-race-page .table-scroll-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -1rem;
+        padding: 0 1rem;
+    }
+
+    .active-race-page .table-scroll-wrap::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .active-race-page .table-scroll-wrap::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 3px;
+    }
+
+    .active-race-page .finish-form-card .form-control {
+        border-radius: 0.5rem;
+        border-color: var(--page-border);
+    }
+
+    .active-race-page .finish-form-card .btn-primary {
+        border-radius: 0.5rem;
+        font-weight: 600;
+    }
+
+    .active-race-page .refresh-badge {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--page-muted);
+    }
+
+    /* Mobile runner cards */
+    .active-race-page .runner-card {
+        background: var(--page-card-bg);
+        border: 1px solid var(--page-border);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .active-race-page .runner-card .runner-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .active-race-page .runner-card .runner-number {
+        font-weight: 700;
+        color: var(--page-accent);
+        font-size: 1.125rem;
+    }
+
+    .active-race-page .runner-card .runner-name {
+        font-weight: 600;
+        color: var(--page-heading);
+    }
+
+    .active-race-page .runner-card .runner-meta {
+        font-size: 0.875rem;
+        color: var(--page-muted);
+        margin-top: 0.5rem;
+    }
+
+    .active-race-page .runner-card .laps-collapse {
+        font-size: 0.8125rem;
+        color: var(--page-muted);
+        margin-top: 0.5rem;
+    }
+
+    .active-race-page .empty-state {
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: var(--page-muted);
+    }
+
+    .active-race-page .empty-state .display-6 {
+        font-family: 'BioRhyme', serif;
+        color: var(--page-heading);
+    }
+
+    @media (max-width: 767.98px) {
+        .active-race-page .container { padding-left: 1rem; padding-right: 1rem; }
+        .active-race-page .race-table thead th,
+        .active-race-page .race-table tbody td { padding: 0.5rem 0.75rem; font-size: 0.8125rem; }
+    }
+</style>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
 <script src="{% static 'sorttable.js' %}"></script>
-<div class="container py-3 py-md-4">
-    <div class="row">
-        <div class="col-12">
-            <h1 class="text-center mb-4">{{ race_name }}</h1>
-            {% if request.user.is_authenticated %}
-            <div class="row justify-content-center mb-4">
-                <div class="col-12 col-md-8 col-lg-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Mark Runner as Finished</h5>
-                            <form id="finishRunnerForm" method="post" action="{% url 'tracker:mark_runner_finished' %}">
-                                {% csrf_token %}
-                                <div class="mb-3">
-                                    <label for="runner_number" class="form-label">Runner Number</label>
-                                    <input type="number" class="form-control" id="runner_number" name="runner_number" min="1" required aria-required="true">
+
+<div class="active-race-page">
+    <div class="container py-3 py-md-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="page-heading text-center mb-2">{{ race_name }}</h1>
+                <p class="text-center text-muted small mb-4">Live race results</p>
+
+                {% if request.user.is_authenticated %}
+                <div class="row justify-content-center mb-4">
+                    <div class="col-12 col-md-8 col-lg-6">
+                        <div class="card card-panel finish-form-card">
+                            <div class="card-body p-3 p-md-4">
+                                <div class="d-flex flex-wrap align-items-end gap-2 justify-content-between">
+                                    <div class="flex-grow-1">
+                                        <label for="runner_number" class="form-label small fw-600 text-body mb-1">Mark runner finished</label>
+                                        <form id="finishRunnerForm" method="post" action="{% url 'tracker:mark_runner_finished' %}" class="d-flex flex-wrap gap-2 align-items-end">
+                                            {% csrf_token %}
+                                            <input type="number" class="form-control form-control-sm" id="runner_number" name="runner_number" min="1" placeholder="Runner #" required aria-required="true" style="max-width: 120px;">
+                                            <button type="submit" class="btn btn-primary btn-sm">Mark finished</button>
+                                        </form>
+                                    </div>
+                                    <span class="refresh-badge">Auto-refresh 30s</span>
                                 </div>
-                                <button type="submit" class="btn btn-primary">Mark as Finished</button>
-                            </form>
-                            <div id="submission-response" class="mt-2" role="alert" aria-live="polite"></div>
+                                <div id="submission-response" class="mt-2" role="alert" aria-live="polite"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <script>
-            (function() {
-                var form = document.getElementById('finishRunnerForm');
-                var responseEl = document.getElementById('submission-response');
-                var csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
-                if (form && csrfInput) {
-                    form.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        var runnerNumber = document.getElementById('runner_number').value;
-                        var xhr = new XMLHttpRequest();
-                        xhr.open('POST', form.getAttribute('action'), true);
-                        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                        xhr.onreadystatechange = function() {
-                            if (xhr.readyState === 4) {
-                                try {
-                                    var data = JSON.parse(xhr.responseText);
-                                    var msg = data.message || '';
-                                    if (data.success) {
-                                        responseEl.innerHTML = '<div class="alert alert-success">' + escapeHtml(msg) + '</div>';
-                                        if (typeof location.reload === 'function') location.reload();
-                                    } else {
-                                        responseEl.innerHTML = '<div class="alert alert-danger">' + escapeHtml(msg) + '</div>';
+                <script>
+                (function() {
+                    var form = document.getElementById('finishRunnerForm');
+                    var responseEl = document.getElementById('submission-response');
+                    var csrfInput = document.querySelector('#finishRunnerForm input[name="csrfmiddlewaretoken"]');
+                    if (form && csrfInput) {
+                        form.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            var runnerNumber = document.getElementById('runner_number').value;
+                            var xhr = new XMLHttpRequest();
+                            xhr.open('POST', form.getAttribute('action'), true);
+                            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                            xhr.onreadystatechange = function() {
+                                if (xhr.readyState === 4) {
+                                    try {
+                                        var data = JSON.parse(xhr.responseText);
+                                        var msg = data.message || '';
+                                        if (data.success) {
+                                            responseEl.innerHTML = '<div class="alert alert-success py-2 small">' + escapeHtml(msg) + '</div>';
+                                            if (typeof location.reload === 'function') location.reload();
+                                        } else {
+                                            responseEl.innerHTML = '<div class="alert alert-danger py-2 small">' + escapeHtml(msg) + '</div>';
+                                        }
+                                    } catch (err) {
+                                        responseEl.innerHTML = '<div class="alert alert-danger py-2 small">An error occurred. Please try again.</div>';
                                     }
-                                } catch (err) {
-                                    responseEl.innerHTML = '<div class="alert alert-danger">An error occurred. Please try again.</div>';
                                 }
-                            }
-                        };
-                        xhr.send('runner_number=' + encodeURIComponent(runnerNumber) + '&csrfmiddlewaretoken=' + encodeURIComponent(csrfInput.value));
-                    });
-                }
-                function escapeHtml(text) {
-                    var div = document.createElement('div');
-                    div.textContent = text;
-                    return div.innerHTML;
-                }
-                setInterval(function() { location.reload(); }, 30000);
-            })();
-            </script>
-            {% endif %}
+                            };
+                            xhr.send('runner_number=' + encodeURIComponent(runnerNumber) + '&csrfmiddlewaretoken=' + encodeURIComponent(csrfInput.value));
+                        });
+                    }
+                    function escapeHtml(text) {
+                        var div = document.createElement('div');
+                        div.textContent = text;
+                        return div.innerHTML;
+                    }
+                    setInterval(function() { location.reload(); }, 30000);
+                })();
+                </script>
+                {% endif %}
 
-            <div class="table-responsive">
-                <table id="raceTable" class="table table-bordered table-striped table-hover sortable">
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col">Runner</th>
-                            <th scope="col">Name</th>
-                            <th scope="col">Lap : Time - Pace - Speed</th>
-                            <th scope="col">Total Race Time</th>
-                            <th scope="col">Average Pace</th>
-                            <th scope="col">Average Speed (MPH)</th>
-                            <th scope="col" data-sort="number">Finished Place</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for runner in runner_times %}
-                        <tr>
-                            <td>{{ runner.number }}</td>
-                            <td>{{ runner.name }}</td>
-                            <td>
-                                {% for lap in runner.laps %}
-                                <div class="mb-1">Lap {{ lap.lap }}: {{ lap.duration }} - {{ lap.average_pace }} - {{ lap.average_speed }} MPH</div>
+                {% if runner_times %}
+                <!-- Desktop/tablet: table -->
+                <div class="d-none d-md-block card card-panel">
+                    <div class="table-scroll-wrap">
+                        <table id="raceTable" class="table race-table table-hover mb-0 sortable">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="sortable-th">Runner</th>
+                                    <th scope="col" class="sortable-th">Name</th>
+                                    <th scope="col">Lap : Time – Pace – Speed</th>
+                                    <th scope="col" class="sortable-th">Total time</th>
+                                    <th scope="col" class="sortable-th d-none d-lg-table-cell">Avg pace</th>
+                                    <th scope="col" class="sortable-th d-none d-lg-table-cell">Avg speed (MPH)</th>
+                                    <th scope="col" data-sort="number" class="sortable-th">Place</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for runner in runner_times %}
+                                <tr>
+                                    <td>{{ runner.number }}</td>
+                                    <td>{{ runner.name }}</td>
+                                    <td class="lap-cell">
+                                        {% for lap in runner.laps %}
+                                        <div>Lap {{ lap.lap }}: {{ lap.duration }} – {{ lap.average_pace }} – {{ lap.average_speed }} MPH</div>
+                                        {% endfor %}
+                                    </td>
+                                    <td>{% if runner.total_race_time %}{{ runner.total_race_time }}{% else %}—{% endif %}</td>
+                                    <td class="d-none d-lg-table-cell">{% if runner.average_pace %}{{ runner.average_pace }}{% else %}—{% endif %}</td>
+                                    <td class="d-none d-lg-table-cell">{% if runner.average_speed %}{{ runner.average_speed }}{% else %}—{% endif %}</td>
+                                    <td sorttable_customkey="{% if runner.place %}{{ runner.place }}{% else %}999999{% endif %}">
+                                        {% if runner.place %}
+                                            {% if runner.gender == "female" %}{{ runner.place }} F{% elif runner.gender == "male" %}{{ runner.place }} M{% else %}{{ runner.place }}{% endif %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                </tr>
                                 {% endfor %}
-                            </td>
-                            <td>{% if runner.total_race_time %}{{ runner.total_race_time }}{% else %}Not Finished{% endif %}</td>
-                            <td>{% if runner.average_pace %}{{ runner.average_pace }}{% else %}Not Finished{% endif %}</td>
-                            <td>{% if runner.average_speed %}{{ runner.average_speed }}{% else %}Not Finished{% endif %}</td>
-                            <td sorttable_customkey="{% if runner.place %}{{ runner.place }}{% else %}999999{% endif %}">
-                                {% if runner.place %}
-                                    {% if runner.gender == "female" %}{{ runner.place }} F{% elif runner.gender == "male" %}{{ runner.place }} M{% else %}{{ runner.place }}{% endif %}
-                                {% else %}
-                                    Not Finished
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Mobile: runner cards -->
+                <div class="d-md-none">
+                    {% for runner in runner_times %}
+                    <div class="runner-card">
+                        <div class="runner-card-header">
+                            <span class="runner-number">#{{ runner.number }}</span>
+                            <span class="runner-name">{{ runner.name }}</span>
+                        </div>
+                        <div class="runner-meta">
+                            <span>Total: {% if runner.total_race_time %}{{ runner.total_race_time }}{% else %}Not finished{% endif %}</span>
+                            <span class="ms-2">Place: {% if runner.place %}{% if runner.gender == "female" %}{{ runner.place }} F{% elif runner.gender == "male" %}{{ runner.place }} M{% else %}{{ runner.place }}{% endif %}{% else %}—{% endif %}</span>
+                        </div>
+                        {% if runner.laps %}
+                        <div class="laps-collapse">
+                            {% for lap in runner.laps %}
+                            <div>Lap {{ lap.lap }}: {{ lap.duration }} – {{ lap.average_pace }} – {{ lap.average_speed }} MPH</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="card card-panel">
+                    <div class="empty-state">
+                        <p class="display-6 mb-2">{{ race_name }}</p>
+                        <p class="mb-0">No runners or laps yet. Results will appear here when the race is in progress.</p>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

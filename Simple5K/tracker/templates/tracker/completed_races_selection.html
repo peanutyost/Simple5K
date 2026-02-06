@@ -1,79 +1,339 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
-<div class="container py-3 py-md-4">
-    <div class="row justify-content-center">
-        <div class="col-12">
-            <h1 class="text-center mb-4">Select a Completed Race</h1>
-            <div class="row justify-content-center mb-4">
-                <div class="col-12 col-md-6 col-lg-4">
-                    <label for="race_select" class="form-label">Select Race</label>
-                    <select id="race_select" class="form-select" aria-label="Select completed race">
-                        <option value="">Select a race</option>
-                        {% for race in completed_races %}
-                        <option value="{{ race.id }}">{{ race.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <div class="race-overview-container mt-4" role="region" aria-live="polite" aria-label="Race results"></div>
-        </div>
+<style>
+  .past-races-page {
+    --past-races-bg: #f8fafc;
+    --past-races-card: #ffffff;
+  }
+  .past-races-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #fff;
+    border-radius: 1rem;
+    padding: 2rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .past-races-hero h1 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+  }
+  .past-races-hero .lead {
+    opacity: 0.85;
+    font-size: 1rem;
+  }
+  .past-races-select-card {
+    background: var(--past-races-card);
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .past-races-select-card .form-select {
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+  .past-races-select-card .form-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+  .results-card {
+    background: var(--past-races-card);
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  .results-card .results-title {
+    font-weight: 700;
+    font-size: 1.25rem;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+  }
+  .results-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .results-table {
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+  }
+  .results-table th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    padding: 0.875rem 1rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .results-table td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+  }
+  .results-table tbody tr:hover {
+    background: #f8fafc;
+  }
+  .results-table .lap-details {
+    font-size: 0.8125rem;
+    color: #64748b;
+    max-width: 220px;
+  }
+  .results-table .lap-details .lap-line {
+    padding: 0.15rem 0;
+  }
+  .runner-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .runner-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .runner-card .runner-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .runner-card .runner-number {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #0f172a;
+  }
+  .runner-card .runner-name {
+    font-weight: 600;
+    color: #334155;
+  }
+  .runner-card .runner-place {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin-left: auto;
+  }
+  .runner-card .runner-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: #475569;
+  }
+  .runner-card .runner-stats span {
+    white-space: nowrap;
+  }
+  .runner-card .laps-toggle {
+    font-size: 0.8125rem;
+    color: #3b82f6;
+    background: none;
+    border: none;
+    padding: 0.25rem 0;
+    margin-top: 0.5rem;
+    cursor: pointer;
+  }
+  .runner-card .laps-toggle:hover { text-decoration: underline; }
+  .runner-card .laps-detail {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f1f5f9;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: #64748b;
+  }
+  .empty-state .icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.6;
+  }
+  .error-state {
+    padding: 1.5rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 0.75rem;
+    color: #b91c1c;
+  }
+  @media (max-width: 767.98px) {
+    .past-races-hero { padding: 1.5rem 1rem; }
+    .results-table-wrap { display: none; }
+    .runner-cards-mobile { display: block; }
+  }
+  @media (min-width: 768px) {
+    .runner-cards-mobile { display: none; }
+  }
+</style>
+
+<div class="container py-3 py-md-4 past-races-page">
+  <div class="past-races-hero">
+    <h1>Past Races</h1>
+    <p class="lead mb-0">Select a completed race to view results and lap times.</p>
+  </div>
+
+  <div class="past-races-select-card">
+    <label for="race_select" class="form-label fw-semibold text-body">Choose a race</label>
+    <select id="race_select" class="form-select" aria-label="Select completed race">
+      <option value="">Select a race…</option>
+      {% for race in completed_races %}
+      <option value="{{ race.id }}">{{ race.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="race-overview-container" role="region" aria-live="polite" aria-label="Race results">
+    <div class="empty-state" id="empty_state">
+      <div class="icon" aria-hidden="true">🏁</div>
+      <p class="mb-0">Select a race above to view results.</p>
     </div>
+  </div>
 </div>
+
 <script>
 (function() {
-    function escapeHtml(s) {
-        if (s == null) return '';
-        var d = document.createElement('div');
-        d.textContent = String(s);
-        return d.innerHTML;
-    }
-    var select = document.getElementById('race_select');
-    var container = document.querySelector('.race-overview-container');
-    if (!select || !container) return;
-    select.addEventListener('change', function() {
-        var raceId = select.value;
-        if (!raceId) { container.innerHTML = ''; return; }
-        var url = '/tracker/get_completed_race_overview/' + encodeURIComponent(raceId) + '/';
-        fetch(url, { credentials: 'same-origin' })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                container.innerHTML = '';
-                var h1 = document.createElement('h1');
-                h1.className = 'mb-4';
-                h1.textContent = data.race_name || '';
-                container.appendChild(h1);
-                if (data.runner_times && data.runner_times.length) {
-                    var table = document.createElement('div');
-                    table.className = 'table-responsive';
-                    var tbl = document.createElement('table');
-                    tbl.className = 'table table-bordered table-striped table-hover';
-                    var thead = document.createElement('thead');
-                    thead.className = 'table-light';
-                    thead.innerHTML = '<tr><th scope="col">Runner</th><th scope="col">Name</th><th scope="col">Laps</th><th scope="col">Total Time</th><th scope="col">Avg Pace</th><th scope="col">Avg Speed</th><th scope="col">Place</th></tr>';
-                    tbl.appendChild(thead);
-                    var tbody = document.createElement('tbody');
-                    data.runner_times.forEach(function(runner) {
-                        var lapsHtml = '';
-                        if (runner.laps && runner.laps.length) {
-                            runner.laps.forEach(function(lap) {
-                                lapsHtml += '<div class="mb-1">Lap ' + escapeHtml(lap.lap) + ': ' + escapeHtml(lap.duration) + ' - ' + escapeHtml(lap.average_pace) + ' - ' + escapeHtml(lap.average_speed) + ' MPH</div>';
-                            });
-                        }
-                        var placeText = runner.place != null ? runner.place + (runner.gender === 'female' ? ' F' : runner.gender === 'male' ? ' M' : '') : 'Not Finished';
-                        var tr = document.createElement('tr');
-                        tr.innerHTML = '<td>' + escapeHtml(runner.number) + '</td><td>' + escapeHtml(runner.name) + '</td><td>' + lapsHtml + '</td><td>' + escapeHtml(runner.total_race_time) + '</td><td>' + escapeHtml(runner.average_pace) + '</td><td>' + escapeHtml(runner.average_speed !== 'Not Finished' ? runner.average_speed + ' MPH' : 'Not Finished') + '</td><td>' + escapeHtml(placeText) + '</td>';
-                        tbody.appendChild(tr);
-                    });
-                    tbl.appendChild(tbody);
-                    table.appendChild(tbl);
-                    container.appendChild(table);
-                }
-            })
-            .catch(function() {
-                container.innerHTML = '<div class="alert alert-danger" role="alert">An error occurred. Please try again.</div>';
-            });
+  function escapeHtml(s) {
+    if (s == null) return '';
+    var d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+  var select = document.getElementById('race_select');
+  var container = document.querySelector('.race-overview-container');
+  var emptyState = document.getElementById('empty_state');
+  if (!select || !container) return;
+
+  var overviewUrl = '{% url "tracker:get_completed_race_overview" 99999 %}'.replace('99999', '');
+
+  function renderLapsHtml(laps) {
+    if (!laps || !laps.length) return '';
+    var html = '';
+    laps.forEach(function(lap) {
+      html += '<div class="lap-line">Lap ' + escapeHtml(lap.lap) + ': ' + escapeHtml(lap.duration) + ' — ' + escapeHtml(lap.average_pace) + ' — ' + escapeHtml(lap.average_speed) + ' MPH</div>';
     });
+    return html;
+  }
+
+  function placeText(runner) {
+    if (runner.place == null) return '—';
+    var suffix = runner.gender === 'female' ? ' F' : runner.gender === 'male' ? ' M' : '';
+    return runner.place + suffix;
+  }
+
+  function buildDesktopTable(data) {
+    var wrap = document.createElement('div');
+    wrap.className = 'results-table-wrap';
+    var table = document.createElement('table');
+    table.className = 'results-table';
+    table.setAttribute('role', 'table');
+    var thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Laps</th><th scope="col">Time</th><th scope="col">Pace</th><th scope="col">Speed</th><th scope="col">Place</th></tr>';
+    table.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    (data.runner_times || []).forEach(function(runner) {
+      var lapsHtml = renderLapsHtml(runner.laps);
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + escapeHtml(runner.number) + '</td>' +
+        '<td>' + escapeHtml(runner.name) + '</td>' +
+        '<td><div class="lap-details">' + (lapsHtml || '—') + '</div></td>' +
+        '<td>' + escapeHtml(runner.total_race_time) + '</td>' +
+        '<td>' + escapeHtml(runner.average_pace) + '</td>' +
+        '<td>' + escapeHtml(runner.average_speed !== 'Not Finished' ? runner.average_speed + ' MPH' : '—') + '</td>' +
+        '<td>' + escapeHtml(placeText(runner)) + '</td>';
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  function buildMobileCards(data) {
+    var wrap = document.createElement('div');
+    wrap.className = 'runner-cards-mobile';
+    (data.runner_times || []).forEach(function(runner) {
+      var card = document.createElement('div');
+      card.className = 'runner-card';
+      var lapsHtml = renderLapsHtml(runner.laps);
+      var speedText = runner.average_speed !== 'Not Finished' ? runner.average_speed + ' MPH' : '—';
+      card.innerHTML =
+        '<div class="runner-header">' +
+          '<span class="runner-number">#' + escapeHtml(runner.number) + '</span>' +
+          '<span class="runner-name">' + escapeHtml(runner.name) + '</span>' +
+          '<span class="runner-place">' + escapeHtml(placeText(runner)) + '</span>' +
+        '</div>' +
+        '<div class="runner-stats">' +
+          '<span>Time: ' + escapeHtml(runner.total_race_time) + '</span>' +
+          '<span>Pace: ' + escapeHtml(runner.average_pace) + '</span>' +
+          '<span>' + speedText + '</span>' +
+        '</div>' +
+        (lapsHtml ? ('<button type="button" class="laps-toggle" aria-expanded="false">View laps</button><div class="laps-detail" style="display:none;">' + lapsHtml + '</div>') : '');
+      if (lapsHtml) {
+        var btn = card.querySelector('.laps-toggle');
+        var detail = card.querySelector('.laps-detail');
+        if (btn && detail) {
+          btn.addEventListener('click', function() {
+            var open = detail.style.display !== 'none';
+            detail.style.display = open ? 'none' : 'block';
+            btn.setAttribute('aria-expanded', !open);
+            btn.textContent = open ? 'View laps' : 'Hide laps';
+          });
+        }
+      }
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
+  function renderResults(data) {
+    var card = document.createElement('div');
+    card.className = 'results-card';
+    var title = document.createElement('div');
+    title.className = 'results-title';
+    title.textContent = data.race_name || 'Results';
+    card.appendChild(title);
+    card.appendChild(buildDesktopTable(data));
+    card.appendChild(buildMobileCards(data));
+    return card;
+  }
+
+  select.addEventListener('change', function() {
+    var raceId = select.value;
+    if (!raceId) {
+      container.innerHTML = '';
+      container.appendChild(emptyState);
+      return;
+    }
+    var url = overviewUrl + encodeURIComponent(raceId) + '/';
+    container.innerHTML = '<div class="empty-state"><p class="mb-0">Loading…</p></div>';
+    fetch(url, { credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        container.innerHTML = '';
+        if (data.runner_times && data.runner_times.length) {
+          container.appendChild(renderResults(data));
+        } else {
+          var empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.innerHTML = '<div class="icon" aria-hidden="true">📋</div><p class="mb-0">No results for this race.</p>';
+          container.appendChild(empty);
+        }
+      })
+      .catch(function() {
+        container.innerHTML = '<div class="error-state" role="alert">Something went wrong. Please try again.</div>';
+      });
+  });
 })();
 </script>
 {% endblock %}
