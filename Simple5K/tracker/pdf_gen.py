@@ -203,8 +203,15 @@ def generate_race_report(filename, race_data, return_type):
     y_pos = draw_section_title(c, "Age group", margin, y_pos, usable_width)
     y_pos -= 0.15 * inch
 
+    rs = race_data['runner']
+    age_place = rs.get('age_group_placement', 'N/A')
+    age_total = rs.get('age_group_total')
+    if age_total is not None and age_place != 'N/A':
+        place_str = f"{age_place} of {age_total}"
+    else:
+        place_str = str(age_place)
     data = [["Age group", "Place"]]
-    data.append([str(race_data['runner']['age_bracket']), str(race_data['runner']['age_group_placement'])])
+    data.append([str(rs['age_bracket']), place_str])
 
     bracket_table = Table(data, colWidths=[2 * inch, 1.5 * inch])
     bracket_table.setStyle(TableStyle([

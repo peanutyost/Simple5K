@@ -169,7 +169,10 @@ def prepare_race_data(race_obj, runner_obj):
         'avg_pace': str(timedelta(seconds=round(
             runner_obj.race_avg_pace.total_seconds()))) if runner_obj.race_avg_pace else "N/A",
         'age_group_placement': calculate_age_bracket_placement(
-            runner_obj, race_obj) if calculate_age_bracket_placement(runner_obj, race_obj) else "N/A"
+            runner_obj, race_obj) if calculate_age_bracket_placement(runner_obj, race_obj) else "N/A",
+        'age_group_total': runners.objects.filter(
+            race=race_obj, age=runner_obj.age, total_race_time__isnull=False
+        ).count() if runner_obj.age else None,
     }
     if runner_details is None:
         return None
