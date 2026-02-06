@@ -48,9 +48,9 @@ def generate_race_report(filename, race_data, return_type):
     table_body = ParagraphStyle(name="TableBody", fontName="Helvetica", fontSize=10, leading=12)
     small = ParagraphStyle(name="Small", fontName="Helvetica", fontSize=8, leading=10)
 
-    # --- Modern color palette ---
-    header_bg = HexColor('#334155')
-    header_text = HexColor('#ffffff')
+    # --- Modern color palette (table headers match upcoming race page cards) ---
+    header_bg = HexColor('#ffffff')   # --upcoming-card
+    header_text = HexColor('#0f172a')  # --upcoming-accent
     section_gray = HexColor('#64748b')
     grid_light = HexColor('#e2e8f0')
     row_alt = HexColor('#f8fafc')
@@ -163,7 +163,7 @@ def generate_race_report(filename, race_data, return_type):
     runner_box_width = 2.6 * inch
     runner_box_height = 1.28 * inch
     avg_speed_str = f"{rs['race_avg_speed']:.2f} mph" if isinstance(rs.get('race_avg_speed'), (int, float)) else f"{rs.get('race_avg_speed', 'N/A')}"
-    runner_name = rs['name']
+    runner_name = (rs.get('name') or '').upper()
     runner_details = [
         f"Bib #{rs['number']}  ·  {rs['type']}",
         f"Total time   {rs['total_time']}",
