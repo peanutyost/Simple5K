@@ -283,6 +283,86 @@ def generate_race_report(filename, race_data, return_type):
     _, competitor_table_height = competitor_table.wrapOn(c, usable_width, usable_height)
     competitor_table.drawOn(c, center_x - table_width_uniform / 2, y_pos - competitor_table_height)
 
+    # --- Page 2: Certificate of completion (only if runner completed the race) ---
+    runner_completed = (
+        race_data['runner'].get('total_time') and
+        race_data['runner']['total_time'] != 'N/A'
+    )
+    if runner_completed:
+        c.showPage()
+        # Same faint logo background as page 1
+        if race_data['race'].get('logo'):
+            try:
+                pil_img = PILImage.open(race_data['race']['logo']).convert("RGB")
+                max_size = (letter[0], letter[1])
+                pil_img.thumbnail(max_size, PILImage.LANCZOS)
+                img_buffer_bg = BytesIO()
+                pil_img.save(img_buffer_bg, format='PNG')
+                img_buffer_bg.seek(0)
+                img_bg = Image(img_buffer_bg)
+                img_w, img_h = img_bg.wrapOn(c, letter[0], letter[1])
+                x_bg = (letter[0] - img_w) / 2
+                y_bg = (letter[1] - img_h) / 2
+                c.saveState()
+                c.setFillAlpha(0.15)
+                c.drawImage(race_data['race']['logo'], x_bg, y_bg, width=img_w, height=img_h, mask='auto')
+                c.restoreState()
+            except (FileNotFoundError, OSError, AttributeError, Exception):
+                pass
+        # Certificate layout: centered on page with decorative border
+        cert_margin = 0.75 * inch
+        cert_width = letter[0] - 2 * cert_margin
+        cert_height = letter[1] - 2 * cert_margin
+        cert_x = cert_margin
+        cert_y = cert_margin
+        # Outer border (thick)
+        c.setStrokeColor(HexColor('#334155'))
+        c.setLineWidth(2)
+        c.rect(cert_x, cert_y, cert_width, cert_height)
+        # Inner border (thin)
+        inner = 0.12 * inch
+        c.setStrokeColor(HexColor('#e2e8f0'))
+        c.setLineWidth(0.5)
+        c.rect(cert_x + inner, cert_y + inner, cert_width - 2 * inner, cert_height - 2 * inner)
+        # Certificate content (centered)
+        page_center_x = letter[0] / 2
+        y = letter[1] - cert_margin - 1.1 * inch
+        c.setFillColor(HexColor('#64748b'))
+        c.setFont("Helvetica", 9)
+        c.drawCentredString(page_center_x, y, "CERTIFICATE OF COMPLETION")
+        y -= 0.12 * inch
+        c.setStrokeColor(HexColor('#e2e8f0'))
+        c.setLineWidth(0.5)
+        c.line(page_center_x - 1.25 * inch, y, page_center_x + 1.25 * inch, y)
+        y -= 0.45 * inch
+        c.setFillColor(colors.black)
+        c.setFont("Helvetica", 10)
+        c.drawCentredString(page_center_x, y, "This is to certify that")
+        y -= 0.55 * inch
+        c.setFont("Helvetica-Bold", 22)
+        c.drawCentredString(page_center_x, y, race_data['runner']['name'])
+        y -= 0.5 * inch
+        c.setFont("Helvetica", 10)
+        c.drawCentredString(page_center_x, y, "has successfully completed")
+        y -= 0.5 * inch
+        c.setFont("Helvetica-Bold", 14)
+        c.drawCentredString(page_center_x, y, race_data['race']['name'])
+        y -= 0.45 * inch
+        c.setFont("Helvetica", 10)
+        c.setFillColor(HexColor('#64748b'))
+        race_date = race_data['race'].get('date', '')
+        c.drawCentredString(page_center_x, y, race_date)
+        y -= 0.5 * inch
+        c.setFillColor(colors.black)
+        c.setFont("Helvetica", 10)
+        place_str = f"Finishing place: {race_data['runner'].get('place', 'N/A')}"
+        if race_data.get('total_finishers') and race_data['runner'].get('place') != 'N/A':
+            place_str = f"Finishing place: {race_data['runner']['place']} of {race_data['total_finishers']}"
+        time_str = f"Time: {race_data['runner'].get('total_time', 'N/A')}"
+        c.drawCentredString(page_center_x, y, place_str)
+        y -= 0.25 * inch
+        c.drawCentredString(page_center_x, y, time_str)
+
     c.save()  # complete drawing
     buffer.seek(SEEK_SET)
     pdf_data = buffer.getvalue()
