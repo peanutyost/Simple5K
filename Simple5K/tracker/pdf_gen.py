@@ -135,7 +135,7 @@ def generate_race_report(filename, race_data, return_type):
 
     # --- Race name block (right, high on page, larger) ---
     race_info_x = letter[0] - margin
-    race_info_y = usable_height + 0.55 * inch
+    race_info_y = usable_height + 1.0 * inch
     c.setFillColor(colors.black)
     c.setFont("Helvetica-Bold", 24)
     c.drawRightString(race_info_x, race_info_y, (race_data['race'].get('name') or '').upper())
