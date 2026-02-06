@@ -1,7 +1,7 @@
 from io import BytesIO, SEEK_SET
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
@@ -290,29 +290,32 @@ def generate_race_report(filename, race_data, return_type):
     )
     if runner_completed:
         c.showPage()
-        # Same faint logo background as page 1
+        # Certificate page: landscape
+        cert_pt_w, cert_pt_h = landscape(letter)
+        c.setPageSize(cert_pt_w, cert_pt_h)
+        # Same faint logo background as page 1 (using landscape dimensions)
         if race_data['race'].get('logo'):
             try:
                 pil_img = PILImage.open(race_data['race']['logo']).convert("RGB")
-                max_size = (letter[0], letter[1])
+                max_size = (cert_pt_w, cert_pt_h)
                 pil_img.thumbnail(max_size, PILImage.LANCZOS)
                 img_buffer_bg = BytesIO()
                 pil_img.save(img_buffer_bg, format='PNG')
                 img_buffer_bg.seek(0)
                 img_bg = Image(img_buffer_bg)
-                img_w, img_h = img_bg.wrapOn(c, letter[0], letter[1])
-                x_bg = (letter[0] - img_w) / 2
-                y_bg = (letter[1] - img_h) / 2
+                img_w, img_h = img_bg.wrapOn(c, cert_pt_w, cert_pt_h)
+                x_bg = (cert_pt_w - img_w) / 2
+                y_bg = (cert_pt_h - img_h) / 2
                 c.saveState()
                 c.setFillAlpha(0.15)
                 c.drawImage(race_data['race']['logo'], x_bg, y_bg, width=img_w, height=img_h, mask='auto')
                 c.restoreState()
             except (FileNotFoundError, OSError, AttributeError, Exception):
                 pass
-        # Certificate layout: centered on page with decorative border
+        # Certificate layout: centered on landscape page with decorative border
         cert_margin = 0.75 * inch
-        cert_width = letter[0] - 2 * cert_margin
-        cert_height = letter[1] - 2 * cert_margin
+        cert_width = cert_pt_w - 2 * cert_margin
+        cert_height = cert_pt_h - 2 * cert_margin
         cert_x = cert_margin
         cert_y = cert_margin
         # Outer border (thick)
@@ -324,43 +327,43 @@ def generate_race_report(filename, race_data, return_type):
         c.setStrokeColor(HexColor('#e2e8f0'))
         c.setLineWidth(0.5)
         c.rect(cert_x + inner, cert_y + inner, cert_width - 2 * inner, cert_height - 2 * inner)
-        # Certificate content (centered)
-        page_center_x = letter[0] / 2
-        y = letter[1] - cert_margin - 1.1 * inch
-        c.setFillColor(HexColor('#64748b'))
-        c.setFont("Helvetica", 9)
+        # Certificate content (centered) — Times for a formal certificate look
+        page_center_x = cert_pt_w / 2
+        y = cert_pt_h - cert_margin - 1.0 * inch
+        c.setFillColor(HexColor('#334155'))
+        c.setFont("Times-Bold", 18)
         c.drawCentredString(page_center_x, y, "CERTIFICATE OF COMPLETION")
-        y -= 0.12 * inch
+        y -= 0.15 * inch
         c.setStrokeColor(HexColor('#e2e8f0'))
         c.setLineWidth(0.5)
-        c.line(page_center_x - 1.25 * inch, y, page_center_x + 1.25 * inch, y)
-        y -= 0.45 * inch
+        c.line(page_center_x - 2 * inch, y, page_center_x + 2 * inch, y)
+        y -= 0.6 * inch
         c.setFillColor(colors.black)
-        c.setFont("Helvetica", 10)
+        c.setFont("Times-Roman", 14)
         c.drawCentredString(page_center_x, y, "This is to certify that")
-        y -= 0.55 * inch
-        c.setFont("Helvetica-Bold", 22)
+        y -= 0.7 * inch
+        c.setFont("Times-Bold", 28)
         c.drawCentredString(page_center_x, y, race_data['runner']['name'])
-        y -= 0.5 * inch
-        c.setFont("Helvetica", 10)
+        y -= 0.6 * inch
+        c.setFont("Times-Roman", 14)
         c.drawCentredString(page_center_x, y, "has successfully completed")
-        y -= 0.5 * inch
-        c.setFont("Helvetica-Bold", 14)
+        y -= 0.55 * inch
+        c.setFont("Times-Bold", 20)
         c.drawCentredString(page_center_x, y, race_data['race']['name'])
-        y -= 0.45 * inch
-        c.setFont("Helvetica", 10)
+        y -= 0.5 * inch
+        c.setFont("Times-Roman", 14)
         c.setFillColor(HexColor('#64748b'))
         race_date = race_data['race'].get('date', '')
-        c.drawCentredString(page_center_x, y, race_date)
-        y -= 0.5 * inch
+        c.drawCentredString(page_center_x, y, "on " + race_date)
+        y -= 0.6 * inch
         c.setFillColor(colors.black)
-        c.setFont("Helvetica", 10)
+        c.setFont("Times-Roman", 14)
         place_str = f"Finishing place: {race_data['runner'].get('place', 'N/A')}"
         if race_data.get('total_finishers') and race_data['runner'].get('place') != 'N/A':
             place_str = f"Finishing place: {race_data['runner']['place']} of {race_data['total_finishers']}"
         time_str = f"Time: {race_data['runner'].get('total_time', 'N/A')}"
         c.drawCentredString(page_center_x, y, place_str)
-        y -= 0.25 * inch
+        y -= 0.35 * inch
         c.drawCentredString(page_center_x, y, time_str)
 
     c.save()  # complete drawing
