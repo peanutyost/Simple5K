@@ -14,7 +14,7 @@ from reportlab.platypus import (
     Spacer
 )
 from django.http import HttpResponse
-from datetime import date, timedelta  # Import timedelta
+from datetime import date, datetime, timedelta
 from reportlab.pdfbase import pdfmetrics   # text width, height, font
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.colors import HexColor
@@ -138,10 +138,14 @@ def generate_race_report(filename, race_data, return_type):
     race_info_y = usable_height + 0.55 * inch
     c.setFillColor(colors.black)
     c.setFont("Helvetica-Bold", 24)
-    c.drawRightString(race_info_x, race_info_y, race_data['race']['name'])
+    c.drawRightString(race_info_x, race_info_y, (race_data['race'].get('name') or '').upper())
     c.setFont("Helvetica", 11)
     c.setFillColor(section_gray)
-    race_date = race_data['race'].get('date', '')
+    raw_date = race_data['race'].get('date', '')
+    try:
+        race_date = datetime.strptime(raw_date, '%Y-%m-%d').strftime('%m-%d-%Y')
+    except (ValueError, TypeError):
+        race_date = raw_date
     if race_data['race'].get('distance'):
         c.drawRightString(race_info_x, race_info_y - 0.32 * inch, f"{race_date}  ·  {race_data['race']['distance']} m")
     else:
