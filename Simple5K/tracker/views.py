@@ -761,10 +761,9 @@ def email_list_view(request):
 
 @login_required
 def select_race_for_report(request):
-    """Displays the form to select a race and sort order."""
+    """Displays the form to select a race and sort order for the printable runner list."""
     form = RunnerInfoSelectionForm()
-    summary_form = RaceSummaryForm()
-    context = {'form': form, 'summary_form': summary_form}
+    context = {'form': form}
     return render(request, 'tracker/select_race_report.html', context)
 
 
@@ -818,12 +817,20 @@ def generate_runner_pdf_report(request):
 
 
 @login_required
+def race_summary_pdf_page(request):
+    """Dedicated page to select a race and generate the race summary PDF."""
+    form = RaceSummaryForm()
+    context = {'form': form}
+    return render(request, 'tracker/race_summary_pdf.html', context)
+
+
+@login_required
 def generate_race_summary_pdf_report(request):
     """Generates the race summary PDF (finishers by gender, lap stats, placements)."""
     form = RaceSummaryForm(request.GET or None)
     if not form.is_valid():
         messages.error(request, "Please select a race.")
-        return redirect('tracker:select_race_report')
+        return redirect('tracker:race_summary_pdf')
     selected_race = form.cleaned_data['race']
     summary_data = _build_race_summary_data(selected_race)
     buffer = io.BytesIO()
