@@ -246,7 +246,7 @@ def generate_race_report(filename, race_data, return_type):
 
     # --- Nearby finishers (centered) ---
     y_pos = y_pos - 0.18 * inch
-    y_pos = draw_section_title(c, "Finished just before & after you", y_pos, usable_width)
+    y_pos = draw_section_title(c, "Participants who placed around you", y_pos, usable_width)
     y_pos -= 0.1 * inch
 
     data = [["Name", "Total time"]]
