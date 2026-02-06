@@ -358,21 +358,21 @@ def select_race(request):
     # Get all races where status is either 'signup_open' or 'signup_closed'
     races = race.objects.filter(
         Q(status='signup_open') | Q(status='signup_closed')
-    )
+    ).order_by('date', 'name')
 
     if request.method == 'POST':
-        # Extract the selected race ID from POST data
-        selected_race_id = request.POST.get('race', None)
-        if selected_race_id:
+        selected_race_name = request.POST.get('race', None)
+        if selected_race_name:
             try:
-                # Validate that the selected_race_id is a valid integer and exists in the database
-                selected_race = race.objects.get(name=selected_race_id)
-
-                # Redirect to 'view_shirts' URL with the selected_race_id as a parameter
+                selected_race = race.objects.get(name=selected_race_name)
                 return redirect(reverse('tracker:view_shirts', kwargs={'pk': selected_race.pk}))
             except (ValueError, race.DoesNotExist):
                 pass
-    return render(request, 'tracker/select_race.html', {'races': races})
+    return render(request, 'tracker/select_race.html', {
+        'races': races,
+        'page_title': 'View Shirt Sizes',
+        'submit_label': 'View Shirt Sizes',
+    })
 
 
 @login_required
@@ -409,24 +409,23 @@ def view_shirt_sizes(request, pk):
 
 @login_required
 def select_race_for_runners(request):
-    # Get all races where status is either 'signup_open' or 'signup_closed'
     races = race.objects.filter(
         Q(status='signup_open') | Q(status='signup_closed') | Q(status='in_progress') | Q(status='completed')
-    )
+    ).order_by('date', 'name')
 
     if request.method == 'POST':
-        # Extract the selected race ID from POST data
-        selected_race_id = request.POST.get('race', None)
-        if selected_race_id:
+        selected_race_name = request.POST.get('race', None)
+        if selected_race_name:
             try:
-                # Validate that the selected_race_id is a valid integer and exists in the database
-                selected_race = race.objects.get(name=selected_race_id)
-
-                # Redirect to 'view_shirts' URL with the selected_race_id as a parameter
+                selected_race = race.objects.get(name=selected_race_name)
                 return redirect(reverse('tracker:view_runners', kwargs={'pk': selected_race.pk}))
             except (ValueError, race.DoesNotExist):
                 pass
-    return render(request, 'tracker/select_race.html', {'races': races})
+    return render(request, 'tracker/select_race.html', {
+        'races': races,
+        'page_title': 'View Runners',
+        'submit_label': 'View Runners',
+    })
 
 
 @login_required
