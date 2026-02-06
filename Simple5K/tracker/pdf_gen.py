@@ -292,7 +292,7 @@ def generate_race_report(filename, race_data, return_type):
         c.showPage()
         # Certificate page: landscape
         cert_pt_w, cert_pt_h = landscape(letter)
-        c.setPageSize(cert_pt_w, cert_pt_h)
+        c.setPageSize((cert_pt_w, cert_pt_h))
         # Same faint logo background as page 1 (using landscape dimensions)
         if race_data['race'].get('logo'):
             try:
