@@ -70,18 +70,20 @@ def generate_race_report(filename, race_data, return_type):
         p.drawOn(canvas_obj, x, y - p.height)
         return y - p.height
 
-    def draw_section_title(canvas_obj, text, x, y, width):
-        """Draw section title and a thin line under it."""
+    center_x = margin + usable_width / 2
+
+    def draw_section_title(canvas_obj, text, y, full_width):
+        """Draw section title centered with a thin line under it."""
         canvas_obj.setFillColor(section_gray)
         canvas_obj.setFont("Helvetica-Bold", 11)
-        canvas_obj.drawString(x, y, text)
+        canvas_obj.drawCentredString(center_x, y, text)
         canvas_obj.setStrokeColor(grid_light)
         canvas_obj.setLineWidth(0.5)
-        canvas_obj.line(x, y - 0.08 * inch, x + width, y - 0.08 * inch)
+        canvas_obj.line(margin, y - 0.08 * inch, margin + full_width, y - 0.08 * inch)
         return y - 0.2 * inch
 
-    def draw_runner_card(canvas_obj, x, y, width, height, name, detail_lines, top_padding=0.22 * inch):
-        """Draws a card-style box: name in large type, then detail lines."""
+    def draw_runner_card(canvas_obj, x, y, width, height, name, detail_lines, top_padding=0.18 * inch):
+        """Draws a card-style box: name in large type, then detail lines (tight spacing)."""
         canvas_obj.setFillColor(row_alt)
         canvas_obj.rect(x, y, width, height, fill=1, stroke=0)
         canvas_obj.setStrokeColor(grid_light)
@@ -92,11 +94,11 @@ def generate_race_report(filename, race_data, return_type):
         canvas_obj.setFillColor(colors.black)
         canvas_obj.setFont("Helvetica-Bold", 16)
         canvas_obj.drawString(text_x, text_y, name)
-        text_y -= 0.28 * inch
+        text_y -= 0.24 * inch
         canvas_obj.setFont("Helvetica", 10)
         for line in detail_lines:
             canvas_obj.drawString(text_x, text_y, line)
-            text_y -= 0.2 * inch
+            text_y -= 0.17 * inch
 
     # --- Background Image (Logo) ---
     if race_data['race'].get('logo'):
@@ -130,47 +132,48 @@ def generate_race_report(filename, race_data, return_type):
         except Exception as e:  # General exception for other image-related problems
             print(f"An unexpected error occurred with the image: {e}. Skipping background.")
 
-    # --- Runner summary card (left) ---
-    runner_box_x = margin
-    runner_box_y = usable_height - 0.5 * inch
-    runner_box_width = 2.6 * inch
-    runner_box_height = 1.5 * inch
-    rs = race_data['runner']
-    avg_speed_str = f"{rs['race_avg_speed']:.2f} mph" if isinstance(rs.get('race_avg_speed'), (int, float)) else f"{rs.get('race_avg_speed', 'N/A')}"
-    runner_name = rs['name']
-    runner_details = [
-        f"Bib #{rs['number']}  ·  {rs['type']}",
-        f"Total time   {rs['total_time']}",
-        f"Avg pace   {rs['avg_pace']}   {avg_speed_str}",
-    ]
-    draw_runner_card(c, runner_box_x, runner_box_y, runner_box_width, runner_box_height, runner_name, runner_details, top_padding=0.22 * inch)
-
-    # --- Header: Race name, date, place (right-aligned) ---
+    # --- Race name block (right, high on page, larger) ---
     race_info_x = letter[0] - margin
-    race_info_y = usable_height + 0.15 * inch
+    race_info_y = usable_height + 0.4 * inch
     c.setFillColor(colors.black)
-    c.setFont("Helvetica-Bold", 18)
+    c.setFont("Helvetica-Bold", 24)
     c.drawRightString(race_info_x, race_info_y, race_data['race']['name'])
-    c.setFont("Helvetica", 10)
+    c.setFont("Helvetica", 11)
     c.setFillColor(section_gray)
     race_date = race_data['race'].get('date', '')
     if race_data['race'].get('distance'):
-        c.drawRightString(race_info_x, race_info_y - 0.28 * inch, f"{race_date}  ·  {race_data['race']['distance']} m")
+        c.drawRightString(race_info_x, race_info_y - 0.32 * inch, f"{race_date}  ·  {race_data['race']['distance']} m")
     else:
-        c.drawRightString(race_info_x, race_info_y - 0.28 * inch, race_date)
-    c.setFillColor(colors.black)
+        c.drawRightString(race_info_x, race_info_y - 0.32 * inch, race_date)
+    rs = race_data['runner']
     place = rs.get('place', 'N/A')
     total_finishers = race_data.get('total_finishers')
     if total_finishers is not None and place != 'N/A':
         place_str = f"Place: {place} of {total_finishers}"
     else:
         place_str = f"Place: {place}"
-    c.setFont("Helvetica-Bold", 14)
-    c.drawRightString(race_info_x, race_info_y - 0.56 * inch, place_str)
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawRightString(race_info_x, race_info_y - 0.64 * inch, place_str)
 
-    # --- Lap Times Table ---
-    y_pos = runner_box_y - spaceAfter - 0.5 * inch
-    y_pos = draw_section_title(c, "Lap stats", margin, y_pos, usable_width)
+    # --- Runner summary card (left, compact) ---
+    runner_box_x = margin
+    runner_box_y = usable_height - 0.35 * inch
+    runner_box_width = 2.6 * inch
+    runner_box_height = 1.28 * inch
+    avg_speed_str = f"{rs['race_avg_speed']:.2f} mph" if isinstance(rs.get('race_avg_speed'), (int, float)) else f"{rs.get('race_avg_speed', 'N/A')}"
+    runner_name = rs['name']
+    runner_details = [
+        f"Bib #{rs['number']}  ·  {rs['type']}",
+        f"Total time   {rs['total_time']}",
+        f"Avg pace   {rs['avg_pace']}",
+        f"Avg speed   {avg_speed_str}",
+    ]
+    draw_runner_card(c, runner_box_x, runner_box_y, runner_box_width, runner_box_height, runner_name, runner_details, top_padding=0.18 * inch)
+
+    # --- Lap Times Table (centered) ---
+    y_pos = runner_box_y - spaceAfter - 0.32 * inch
+    y_pos = draw_section_title(c, "Lap stats", y_pos, usable_width)
     y_pos -= 0.15 * inch
 
     data = [["Lap", "Lap time", "Avg. pace", "Avg. speed (mph)"]]
@@ -199,12 +202,12 @@ def generate_race_report(filename, race_data, return_type):
     table.setStyle(TableStyle(lap_style))
 
     table_width, table_height = table.wrapOn(c, usable_width, usable_height)
-    table.drawOn(c, margin, y_pos - table_height)
+    table.drawOn(c, center_x - table_width / 2, y_pos - table_height)
     y_pos -= table_height + spaceAfter
 
-    # --- Age Bracket ---
-    y_pos = y_pos - 0.45 * inch
-    y_pos = draw_section_title(c, "Age group", margin, y_pos, usable_width)
+    # --- Age Bracket (centered) ---
+    y_pos = y_pos - 0.35 * inch
+    y_pos = draw_section_title(c, "Age group", y_pos, usable_width)
     y_pos -= 0.15 * inch
 
     rs = race_data['runner']
@@ -233,12 +236,12 @@ def generate_race_report(filename, race_data, return_type):
         ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
     ]))
     bracket_table_width, bracket_table_height = bracket_table.wrapOn(c, usable_width, usable_height)
-    bracket_table.drawOn(c, margin, y_pos - bracket_table_height)
+    bracket_table.drawOn(c, center_x - bracket_table_width / 2, y_pos - bracket_table_height)
     y_pos -= bracket_table_height + spaceAfter
 
-    # --- Nearby finishers ---
-    y_pos = y_pos - 0.4 * inch
-    y_pos = draw_section_title(c, "Finished just before & after you", margin, y_pos, usable_width)
+    # --- Nearby finishers (centered) ---
+    y_pos = y_pos - 0.3 * inch
+    y_pos = draw_section_title(c, "Finished just before & after you", y_pos, usable_width)
     y_pos -= 0.15 * inch
 
     data = [["Name", "Total time"]]
@@ -275,7 +278,7 @@ def generate_race_report(filename, race_data, return_type):
     competitor_table.setStyle(TableStyle(comp_style))
 
     competitor_table_width, competitor_table_height = competitor_table.wrapOn(c, usable_width, usable_height)
-    competitor_table.drawOn(c, margin, y_pos - competitor_table_height)
+    competitor_table.drawOn(c, center_x - competitor_table_width / 2, y_pos - competitor_table_height)
 
     c.save()  # complete drawing
     buffer.seek(SEEK_SET)
