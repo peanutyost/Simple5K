@@ -61,7 +61,7 @@ def generate_race_report(filename, race_data, return_type):
     usable_width = letter[0] - 2 * margin
     usable_height = letter[1] - 2 * margin
     y_pos = usable_height
-    spaceAfter = 0.2 * inch
+    spaceAfter = 0.12 * inch
     table_width_uniform = 4.5 * inch  # All tables same width for a classy, consistent look
 
     def draw_paragraph(text, style, canvas_obj, x, y):
@@ -81,7 +81,7 @@ def generate_race_report(filename, race_data, return_type):
         canvas_obj.setStrokeColor(grid_light)
         canvas_obj.setLineWidth(0.5)
         canvas_obj.line(margin, y - 0.1 * inch, margin + full_width, y - 0.1 * inch)
-        return y - 0.28 * inch
+        return y - 0.2 * inch
 
     def draw_runner_card(canvas_obj, x, y, width, height, name, detail_lines, top_padding=0.3 * inch):
         """Draws a card-style box: name in large type, then detail lines. top_padding = space from top of box to first line."""
@@ -135,7 +135,7 @@ def generate_race_report(filename, race_data, return_type):
 
     # --- Race name block (right, high on page, larger) ---
     race_info_x = letter[0] - margin
-    race_info_y = usable_height + 0.4 * inch
+    race_info_y = usable_height + 0.55 * inch
     c.setFillColor(colors.black)
     c.setFont("Helvetica-Bold", 24)
     c.drawRightString(race_info_x, race_info_y, race_data['race']['name'])
@@ -159,7 +159,7 @@ def generate_race_report(filename, race_data, return_type):
 
     # --- Runner summary card (left, compact) ---
     runner_box_x = margin
-    runner_box_y = usable_height - 0.35 * inch
+    runner_box_y = usable_height - 0.18 * inch
     runner_box_width = 2.6 * inch
     runner_box_height = 1.28 * inch
     avg_speed_str = f"{rs['race_avg_speed']:.2f} mph" if isinstance(rs.get('race_avg_speed'), (int, float)) else f"{rs.get('race_avg_speed', 'N/A')}"
@@ -173,9 +173,9 @@ def generate_race_report(filename, race_data, return_type):
     draw_runner_card(c, runner_box_x, runner_box_y, runner_box_width, runner_box_height, runner_name, runner_details, top_padding=0.3 * inch)
 
     # --- Lap Times Table (centered) ---
-    y_pos = runner_box_y - spaceAfter - 0.32 * inch
+    y_pos = runner_box_y - spaceAfter - 0.2 * inch
     y_pos = draw_section_title(c, "Lap stats", y_pos, usable_width)
-    y_pos -= 0.15 * inch
+    y_pos -= 0.1 * inch
 
     data = [["Lap", "Lap time", "Avg. pace", "Avg. speed (mph)"]]
     for lap in race_data['laps']:
@@ -207,9 +207,9 @@ def generate_race_report(filename, race_data, return_type):
     y_pos -= table_height + spaceAfter
 
     # --- Age Bracket (centered) ---
-    y_pos = y_pos - 0.35 * inch
+    y_pos = y_pos - 0.2 * inch
     y_pos = draw_section_title(c, "Age group", y_pos, usable_width)
-    y_pos -= 0.15 * inch
+    y_pos -= 0.1 * inch
 
     rs = race_data['runner']
     age_place = rs.get('age_group_placement', 'N/A')
@@ -241,9 +241,9 @@ def generate_race_report(filename, race_data, return_type):
     y_pos -= bracket_table_height + spaceAfter
 
     # --- Nearby finishers (centered) ---
-    y_pos = y_pos - 0.3 * inch
+    y_pos = y_pos - 0.18 * inch
     y_pos = draw_section_title(c, "Finished just before & after you", y_pos, usable_width)
-    y_pos -= 0.15 * inch
+    y_pos -= 0.1 * inch
 
     data = [["Name", "Total time"]]
     if race_data['competitors']['faster_runners']:
