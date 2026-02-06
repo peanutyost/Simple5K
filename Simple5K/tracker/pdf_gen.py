@@ -17,7 +17,7 @@ from django.http import HttpResponse
 from datetime import date, timedelta  # Import timedelta
 from reportlab.pdfbase import pdfmetrics   # text width, height, font
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.colors import HexColor, Color
+from reportlab.lib.colors import HexColor
 from PIL import Image as PILImage  # Use PIL for image manipulation
 
 
@@ -49,9 +49,9 @@ def generate_race_report(filename, race_data, return_type):
     small = ParagraphStyle(name="Small", fontName="Helvetica", fontSize=8, leading=10)
 
     # --- Modern color palette ---
-    header_bg = Color(180 / 255, 121 / 255, 43 / 255, alpha=0.7)  # rgba(180,121,43,0.7)
-    header_text = HexColor('#0f172a')
-    section_gray = HexColor('#64748b')
+    header_bg = HexColor('#f4ede0')
+    header_text = colors.black
+    section_gray = colors.black  # section titles and secondary text
     grid_light = HexColor('#e2e8f0')
     row_alt = HexColor('#f8fafc')
     row_white = colors.white
