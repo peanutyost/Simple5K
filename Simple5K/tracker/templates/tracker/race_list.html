@@ -2,109 +2,296 @@
 {% load static %}
 {% block content %}
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=BioRhyme:wght@200..800&display=swap');
+  .upcoming-races-page {
+    --upcoming-bg: #f8fafc;
+    --upcoming-card: #ffffff;
+    --upcoming-border: #e2e8f0;
+    --upcoming-muted: #64748b;
+    --upcoming-accent: #0f172a;
+  }
+
+  .upcoming-races-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #fff;
+    border-radius: 1rem;
+    padding: 1.75rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .upcoming-races-hero h1 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+    font-size: clamp(1.5rem, 4vw, 2rem);
+  }
+  .upcoming-races-hero .lead {
+    opacity: 0.9;
+    font-size: clamp(0.9rem, 2vw, 1rem);
+    margin-bottom: 0;
+  }
+
+  .upcoming-banner-wrap {
+    margin-bottom: 1.5rem;
+  }
+  .upcoming-banner-wrap .banner-container {
+    min-height: 200px;
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+  @media (min-width: 768px) {
+    .upcoming-banner-wrap .banner-container {
+      min-height: 260px;
+    }
+  }
+  .upcoming-banner-wrap .banner-content {
+    padding: 1.25rem 1rem;
+  }
+  @media (min-width: 768px) {
+    .upcoming-banner-wrap .banner-content {
+      padding: 2rem 1.5rem;
+    }
+  }
+  .upcoming-banner-wrap .banner-content img {
+    max-width: 100%;
+    width: 200px;
+  }
+  @media (min-width: 768px) {
+    .upcoming-banner-wrap .banner-content img {
+      width: 280px;
+    }
+  }
+
+  .active-race-alert {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #f59e0b;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+  .active-race-alert .alert-link {
+    font-weight: 600;
+    text-decoration: underline;
+  }
+
+  .race-card {
+    background: var(--upcoming-card);
+    border: 1px solid var(--upcoming-border);
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .race-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+  .race-card .card-body {
+    padding: 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+  @media (min-width: 768px) {
+    .race-card .card-body {
+      padding: 1.5rem 1.25rem;
+    }
+  }
+  .race-card .card-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--upcoming-accent);
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+  }
+  @media (min-width: 768px) {
+    .race-card .card-title {
+      font-size: 1.2rem;
+    }
+  }
+  .race-card .race-meta {
+    font-size: 0.875rem;
+    color: var(--upcoming-muted);
+    margin-bottom: 1rem;
+    flex-grow: 1;
+  }
+  .race-card .race-meta span {
+    display: block;
+    padding: 0.15rem 0;
+  }
+  .race-card .countdown-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--upcoming-muted);
+    margin-bottom: 0.35rem;
+  }
+  .race-card .countdown-value {
+    font-size: clamp(1.1rem, 3vw, 1.35rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--upcoming-accent);
+  }
+  .race-card .card-footer-link {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
+  }
+  .race-card .card-footer-link .btn {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .no-races-state {
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    background: var(--upcoming-card);
+    border: 1px dashed var(--upcoming-border);
+    border-radius: 1rem;
+    color: var(--upcoming-muted);
+  }
+  .no-races-state .icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.7;
+  }
+  .no-races-state .btn {
+    margin-top: 0.75rem;
+  }
+
+  .races-grid {
+    display: grid;
+    gap: 1rem;
+  }
+  @media (min-width: 576px) {
+    .races-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+    }
+  }
+  @media (min-width: 992px) {
+    .races-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+  }
 </style>
 
-{% if banners %}
-<div class="container">
-    <div class="row justify-content-center mt-3 mt-md-5">
-        <div class="col-12">
-            <div class="banner-container min-vh-25 d-flex align-items-center rounded" style="min-height: 280px;">
-                {% for banner in banners %}
-                <div class="banner w-100 text-center text-dark rounded" style="background-color: {{ banner.background_color }};">
-                    <div class="banner-content p-3 p-md-4">
-                        <h1 class="display-5 display-md-4 mb-3 mb-md-4">{{ banner.title }}</h1>
-                        <p class="lead mb-4 mb-md-5">{{ banner.subtitle }}</p>
-                        {% if banner.image %}
-                        <img src="{{ banner.image.url }}" alt="{{ banner.title|escape }}" class="img-fluid mx-auto d-block rounded mb-3 mb-md-4" style="max-width: 100%; width: 300px;">
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
+<div class="container py-3 py-md-4 upcoming-races-page">
+  {% if banners %}
+  <div class="upcoming-banner-wrap">
+    <div class="banner-container min-vh-25 d-flex align-items-center rounded">
+      {% for banner in banners %}
+      <div class="banner w-100 text-center text-dark rounded" style="background-color: {{ banner.background_color }};">
+        <div class="banner-content p-3 p-md-4">
+          <h2 class="display-6 mb-2 mb-md-3">{{ banner.title }}</h2>
+          <p class="lead mb-3 mb-md-4">{{ banner.subtitle }}</p>
+          {% if banner.image %}
+          <img src="{{ banner.image.url }}" alt="{{ banner.title|escape }}" class="img-fluid mx-auto d-block rounded" width="200" height="150" loading="lazy">
+          {% endif %}
         </div>
+      </div>
+      {% endfor %}
     </div>
-</div>
-{% endif %}
+  </div>
+  {% endif %}
 
-<div class="container mt-4">
-    <h1 class="text-center mb-4" style="font-family: 'BioRhyme', serif;">Upcoming Races</h1>
+  <div class="upcoming-races-hero">
+    <h1>Upcoming Races</h1>
+    <p class="lead">Countdown to the next events. Jump to the live tracker when a race starts.</p>
+  </div>
 
-    <div id="active-race-alert" class="alert alert-warning text-center d-none" role="alert">
-        There is currently an active race: <strong id="active-race-name"></strong>! <a href="{% url 'tracker:race-overview' %}" class="alert-link">Go to Race Tracker</a>
-    </div>
+  <div id="active-race-alert" class="active-race-alert d-none" role="alert">
+    There is currently an active race: <strong id="active-race-name"></strong>
+    <a href="{% url 'tracker:race-overview' %}" class="alert-link ms-1">Go to Race Tracker →</a>
+  </div>
 
-    <div id="race-container" class="row g-3 g-md-4 justify-content-center"></div>
+  <div id="race-container" class="races-grid" role="list" aria-label="Upcoming races"></div>
 
-    <div id="no-races-message" class="alert alert-info d-none text-center" role="status">
-        There are currently no upcoming races. <a href="{% url 'tracker:completed_races_selection' %}" class="btn btn-secondary">View Past Races</a>
-    </div>
+  <div id="no-races-message" class="no-races-state d-none" role="status">
+    <div class="icon" aria-hidden="true">📅</div>
+    <p class="mb-0">There are currently no upcoming races.</p>
+    <a href="{% url 'tracker:completed_races_selection' %}" class="btn btn-outline-primary btn-sm">View Past Races</a>
+  </div>
 </div>
 
 <script>
 (function() {
-    var raceOverviewUrl = '{% url "tracker:race-overview" %}';
-    function escapeHtml(s) {
-        if (s == null) return '';
-        var div = document.createElement('div');
-        div.textContent = String(s);
-        return div.innerHTML;
-    }
-    function updateRaces() {
-        fetch('/race-countdown/?_=' + Date.now(), { credentials: 'same-origin' })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                var raceContainer = document.getElementById('race-container');
-                var noRacesMessage = document.getElementById('no-races-message');
-                var activeRaceAlert = document.getElementById('active-race-alert');
-                var activeRaceName = document.getElementById('active-race-name');
+  var raceOverviewUrl = '{% url "tracker:race-overview" %}';
 
-                raceContainer.innerHTML = '';
-                noRacesMessage.classList.add('d-none');
-                activeRaceAlert.classList.add('d-none');
+  function escapeHtml(s) {
+    if (s == null) return '';
+    var div = document.createElement('div');
+    div.textContent = String(s);
+    return div.innerHTML;
+  }
 
-                if (data.active_race) {
-                    activeRaceName.textContent = data.active_race.name;
-                    activeRaceAlert.classList.remove('d-none');
-                }
-                if (!data.races || data.races.length === 0) {
-                    noRacesMessage.classList.remove('d-none');
-                    return;
-                }
-                data.races.forEach(function(race) {
-                    var col = document.createElement('div');
-                    col.className = 'col-12 col-md-6 col-lg-4';
-                    var remaining = race.remaining || {};
-                    var name = escapeHtml(race.name);
-                    var distance = escapeHtml(race.distance);
-                    var lapsCount = escapeHtml(race.laps_count);
-                    var entryFee = escapeHtml(race.entry_fee);
-                    var d = remaining.days || 0, h = remaining.hours || 0, m = remaining.minutes || 0, s = remaining.seconds || 0;
-                    var done = (d === 0 && h === 0 && m === 0 && s === 0);
-                    col.innerHTML =
-                        '<div class="card h-100 border-2 border-dark rounded-2" style="background-color: rgba(180,121,43,0.7);">' +
-                        '<div class="card-body text-center p-3 p-md-4">' +
-                        '<h3 class="card-title h5 mb-3">' + name + '</h3>' +
-                        '<p class="card-text small">' +
-                        '<strong>Distance:</strong> ' + distance + '<br><strong>Laps:</strong> ' + lapsCount + '<br><strong>Entry Fee:</strong> ' + entryFee +
-                        '</p>' +
-                        '<div class="mb-3">' +
-                        '<h4 class="h6 text-white">Race Starts In:</h4>' +
-                        '<span class="fs-5 fw-bold">' + d + 'd : ' + h + 'h : ' + m + 'm : ' + s + 's</span>' +
-                        '</div>' +
-                        (done ? '<p class="text-muted small mb-0"><a href="' + escapeHtml(raceOverviewUrl) + '" class="btn btn-primary btn-sm">View Live Races</a></p>' : '') +
-                        '</div></div>';
-                    raceContainer.appendChild(col);
-                });
-            })
-            .catch(function(err) { console.error('Error:', err); });
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() { updateRaces(); setInterval(updateRaces, 1000); });
-    } else {
-        updateRaces();
-        setInterval(updateRaces, 1000);
-    }
+  function updateRaces() {
+    fetch('/race-countdown/?_=' + Date.now(), { credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var raceContainer = document.getElementById('race-container');
+        var noRacesMessage = document.getElementById('no-races-message');
+        var activeRaceAlert = document.getElementById('active-race-alert');
+        var activeRaceName = document.getElementById('active-race-name');
+
+        raceContainer.innerHTML = '';
+        noRacesMessage.classList.add('d-none');
+        activeRaceAlert.classList.add('d-none');
+
+        if (data.active_race) {
+          activeRaceName.textContent = data.active_race.name;
+          activeRaceAlert.classList.remove('d-none');
+        }
+
+        if (!data.races || data.races.length === 0) {
+          noRacesMessage.classList.remove('d-none');
+          return;
+        }
+
+        data.races.forEach(function(race) {
+          var remaining = race.remaining || {};
+          var d = remaining.days || 0, h = remaining.hours || 0, m = remaining.minutes || 0, s = remaining.seconds || 0;
+          var done = (d === 0 && h === 0 && m === 0 && s === 0);
+
+          var card = document.createElement('article');
+          card.className = 'race-card';
+          card.setAttribute('role', 'listitem');
+
+          var name = escapeHtml(race.name);
+          var distance = escapeHtml(race.distance);
+          var lapsCount = escapeHtml(race.laps_count);
+          var entryFee = escapeHtml(race.entry_fee);
+
+          card.innerHTML =
+            '<div class="card-body">' +
+              '<h2 class="card-title">' + name + '</h2>' +
+              '<div class="race-meta">' +
+                '<span><strong>Distance:</strong> ' + distance + '</span>' +
+                '<span><strong>Laps:</strong> ' + lapsCount + '</span>' +
+                '<span><strong>Entry fee:</strong> ' + entryFee + '</span>' +
+              '</div>' +
+              '<div class="countdown-label">Race starts in</div>' +
+              '<div class="countdown-value" aria-live="polite">' + d + 'd : ' + h + 'h : ' + m + 'm : ' + s + 's</div>' +
+              (done ? '<div class="card-footer-link"><a href="' + escapeHtml(raceOverviewUrl) + '" class="btn btn-primary btn-sm">View Live Races</a></div>' : '') +
+            '</div>';
+
+          raceContainer.appendChild(card);
+        });
+      })
+      .catch(function(err) { console.error('Upcoming races error:', err); });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      updateRaces();
+      setInterval(updateRaces, 1000);
+    });
+  } else {
+    updateRaces();
+    setInterval(updateRaces, 1000);
+  }
 })();
 </script>
-{% endblock %}
+{% endblock content %}
