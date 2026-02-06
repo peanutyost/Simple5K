@@ -48,12 +48,20 @@ def generate_race_report(filename, race_data, return_type):
     table_body = ParagraphStyle(name="TableBody", fontName="Helvetica", fontSize=10, leading=12)
     small = ParagraphStyle(name="Small", fontName="Helvetica", fontSize=8, leading=10)
 
+    # --- Modern color palette ---
+    header_bg = HexColor('#334155')
+    header_text = HexColor('#ffffff')
+    section_gray = HexColor('#64748b')
+    grid_light = HexColor('#e2e8f0')
+    row_alt = HexColor('#f8fafc')
+    row_white = colors.white
+
     # --- Define Layout Constants ---
     margin = inch
     usable_width = letter[0] - 2 * margin
     usable_height = letter[1] - 2 * margin
     y_pos = usable_height
-    spaceAfter = 0.2 * inch  # Using inch for larger consistent spacing
+    spaceAfter = 0.2 * inch
 
     def draw_paragraph(text, style, canvas_obj, x, y):
         """Draws a paragraph and returns the updated y_pos."""
@@ -62,19 +70,32 @@ def generate_race_report(filename, race_data, return_type):
         p.drawOn(canvas_obj, x, y - p.height)
         return y - p.height
 
-    def draw_box(canvas_obj, x, y, width, height, text_lines, top_padding=0.2 * inch):
-        """Draws a box with text inside, with adjustable top padding."""
-        canvas_obj.rect(x, y, width, height)
-        # Calculate the starting y-position for the text, incorporating top_padding.
+    def draw_section_title(canvas_obj, text, x, y, width):
+        """Draw section title and a thin line under it."""
+        canvas_obj.setFillColor(section_gray)
+        canvas_obj.setFont("Helvetica-Bold", 11)
+        canvas_obj.drawString(x, y, text)
+        canvas_obj.setStrokeColor(grid_light)
+        canvas_obj.setLineWidth(0.5)
+        canvas_obj.line(x, y - 0.08 * inch, x + width, y - 0.08 * inch)
+        return y - 0.2 * inch
+
+    def draw_runner_card(canvas_obj, x, y, width, height, text_lines, top_padding=0.2 * inch):
+        """Draws a card-style box with light fill and text."""
+        canvas_obj.setFillColor(row_alt)
+        canvas_obj.rect(x, y, width, height, fill=1, stroke=0)
+        canvas_obj.setStrokeColor(grid_light)
+        canvas_obj.setLineWidth(0.5)
+        canvas_obj.rect(x, y, width, height, fill=0, stroke=1)
         text_y = y + height - top_padding
+        canvas_obj.setFillColor(colors.black)
         for line in text_lines:
-            canvas_obj.setFont("Helvetica", 11)
-            canvas_obj.setFillColor(colors.black)  # added in case color changes
-            canvas_obj.drawString(x + 0.1 * inch, text_y, line)
-            text_y -= 0.17 * inch  # Line spacing.  Keep this separate from top_padding.
+            canvas_obj.setFont("Helvetica", 10)
+            canvas_obj.drawString(x + 0.15 * inch, text_y, line)
+            text_y -= 0.18 * inch
 
     # --- Background Image (Logo) ---
-    # if race_data['race']['logo'] is not None:
+    if race_data['race'].get('logo'):
         try:
             # Open the image using PIL and convert to RGB
             pil_img = PILImage.open(race_data['race']['logo']).convert("RGB")
@@ -105,99 +126,145 @@ def generate_race_report(filename, race_data, return_type):
         except Exception as e:  # General exception for other image-related problems
             print(f"An unexpected error occurred with the image: {e}. Skipping background.")
 
-    # --- Top Left Box: Runner Information ---
+    # --- Runner summary card (left) ---
     runner_box_x = margin
-    runner_box_y = usable_height - .5 * inch  # Adjust y position more clearly
-    runner_box_width = 2 * inch
-    runner_box_height = 1.3 * inch
+    runner_box_y = usable_height - 0.5 * inch
+    runner_box_width = 2.4 * inch
+    runner_box_height = 1.45 * inch
+    rs = race_data['runner']
+    avg_speed_str = f"{rs['race_avg_speed']:.2f} mph" if isinstance(rs.get('race_avg_speed'), (int, float)) else f"{rs.get('race_avg_speed', 'N/A')}"
     runner_info = [
-        f"Name: {race_data['runner']['name']}",
-        f"Number: {race_data['runner']['number']}",
-        f"Gender: {race_data['runner']['gender']}",
-        f"Type: {race_data['runner']['type']}",
-        f"Total Time: {race_data['runner']['total_time']}",
-        f"Avg Pace: {race_data['runner']['avg_pace']}",
-        f"Avg Speed: {race_data['runner']['race_avg_speed']} mph",
+        rs['name'],
+        f"Bib #{rs['number']}  ·  {rs['gender']}  ·  {rs['type']}",
+        f"Total time  {rs['total_time']}",
+        f"Avg pace  {rs['avg_pace']}  ·  {avg_speed_str}",
     ]
-    draw_box(c, runner_box_x, runner_box_y, runner_box_width, runner_box_height, runner_info, top_padding=0.17 * inch)
+    draw_runner_card(c, runner_box_x, runner_box_y, runner_box_width, runner_box_height, runner_info, top_padding=0.2 * inch)
 
-    # --- Top Right: Race Name and Finishing Place ---
-    race_info_x = letter[0] - margin - 3 * inch
-    race_info_y = usable_height + .3 * inch  # Start a little lower than runner's box
-    c.setFont("Helvetica-Bold", 26)
-    c.drawRightString(race_info_x + 2.5 * inch, race_info_y, race_data['race']['name'])
-    c.setFont("Helvetica-Bold", 20)
-    c.drawRightString(race_info_x + 2.5 * inch, race_info_y - 0.4 * inch, f"Finishing Place: {race_data['runner']['place']}")
+    # --- Header: Race name, date, place (right-aligned) ---
+    race_info_x = letter[0] - margin
+    race_info_y = usable_height + 0.15 * inch
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawRightString(race_info_x, race_info_y, race_data['race']['name'])
+    c.setFont("Helvetica", 10)
+    c.setFillColor(section_gray)
+    race_date = race_data['race'].get('date', '')
+    if race_data['race'].get('distance'):
+        c.drawRightString(race_info_x, race_info_y - 0.28 * inch, f"{race_date}  ·  {race_data['race']['distance']} m")
+    else:
+        c.drawRightString(race_info_x, race_info_y - 0.28 * inch, race_date)
+    c.setFillColor(colors.black)
+    place = rs.get('place', 'N/A')
+    total_finishers = race_data.get('total_finishers')
+    if total_finishers is not None and place != 'N/A':
+        place_str = f"Place: {place} of {total_finishers}"
+    else:
+        place_str = f"Place: {place}"
+    c.setFont("Helvetica-Bold", 14)
+    c.drawRightString(race_info_x, race_info_y - 0.56 * inch, place_str)
 
     # --- Lap Times Table ---
-    y_pos = runner_box_y - spaceAfter - 0.4 * inch
-    y_pos = draw_paragraph("Lap Stats", heading3, c, margin, y_pos)  # Reuse y_pos
-    y_pos += spaceAfter
+    y_pos = runner_box_y - spaceAfter - 0.5 * inch
+    y_pos = draw_section_title(c, "Lap stats", margin, y_pos, usable_width)
+    y_pos -= 0.15 * inch
 
-    data = [["Lap", "Lap Time", "Avg. Pace", "Avg. Speed (mph)"],]
+    data = [["Lap", "Lap time", "Avg. pace", "Avg. speed (mph)"]]
     for lap in race_data['laps']:
-        data.append([lap['lap'], lap['time'], lap['average_pace'], f"{lap['average_speed']:.2f}"],)
+        data.append([str(lap['lap']), lap['time'], lap['average_pace'], f"{lap['average_speed']:.2f}"])
 
-    lap_table_x = margin
-    lap_table_y = y_pos - 3 * inch  # Adjust positioning for the table
-
-    table = Table(data, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+    lap_col_widths = [0.7 * inch, 1.2 * inch, 1.2 * inch, 1.2 * inch]
+    table = Table(data, colWidths=lap_col_widths)
+    lap_style = [
+        ('BACKGROUND', (0, 0), (-1, 0), header_bg),
+        ('TEXTCOLOR', (0, 0), (-1, 0), header_text),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
-    ]))
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+    ]
+    for i in range(1, len(data)):
+        bg = row_alt if i % 2 == 0 else row_white
+        lap_style.append(('BACKGROUND', (0, i), (-1, i), bg))
+    table.setStyle(TableStyle(lap_style))
 
     table_width, table_height = table.wrapOn(c, usable_width, usable_height)
-    table.drawOn(c, lap_table_x, y_pos - table_height - 2 * spaceAfter)  # Draw the table directly, not relying on draw_paragraph
+    table.drawOn(c, margin, y_pos - table_height)
     y_pos -= table_height + spaceAfter
 
-    # --- Age Bracket Table ---
-    y_pos = y_pos - spaceAfter - 0.6 * inch
-    y_pos = draw_paragraph("Placement Within Age Bracket", heading3, c, margin, y_pos)  # Reuse y_pos
+    # --- Age Bracket ---
+    y_pos = y_pos - 0.45 * inch
+    y_pos = draw_section_title(c, "Age group", margin, y_pos, usable_width)
+    y_pos -= 0.15 * inch
 
-    data = [["Age Bracket", "Placement"]]
-    data.append([race_data['runner']['age_bracket'], race_data['runner']['age_group_placement']])
+    data = [["Age group", "Place"]]
+    data.append([str(race_data['runner']['age_bracket']), str(race_data['runner']['age_group_placement'])])
 
-    bracket_table = Table(data, colWidths=[2 * inch, 2 * inch])
-    bracket_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                                       ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                                       ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-                                       ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                                       ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-                                       ('GRID', (0, 0), (-1, -1), 0.5, colors.black)]))
-
+    bracket_table = Table(data, colWidths=[2 * inch, 1.5 * inch])
+    bracket_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), header_bg),
+        ('TEXTCOLOR', (0, 0), (-1, 0), header_text),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, 1), row_white),
+        ('TOPPADDING', (0, 1), (-1, 1), 8),
+        ('BOTTOMPADDING', (0, 1), (-1, 1), 8),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
+    ]))
     bracket_table_width, bracket_table_height = bracket_table.wrapOn(c, usable_width, usable_height)
-    bracket_table.drawOn(c, margin, y_pos - spaceAfter - bracket_table_height)
+    bracket_table.drawOn(c, margin, y_pos - bracket_table_height)
     y_pos -= bracket_table_height + spaceAfter
 
-    y_pos = y_pos - spaceAfter - 0.6 * inch
-    y_pos = draw_paragraph("Those Who Finished Before and After You", heading3, c, margin, y_pos)
+    # --- Nearby finishers ---
+    y_pos = y_pos - 0.4 * inch
+    y_pos = draw_section_title(c, "Finished just before & after you", margin, y_pos, usable_width)
+    y_pos -= 0.15 * inch
 
-    # --- Competitor Table ---
-    data = [["Name", "Total Time"]]
-    if race_data['competitors']['faster_runners'] is not None:
-        data.append(['Before', ''])
+    data = [["Name", "Total time"]]
+    if race_data['competitors']['faster_runners']:
+        data.append(['— Before you —', ''])
         for competitor in race_data['competitors']['faster_runners']:
             data.append([competitor[0], competitor[1]])
-    if race_data['competitors']['slower_runners'] is not None:
-        data.append(['After', ''])
+    if race_data['competitors']['slower_runners']:
+        data.append(['— After you —', ''])
         for competitor in race_data['competitors']['slower_runners']:
             data.append([competitor[0], competitor[1]])
 
-    competitor_table = Table(data, colWidths=[2 * inch, 2 * inch])
-    competitor_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                                          ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                                          ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-                                          ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                                          ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
-                                          ('GRID', (0, 0), (-1, -1), 0.5, colors.black)]))
+    competitor_table = Table(data, colWidths=[2.5 * inch, 1.5 * inch])
+    comp_style = [
+        ('BACKGROUND', (0, 0), (-1, 0), header_bg),
+        ('TEXTCOLOR', (0, 0), (-1, 0), header_text),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
+        ('LEFTPADDING', (0, 0), (0, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+    ]
+    for i in range(1, len(data)):
+        if '—' in str(data[i][0]):
+            comp_style.append(('BACKGROUND', (0, i), (-1, i), row_alt))
+            comp_style.append(('FONTNAME', (0, i), (-1, i), 'Helvetica-Bold'))
+        else:
+            comp_style.append(('BACKGROUND', (0, i), (-1, i), row_white if i % 2 == 0 else row_alt))
+    competitor_table.setStyle(TableStyle(comp_style))
 
     competitor_table_width, competitor_table_height = competitor_table.wrapOn(c, usable_width, usable_height)
-    competitor_table.drawOn(c, margin, y_pos - competitor_table_height - spaceAfter)  # Draw the table
+    competitor_table.drawOn(c, margin, y_pos - competitor_table_height)
 
     c.save()  # complete drawing
     buffer.seek(SEEK_SET)

@@ -212,11 +212,15 @@ def prepare_race_data(race_obj, runner_obj):
             'slower_runners': [format_runner(runner) for runner in slower_runners],
         }
 
+    # Total finishers (for "Place: X of Y" on PDF)
+    total_finishers = runners.objects.filter(race=race_obj).exclude(place__isnull=True).count()
+
     return {
         'race': race_info,
         'runner': runner_details,
         'laps': laps_data,
         'competitors': competitor_data,
+        'total_finishers': total_finishers,
     }
 
 
