@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, EmailSendJob
 from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm, RaceSummaryForm, SiteSettingsForm
 from .pdf_gen import generate_race_report, create_runner_pdf, generate_race_summary_pdf
+from .utils import safe_content_disposition_filename
 
 
 def require_api_key(view_func):
@@ -348,8 +349,8 @@ class GenerateRaceReportView(LoginRequiredMixin, View):
         # Generate the PDF
         if race_data is None:
             return HttpResponseNotFound("No runner or race data found")
-        else:
-            pdf_filename = f"race_report_{race_obj.name}_{runner_obj.first_name}_{runner_obj.last_name}.pdf"
+        safe_name = safe_content_disposition_filename(f"{race_obj.name}_{runner_obj.first_name}_{runner_obj.last_name}")
+        pdf_filename = f"race_report_{safe_name}.pdf"
         response = generate_race_report(pdf_filename, race_data, 'response')
         return response
 
@@ -860,8 +861,8 @@ def generate_runner_pdf_report(request):
 
     # Create HTTP response
     response = HttpResponse(buffer, content_type='application/pdf')
-    # Suggest a filename for the download
-    filename = f"race_{selected_race.id}_runners_{sort_by}.pdf"
+    # Suggest a filename for the download (sanitized to prevent header injection)
+    filename = safe_content_disposition_filename(f"race_{selected_race.id}_runners_{sort_by}") + ".pdf"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
     return response
@@ -888,8 +889,7 @@ def generate_race_summary_pdf_report(request):
     generate_race_summary_pdf(buffer, summary_data)
     buffer.seek(0)
     response = HttpResponse(buffer, content_type='application/pdf')
-    safe_name = "".join(c if c.isalnum() or c in " -_" else "_" for c in selected_race.name)
-    filename = f"race_summary_{safe_name}.pdf"
+    filename = "race_summary_" + safe_content_disposition_filename(selected_race.name) + ".pdf"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
@@ -1072,6 +1072,8 @@ def update_race_time(request):
     action = data.get('action')
     timestamp = data.get('timestamp')
 
+    if not race_id:
+        return JsonResponse({'error': 'race_id is required'}, status=400)
     if not timestamp:
         return JsonResponse({'error': 'timestamp is required'}, status=400)
     if not action or action not in ('start', 'stop'):

@@ -22,6 +22,8 @@ from PIL import Image as PILImage  # Use PIL for image manipulation
 
 import logging
 
+from .utils import safe_content_disposition_filename
+
 logger = logging.getLogger(__name__)
 
 
@@ -310,7 +312,10 @@ def generate_race_report(filename, race_data, return_type):
 
     if return_type.lower() == "response":
         response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = f'filename="{filename}"'
+        safe_fn = safe_content_disposition_filename(filename) if filename else "report"
+        if not safe_fn.endswith(".pdf"):
+            safe_fn += ".pdf"
+        response['Content-Disposition'] = f'attachment; filename="{safe_fn}"'
         response.write(pdf_data)
         return response
     elif return_type.lower() == "file":
