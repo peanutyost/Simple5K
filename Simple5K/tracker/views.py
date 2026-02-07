@@ -1395,6 +1395,42 @@ def _paypal_base_url(request):
     return request.build_absolute_uri('/').rstrip('/')
 
 
+def _paypal_post_context(request, runner, race_obj, return_url_extra=None, cancel_url_extra=None):
+    """
+    Build context for PayPal redirect template: action URL and form params.
+    PayPal requires form POST to webscr so that notify_url (IPN) is honored; GET redirects can drop it.
+    """
+    paypal_email = (getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or '').strip()
+    entry_fee = float(race_obj.Entry_fee or 0)
+    use_sandbox = getattr(settings, 'PAYPAL_SANDBOX', False)
+    base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
+    paypal_base = _paypal_base_url(request)
+    return_path = paypal_base + reverse('tracker:paypal-return')
+    cancel_path = paypal_base + reverse('tracker:paypal-cancel')
+    if return_url_extra:
+        return_path += '?' + urllib.parse.urlencode(return_url_extra)
+    if cancel_url_extra:
+        cancel_path += '?' + urllib.parse.urlencode(cancel_url_extra)
+    notify_url = paypal_base + reverse('tracker:paypal-ipn')
+    custom = _paypal_custom_for_runner(runner.id)
+    item_name = f"Race entry: {race_obj.name}"
+    params = {
+        'cmd': '_donations',
+        'business': paypal_email,
+        'amount': f'{entry_fee:.2f}',
+        'currency_code': 'USD',
+        'item_name': item_name[:127],
+        'return': return_path,
+        'cancel_return': cancel_path,
+        'notify_url': notify_url,
+        'custom': custom[:256],
+    }
+    return {
+        'paypal_action': base_url + '/cgi-bin/webscr',
+        'paypal_params': params,
+    }
+
+
 def _pay_link_for_runner(runner):
     """Build the pay-later URL for a runner, or None if site_base_url is not set."""
     site_settings = SiteSettings.get_settings()
@@ -1468,30 +1504,11 @@ def race_signup(request):
             paypal_email = (getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or '').strip()
             entry_fee = float(selected_race.Entry_fee or 0)
             if site_settings.paypal_enabled and paypal_email and entry_fee > 0:
-                # Redirect to PayPal donation with entry fee pre-filled
-                use_sandbox = getattr(settings, 'PAYPAL_SANDBOX', False)
-                base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
-                custom = _paypal_custom_for_runner(runner.id)
-                paypal_base = _paypal_base_url(request)
-                return_url = paypal_base + reverse('tracker:paypal-return')
-                return_url += '?' + urllib.parse.urlencode({'runner_id': runner.id, 'sig': custom.split(':', 1)[1]})
-                cancel_url = paypal_base + reverse('tracker:paypal-cancel')
-                cancel_url += '?' + urllib.parse.urlencode({'runner_id': runner.id, 'sig': custom.split(':', 1)[1]})
-                notify_url = paypal_base + reverse('tracker:paypal-ipn')
-                item_name = f"Race entry: {selected_race.name}"
-                params = {
-                    'cmd': '_donations',
-                    'business': paypal_email,
-                    'amount': f'{entry_fee:.2f}',
-                    'currency_code': 'USD',
-                    'item_name': item_name[:127],
-                    'return': return_url,
-                    'cancel_return': cancel_url,
-                    'notify_url': notify_url,
-                    'custom': custom[:256],
-                }
-                paypal_url = f"{base_url}/cgi-bin/webscr?{urllib.parse.urlencode(params)}"
-                return redirect(paypal_url)
+                # POST to PayPal so notify_url (IPN) is honored; GET redirects can drop it per PayPal docs.
+                sig = _paypal_custom_for_runner(runner.id).split(':', 1)[1]
+                extra = {'runner_id': runner.id, 'sig': sig}
+                context = _paypal_post_context(request, runner, selected_race, return_url_extra=extra, cancel_url_extra=extra)
+                return render(request, 'tracker/paypal_redirect.html', context)
             # No PayPal: send signup confirmation immediately
             send_signup_confirmation_email(runner)
             return redirect(reverse('tracker:signup-success', args=[selected_race.id]))
@@ -1656,29 +1673,9 @@ def pay_entry(request, runner_id, signature):
     entry_fee = float(race_obj.Entry_fee or 0)
     if not site_settings.paypal_enabled or not paypal_email or entry_fee <= 0:
         return redirect(reverse('tracker:signup-success', args=[race_obj.id]))
-    use_sandbox = getattr(settings, 'PAYPAL_SANDBOX', False)
-    base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
-    paypal_base = _paypal_base_url(request)
-    return_url = paypal_base + reverse('tracker:paypal-return')
-    return_url += '?' + urllib.parse.urlencode({'runner_id': runner_obj.id, 'sig': signature})
-    cancel_url = paypal_base + reverse('tracker:paypal-cancel')
-    cancel_url += '?' + urllib.parse.urlencode({'runner_id': runner_obj.id, 'sig': signature})
-    notify_url = paypal_base + reverse('tracker:paypal-ipn')
-    custom_val = _paypal_custom_for_runner(runner_obj.id)
-    item_name = f"Race entry: {race_obj.name}"
-    params = {
-        'cmd': '_donations',
-        'business': paypal_email,
-        'amount': f'{entry_fee:.2f}',
-        'currency_code': 'USD',
-        'item_name': item_name[:127],
-        'return': return_url,
-        'cancel_return': cancel_url,
-        'notify_url': notify_url,
-        'custom': custom_val[:256],
-    }
-    paypal_url = f"{base_url}/cgi-bin/webscr?{urllib.parse.urlencode(params)}"
-    return redirect(paypal_url)
+    extra = {'runner_id': runner_obj.id, 'sig': signature}
+    context = _paypal_post_context(request, runner_obj, race_obj, return_url_extra=extra, cancel_url_extra=extra)
+    return render(request, 'tracker/paypal_redirect.html', context)
 
 
 def race_countdown(request):

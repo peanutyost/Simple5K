@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container py-3 py-md-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6 text-center">
+            <p class="mb-4">Redirecting to PayPal to complete your payment…</p>
+            <p class="text-muted small">If you are not redirected, click the button below.</p>
+            <form id="paypal-form" method="post" action="{{ paypal_action }}">
+                {% for name, value in paypal_params.items %}
+                <input type="hidden" name="{{ name }}" value="{{ value }}">
+                {% endfor %}
+                <button type="submit" class="btn btn-primary">Continue to PayPal</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById('paypal-form').submit();
+</script>
+{% endblock %}
