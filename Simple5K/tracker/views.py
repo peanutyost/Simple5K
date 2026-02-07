@@ -830,7 +830,7 @@ def generate_runner_pdf_report(request):
 
     # Create PDF
     buffer = io.BytesIO()
-    create_runner_pdf(buffer, selected_race, runners_list)
+    create_runner_pdf(buffer, selected_race, runners_list, sort_by=sort_by)
     buffer.seek(0)  # Reset buffer position to the beginning
 
     # Create HTTP response

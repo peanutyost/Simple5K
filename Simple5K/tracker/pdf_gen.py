@@ -312,8 +312,9 @@ def generate_race_report(filename, race_data, return_type):
         raise ValueError("Invalid return_type.  Must be 'response' or 'file'.")
 
 
-def create_runner_pdf(buffer, race_obj, runners_queryset):
-    """Generates a PDF report of runners for a given race."""
+def create_runner_pdf(buffer, race_obj, runners_queryset, sort_by=None):
+    """Generates a PDF report of runners for a given race.
+    When sort_by=='paid', runners are split into Unpaid and Paid tables."""
     doc = SimpleDocTemplate(buffer, pagesize=letter,
                             leftMargin=0.5 * inch, rightMargin=0.5 * inch,
                             topMargin=0.5 * inch, bottomMargin=0.5 * inch)
@@ -325,28 +326,9 @@ def create_runner_pdf(buffer, race_obj, runners_queryset):
     story.append(Paragraph(title, styles['h1']))
     story.append(Spacer(1, 0.2 * inch))
 
-    # Table Data Preparation
-    # Header Row
-    header = ['Number', 'First Name', 'Last Name', 'Gender', 'Shirt Size', 'Type', 'Order']
-    data = [header]
-
-    # Data Rows
-    for runner in runners_queryset:
-        data.append([
-            runner.number if runner.number is not None else 'N/A',
-            runner.first_name,
-            runner.last_name,
-            runner.get_gender_display() if runner.gender else 'N/A',  # Use get_..._display for choices
-            runner.get_shirt_size_display(),
-            runner.get_type_display() if runner.type else 'N/A',
-            runner.id
-        ])
-
-    # Create Table and Style
-    # Adjust widths as needed
-    table = Table(data, colWidths=[0.5 * inch, 0.8 * inch, 1.5 * inch, 1.5 * inch, 0.8 * inch, 1.2 * inch, 0.8 * inch])
-
-    style = TableStyle([
+    header = ['Number', 'First Name', 'Last Name', 'Gender', 'Shirt Size', 'Type']
+    col_widths = [0.5 * inch, 0.8 * inch, 1.5 * inch, 1.5 * inch, 0.8 * inch, 1.2 * inch]
+    table_style = TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -354,18 +336,56 @@ def create_runner_pdf(buffer, race_obj, runners_queryset):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),  # Vertical alignment
-        # Specific alignment for names if needed
-        ('ALIGN', (2, 1), (3, -1), 'LEFT'),  # Align names left
-        ('LEFTPADDING', (2, 1), (3, -1), 6),  # Add padding to names
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (2, 1), (3, -1), 'LEFT'),
+        ('LEFTPADDING', (2, 1), (3, -1), 6),
     ])
 
-    table.setStyle(style)
-    story.append(table)
+    def make_table_rows(runner_list):
+        data = [header]
+        for runner in runner_list:
+            data.append([
+                runner.number if runner.number is not None else 'N/A',
+                runner.first_name,
+                runner.last_name,
+                runner.get_gender_display() if runner.gender else 'N/A',
+                runner.get_shirt_size_display(),
+                runner.get_type_display() if runner.type else 'N/A',
+            ])
+        return data
 
-    # Build the PDF
+    if sort_by == 'paid':
+        runners_list = list(runners_queryset)
+        unpaid = [r for r in runners_list if not r.paid]
+        paid = [r for r in runners_list if r.paid]
+        # Unpaid section
+        story.append(Paragraph("Unpaid", styles['h2']))
+        story.append(Spacer(1, 0.15 * inch))
+        if unpaid:
+            data = make_table_rows(unpaid)
+            table = Table(data, colWidths=col_widths)
+            table.setStyle(table_style)
+            story.append(table)
+        else:
+            story.append(Paragraph("No unpaid runners.", styles['Normal']))
+        story.append(Spacer(1, 0.3 * inch))
+        # Paid section
+        story.append(Paragraph("Paid", styles['h2']))
+        story.append(Spacer(1, 0.15 * inch))
+        if paid:
+            data = make_table_rows(paid)
+            table = Table(data, colWidths=col_widths)
+            table.setStyle(table_style)
+            story.append(table)
+        else:
+            story.append(Paragraph("No paid runners.", styles['Normal']))
+    else:
+        data = make_table_rows(list(runners_queryset))
+        table = Table(data, colWidths=col_widths)
+        table.setStyle(table_style)
+        story.append(table)
+
     doc.build(story)
-    # The buffer now contains the PDF data
 
 
 def generate_race_summary_pdf(buffer, summary_data):
