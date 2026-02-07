@@ -2,7 +2,7 @@
 
 This document describes the JSON API for race timing, runner management, and RFID operations. All responses are JSON unless noted.
 
-**Base URL:** Append these paths to your tracker app root (e.g. `https://yoursite.com/tracker/`).
+**Base URL:** Append these paths to your site root (e.g. `https://yoursite.com/`). All paths below include `tracker/` at the front (e.g. `tracker/api/record-lap/`).
 
 ---
 
@@ -16,7 +16,7 @@ These endpoints require a valid API key in the request header:
 X-API-Key: <your-api-key>
 ```
 
-- **Generate a key:** Log in to the site and use **POST** `/generate-api-key/` with form body `name=<key-name>`. The key is shown once on the response page.
+- **Generate a key:** Log in to the site and use **POST** `tracker/generate-api-key/` with form body `name=<key-name>`. The key is shown once on the response page.
 - Missing or invalid key returns `401` with `{"error": "Invalid API key"}`.
 
 ### API key or session (runner endpoints)
@@ -36,7 +36,7 @@ Record one or more lap crossings (e.g. from a timing mat / RFID reader).
 | | |
 |---|---|
 | **Method** | `POST` |
-| **Path** | `api/record-lap/` |
+| **Path** | `tracker/api/record-lap/` |
 | **Auth** | `X-API-Key` header |
 | **Content-Type** | `application/json` |
 
@@ -105,7 +105,7 @@ Set the race start or end time and update status.
 | | |
 |---|---|
 | **Method** | `POST` |
-| **Path** | `api/update-race-time/` |
+| **Path** | `tracker/api/update-race-time/` |
 | **Auth** | `X-API-Key` header |
 | **Content-Type** | `application/json` |
 
@@ -165,7 +165,7 @@ Assign an RFID tag to a runner in a race (by bib number).
 | | |
 |---|---|
 | **Method** | `POST` |
-| **Path** | `api/update-rfid/` |
+| **Path** | `tracker/api/update-rfid/` |
 | **Auth** | `X-API-Key` header |
 | **Content-Type** | `application/json` |
 
@@ -211,7 +211,7 @@ List races that are not completed (e.g. for timing UIs or race selection).
 | | |
 |---|---|
 | **Method** | `GET` |
-| **Path** | `api/available-races/` |
+| **Path** | `tracker/api/available-races/` |
 | **Auth** | `X-API-Key` header |
 
 No request body or query parameters.
@@ -251,7 +251,7 @@ Create a new runner for a race. **Auth:** API key (`X-API-Key` header) or sessio
 | | |
 |---|---|
 | **Method** | `POST` |
-| **Path** | `api/add-runner/` |
+| **Path** | `tracker/api/add-runner/` |
 | **Auth** | API key or session |
 | **Content-Type** | `application/json` or form-encoded |
 
@@ -330,7 +330,7 @@ Update an existing runner. **Auth:** API key (`X-API-Key` header) or session (lo
 | | |
 |---|---|
 | **Method** | `POST` |
-| **Path** | `api/edit-runner/` |
+| **Path** | `tracker/api/edit-runner/` |
 | **Auth** | API key or session |
 | **Content-Type** | `application/json` or form-encoded |
 
@@ -395,7 +395,7 @@ Create a new API key. This is a **web view**, not a JSON API: it renders HTML an
 | | |
 |---|---|
 | **Method** | `POST` |
-| **Path** | `generate-api-key/` |
+| **Path** | `tracker/generate-api-key/` |
 | **Auth** | Session (login required) |
 
 **Request:** Form-encoded body with `name=<key-name>`.
@@ -408,12 +408,12 @@ Create a new API key. This is a **web view**, not a JSON API: it renders HTML an
 
 | Endpoint | Method | Auth | Purpose |
 |----------|--------|------|---------|
-| `api/record-lap/` | POST | API key | Record lap(s) by RFID and timestamp |
-| `api/update-race-time/` | POST | API key | Start or stop a race |
-| `api/update-rfid/` | POST | API key | Assign RFID tag to runner (by race + bib) |
-| `api/available-races/` | GET | API key | List non-completed races |
-| `api/add-runner/` | POST | API key or session | Create runner in a race |
-| `api/edit-runner/` | POST | API key or session | Update runner fields |
+| `tracker/api/record-lap/` | POST | API key | Record lap(s) by RFID and timestamp |
+| `tracker/api/update-race-time/` | POST | API key | Start or stop a race |
+| `tracker/api/update-rfid/` | POST | API key | Assign RFID tag to runner (by race + bib) |
+| `tracker/api/available-races/` | GET | API key | List non-completed races |
+| `tracker/api/add-runner/` | POST | API key or session | Create runner in a race |
+| `tracker/api/edit-runner/` | POST | API key or session | Update runner fields |
 | `generate-api-key/` | POST | Session | Create API key (HTML response) |
 
 ---
