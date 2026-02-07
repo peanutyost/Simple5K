@@ -287,8 +287,8 @@ def generate_race_report(filename, race_data, return_type):
         ('TOPPADDING', (0, 1), (-1, -1), 8),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
     ]
-    # Alternate row color by sequence so no two consecutive rows match (including divider rows)
-    use_alt = True
+    # Alternate row color by sequence so no two consecutive rows match; first data row is white
+    use_alt = False
     for i in range(1, len(data)):
         bg = row_alt if use_alt else row_white
         comp_style.append(('BACKGROUND', (0, i), (-1, i), bg))
