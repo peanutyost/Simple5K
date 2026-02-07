@@ -344,20 +344,24 @@ def create_runner_pdf(buffer, race_obj, runners_queryset, sort_by=None):
     def make_table_rows(runner_list):
         data = [header]
         for runner in runner_list:
+            try:
+                shirt = runner.get_shirt_size_display() if getattr(runner, 'shirt_size', None) else 'N/A'
+            except (ValueError, AttributeError):
+                shirt = str(getattr(runner, 'shirt_size', '')) or 'N/A'
             data.append([
                 runner.number if runner.number is not None else 'N/A',
                 runner.first_name,
                 runner.last_name,
                 runner.get_gender_display() if runner.gender else 'N/A',
-                runner.get_shirt_size_display(),
+                shirt,
                 runner.get_type_display() if runner.type else 'N/A',
             ])
         return data
 
     if sort_by == 'paid':
         runners_list = list(runners_queryset)
-        unpaid = [r for r in runners_list if not r.paid]
-        paid = [r for r in runners_list if r.paid]
+        unpaid = [r for r in runners_list if not getattr(r, 'paid', False)]
+        paid = [r for r in runners_list if getattr(r, 'paid', False)]
         # Unpaid section
         story.append(Paragraph("Unpaid", styles['h2']))
         story.append(Spacer(1, 0.15 * inch))
