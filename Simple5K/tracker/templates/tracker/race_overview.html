@@ -238,7 +238,8 @@
                                     <th scope="col" class="sortable-th">Runner</th>
                                     <th scope="col" class="sortable-th">Name</th>
                                     <th scope="col">Lap : Time – Pace – Speed</th>
-                                    <th scope="col" class="sortable-th">Total time</th>
+                                    <th scope="col" class="sortable-th">Gun time</th>
+                                    <th scope="col" class="sortable-th">Chip time</th>
                                     <th scope="col" class="sortable-th d-none d-lg-table-cell">Avg pace</th>
                                     <th scope="col" class="sortable-th d-none d-lg-table-cell">Avg speed (MPH)</th>
                                     <th scope="col" data-sort="number" class="sortable-th">Place</th>
@@ -251,10 +252,11 @@
                                     <td>{{ runner.name }}</td>
                                     <td class="lap-cell">
                                         {% for lap in runner.laps %}
-                                        <div>Lap {{ lap.lap }}: {{ lap.duration }} – {{ lap.average_pace }} – {{ lap.average_speed }} MPH</div>
+                                        <div>{% if lap.lap == 0 %}Chip start{% else %}Lap {{ lap.lap }}{% endif %}: {{ lap.duration }} – {{ lap.average_pace }} – {{ lap.average_speed }} MPH</div>
                                         {% endfor %}
                                     </td>
-                                    <td>{% if runner.total_race_time %}{{ runner.total_race_time }}{% else %}—{% endif %}</td>
+                                    <td>{% if runner.gun_time %}{{ runner.gun_time }}{% else %}—{% endif %}</td>
+                                    <td>{% if runner.chip_time %}{{ runner.chip_time }}{% else %}—{% endif %}</td>
                                     <td class="d-none d-lg-table-cell">{% if runner.average_pace %}{{ runner.average_pace }}{% else %}—{% endif %}</td>
                                     <td class="d-none d-lg-table-cell">{% if runner.average_speed %}{{ runner.average_speed }}{% else %}—{% endif %}</td>
                                     <td sorttable_customkey="{% if runner.place %}{{ runner.place }}{% else %}999999{% endif %}">
@@ -280,7 +282,8 @@
                             <span class="runner-name">{{ runner.name }}</span>
                         </div>
                         <div class="runner-meta">
-                            <span>Total: {% if runner.total_race_time %}{{ runner.total_race_time }}{% else %}Not finished{% endif %}</span>
+                            <span>Gun: {% if runner.gun_time %}{{ runner.gun_time }}{% else %}—{% endif %}</span>
+                            <span class="ms-2">Chip: {% if runner.chip_time %}{{ runner.chip_time }}{% else %}—{% endif %}</span>
                             <span class="ms-2">Place: {% if runner.place %}{% if runner.gender == "female" %}{{ runner.place }} F{% elif runner.gender == "male" %}{{ runner.place }} M{% else %}{{ runner.place }}{% endif %}{% else %}—{% endif %}</span>
                         </div>
                         {% if runner.laps %}

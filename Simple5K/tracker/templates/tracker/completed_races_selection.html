@@ -221,7 +221,8 @@
     if (!laps || !laps.length) return '';
     var html = '';
     laps.forEach(function(lap) {
-      html += '<div class="lap-line">Lap ' + escapeHtml(lap.lap) + ': ' + escapeHtml(lap.duration) + ' — ' + escapeHtml(lap.average_pace) + ' — ' + escapeHtml(lap.average_speed) + ' MPH</div>';
+      var label = lap.lap === 0 ? 'Chip start' : 'Lap ' + lap.lap;
+      html += '<div class="lap-line">' + escapeHtml(label) + ': ' + escapeHtml(lap.duration) + ' — ' + escapeHtml(lap.average_pace) + ' — ' + escapeHtml(lap.average_speed) + ' MPH</div>';
     });
     return html;
   }
@@ -239,17 +240,20 @@
     table.className = 'results-table';
     table.setAttribute('role', 'table');
     var thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Laps</th><th scope="col">Time</th><th scope="col">Pace</th><th scope="col">Speed</th><th scope="col">Place</th></tr>';
+    thead.innerHTML = '<tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Laps</th><th scope="col">Gun time</th><th scope="col">Chip time</th><th scope="col">Pace</th><th scope="col">Speed</th><th scope="col">Place</th></tr>';
     table.appendChild(thead);
     var tbody = document.createElement('tbody');
     (data.runner_times || []).forEach(function(runner) {
       var lapsHtml = renderLapsHtml(runner.laps);
       var tr = document.createElement('tr');
+      var gunTime = runner.gun_time != null ? runner.gun_time : runner.total_race_time;
+      var chipTime = runner.chip_time != null ? runner.chip_time : '—';
       tr.innerHTML =
         '<td>' + escapeHtml(runner.number) + '</td>' +
         '<td>' + escapeHtml(runner.name) + '</td>' +
         '<td><div class="lap-details">' + (lapsHtml || '—') + '</div></td>' +
-        '<td>' + escapeHtml(runner.total_race_time) + '</td>' +
+        '<td>' + escapeHtml(gunTime) + '</td>' +
+        '<td>' + escapeHtml(chipTime) + '</td>' +
         '<td>' + escapeHtml(runner.average_pace) + '</td>' +
         '<td>' + escapeHtml(runner.average_speed !== 'Not Finished' ? runner.average_speed + ' MPH' : '—') + '</td>' +
         '<td>' + escapeHtml(placeText(runner)) + '</td>';
@@ -275,7 +279,8 @@
           '<span class="runner-place">' + escapeHtml(placeText(runner)) + '</span>' +
         '</div>' +
         '<div class="runner-stats">' +
-          '<span>Time: ' + escapeHtml(runner.total_race_time) + '</span>' +
+          '<span>Gun: ' + escapeHtml(runner.gun_time != null ? runner.gun_time : runner.total_race_time) + '</span>' +
+          '<span>Chip: ' + escapeHtml(runner.chip_time != null ? runner.chip_time : '—') + '</span>' +
           '<span>Pace: ' + escapeHtml(runner.average_pace) + '</span>' +
           '<span>' + speedText + '</span>' +
         '</div>' +

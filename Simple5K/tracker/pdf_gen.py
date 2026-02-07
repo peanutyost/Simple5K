@@ -165,9 +165,12 @@ def generate_race_report(filename, race_data, return_type):
     runner_box_height = 1.28 * inch
     avg_speed_str = f"{rs['race_avg_speed']:.2f} mph" if isinstance(rs.get('race_avg_speed'), (int, float)) else f"{rs.get('race_avg_speed', 'N/A')}"
     runner_name = (rs.get('name') or '').upper()
+    gun_str = rs.get('gun_time', rs.get('total_time', 'N/A'))
+    chip_str = rs.get('chip_time', 'N/A')
     runner_details = [
         f"Bib #{rs['number']}  ·  {rs['type']}",
-        f"Total time   {rs['total_time']}",
+        f"Gun time   {gun_str}",
+        f"Chip time   {chip_str}",
         f"Avg pace   {rs['avg_pace']}",
         f"Avg speed   {avg_speed_str}",
     ]

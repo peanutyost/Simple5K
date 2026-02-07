@@ -88,8 +88,11 @@ Each item in `results` may be:
 
 **Behavior notes:**
 
-- Laps are rejected if they occur within the race’s **minimum lap time** (still returns `"status": "success"` for that item).
-- When the final lap (lap number = race’s `laps_count`) is recorded, the runner is marked finished and place/speed/pace are set.
+- **Minimum lap time:** A lap is not counted (and no new lap record is created) if the time since the previous crossing is less than the race’s **minimum lap time**. The API still returns `"status": "success"` for that item.
+- **Lap 0 (chip start):** If the first crossing after the race start occurs *before* the minimum lap time has elapsed, it is recorded as **lap 0** (chip start) only. This time is used later to compute **chip time** when the runner finishes.
+- **Gun time vs chip time:** When a runner completes the final lap, **gun time** is set (time from race start to finish). **Chip time** is set to time from the runner’s first crossing (lap 0 time, or race start if no lap 0) to finish.
+- When the final lap (lap number = race’s `laps_count`) is recorded, the runner is marked finished and place/speed/pace/gun time/chip time are set.
+- **Finished runners:** Once a runner has completed all laps, no further laps are recorded for that runner; the API returns success without creating new lap records.
 
 ---
 

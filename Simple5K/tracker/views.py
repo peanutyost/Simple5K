@@ -164,6 +164,10 @@ def prepare_race_data(race_obj, runner_obj):
         'shirt_size': runner_obj.shirt_size.capitalize() if runner_obj.shirt_size else "N/A",
         'total_time': str(timedelta(seconds=round(
             runner_obj.total_race_time.total_seconds()))) if runner_obj.total_race_time else "N/A",
+        'gun_time': str(timedelta(seconds=round(
+            runner_obj.total_race_time.total_seconds()))) if runner_obj.total_race_time else "N/A",
+        'chip_time': str(timedelta(seconds=round(
+            runner_obj.chip_time.total_seconds()))) if getattr(runner_obj, 'chip_time', None) else "N/A",
         'race_avg_speed': float(runner_obj.race_avg_speed)if runner_obj.race_avg_speed else "N/A",
         'place': runner_obj.place if runner_obj.place else "N/A",
         'avg_pace': str(timedelta(seconds=round(
@@ -919,75 +923,99 @@ def record_lap(request):
                 if race_obj.min_lap_time is None:
                     race_obj.min_lap_time = timedelta(seconds=0)
 
-                # Calculate lap duration and averages
+                # Once runner has completed the race, do not record any more laps
+                if runner_obj.race_completed:
+                    results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
+                    continue
+
+                # Last recorded lap (by lap number); may be lap 0 = chip start
                 previous_lap = laps.objects.filter(
                     runner=runner_obj,
                     attach_to_race=race_obj
                 ).order_by('-lap').first()
 
-                if runner_obj.race_completed is not True:
-                    if previous_lap:
-                        if current_time - previous_lap.time > race_obj.min_lap_time:
-                            duration = current_time - previous_lap.time
-                            lap_number = previous_lap.lap + 1
-                            if lap_number == race_obj.laps_count:
-                                runner_obj.race_completed = True
+                duration = None
+                lap_number = None
 
-                                if runner_obj.gender is None:
-                                    runner_obj.gender = 'male'
-
-                                allfinnisher = runners.objects.filter(race_completed=True, gender=runner_obj.gender)
-
-                                if not allfinnisher.exists():
-                                    runner_obj.place = 1
-                                else:
-                                    prevfinnisher = allfinnisher.order_by('-place').first()
-                                    if prevfinnisher.place is None:
-                                        runner_obj.place = 1
-                                    else:
-                                        runner_obj.place = prevfinnisher.place + 1
-
-                                runner_obj.total_race_time = current_time - race_obj.start_time
-                                totalracetimesecond = runner_obj.total_race_time.total_seconds()
-                                kmhtotal = (race_obj.distance / 1000) / (totalracetimesecond / 3600)
-                                mphtotal = kmhtotal * 0.621371
-                                runner_obj.race_avg_speed = mphtotal
-
-                                avg_pace_seconds = ((runner_obj.total_race_time.total_seconds() / 60) / (
-                                    race_obj.distance / 1609.34)) * 60
-                                runner_obj.race_avg_pace = timedelta(seconds=avg_pace_seconds)
-                                runner_obj.save()
-                        elif current_time - previous_lap.time <= race_obj.min_lap_time:
-                            results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
-                            continue  # Skip processing this lap as it's too soon
-
-                    else:
-                        if current_time - race_obj.start_time > race_obj.min_lap_time:
-                            duration = current_time - race_obj.start_time
-                            lap_number = 1
-                        elif current_time - race_obj.start_time <= race_obj.min_lap_time:
-                            results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
-                            continue  # Skip processing this lap as it's too soon
-
-                    distance_per_lap = race_obj.distance / 1000 / race_obj.laps_count
-                    speed = (distance_per_lap / duration.total_seconds()) * 3600 * 0.621371
-                    pace_seconds = ((duration.total_seconds() / 60) / (distance_per_lap / 1.60934)) * 60
-                    pace = timedelta(seconds=pace_seconds)
-
-                    laps_obj = laps.objects.create(
-                        runner=runner_obj,
-                        attach_to_race=race_obj,
-                        time=current_time,
-                        lap=lap_number,
-                        duration=duration,
-                        average_speed=speed,
-                        average_pace=pace
-                    )
-                    laps_obj.save()  # Save to database
-                    results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
-
+                if previous_lap:
+                    # Already have at least one crossing (lap 0 or higher). Do not record if under min lap time.
+                    if current_time - previous_lap.time <= race_obj.min_lap_time:
+                        results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
+                        continue
+                    # Next counted lap (1 .. laps_count)
+                    lap_number = previous_lap.lap + 1
+                    # Do not record beyond final lap (defensive)
+                    if lap_number > race_obj.laps_count:
+                        results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
+                        continue
+                    duration = current_time - previous_lap.time
                 else:
-                    results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
+                    # First crossing: if before min_lap_time since gun, record as lap 0 (chip start) only
+                    if current_time - race_obj.start_time <= race_obj.min_lap_time:
+                        lap0_duration = current_time - race_obj.start_time
+                        laps.objects.create(
+                            runner=runner_obj,
+                            attach_to_race=race_obj,
+                            time=current_time,
+                            lap=0,
+                            duration=lap0_duration,
+                            average_speed=0,
+                            average_pace=timedelta(0)
+                        )
+                        results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
+                        continue
+                    # First crossing after min_lap_time: count as lap 1
+                    lap_number = 1
+                    duration = current_time - race_obj.start_time
+
+                # Create the counted lap (1 .. laps_count)
+                distance_per_lap = race_obj.distance / 1000 / race_obj.laps_count
+                speed = (distance_per_lap / duration.total_seconds()) * 3600 * 0.621371
+                pace_seconds = ((duration.total_seconds() / 60) / (distance_per_lap / 1.60934)) * 60
+                pace = timedelta(seconds=pace_seconds)
+
+                laps.objects.create(
+                    runner=runner_obj,
+                    attach_to_race=race_obj,
+                    time=current_time,
+                    lap=lap_number,
+                    duration=duration,
+                    average_speed=speed,
+                    average_pace=pace
+                )
+
+                # If this was the final lap, mark runner finished and set gun time + chip time
+                if lap_number == race_obj.laps_count:
+                    runner_obj.race_completed = True
+                    if runner_obj.gender is None:
+                        runner_obj.gender = 'male'
+
+                    allfinnisher = runners.objects.filter(race_completed=True, gender=runner_obj.gender)
+                    if not allfinnisher.exists():
+                        runner_obj.place = 1
+                    else:
+                        prevfinnisher = allfinnisher.order_by('-place').first()
+                        runner_obj.place = (prevfinnisher.place or 0) + 1
+
+                    # Gun time: from race start to finish
+                    runner_obj.total_race_time = current_time - race_obj.start_time
+                    # Chip time: from first crossing (lap 0) or race start to finish
+                    lap0 = laps.objects.filter(
+                        runner=runner_obj, attach_to_race=race_obj, lap=0
+                    ).first()
+                    chip_start = lap0.time if lap0 else race_obj.start_time
+                    runner_obj.chip_time = current_time - chip_start
+
+                    totalracetimesecond = runner_obj.total_race_time.total_seconds()
+                    kmhtotal = (race_obj.distance / 1000) / (totalracetimesecond / 3600)
+                    mphtotal = kmhtotal * 0.621371
+                    runner_obj.race_avg_speed = mphtotal
+                    avg_pace_seconds = ((runner_obj.total_race_time.total_seconds() / 60) / (
+                        race_obj.distance / 1609.34)) * 60
+                    runner_obj.race_avg_pace = timedelta(seconds=avg_pace_seconds)
+                    runner_obj.save()
+
+                results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
 
             except runners.DoesNotExist:
                 results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "No runner in this race has that tag"})
@@ -1227,6 +1255,16 @@ def race_overview(request):
                     if (trt := arunner.total_race_time) is not None
                     else "Not Finished"
                 ),
+                'gun_time': (
+                    timedelta(seconds=round(trt.total_seconds()))
+                    if (trt := arunner.total_race_time) is not None
+                    else None
+                ),
+                'chip_time': (
+                    timedelta(seconds=round(ct.total_seconds()))
+                    if (ct := getattr(arunner, 'chip_time', None)) is not None
+                    else None
+                ),
                 'average_pace': (
                     timedelta(seconds=round(trt.total_seconds()))
                     if (trt := arunner.race_avg_pace) is not None
@@ -1290,6 +1328,16 @@ def get_completed_race_overview(request, race_id):
                     format_timedelta(td)
                     if (td := arunner.total_race_time) is not None
                     else "Not Finished"
+                ),
+                'gun_time': (
+                    format_timedelta(td)
+                    if (td := arunner.total_race_time) is not None
+                    else None
+                ),
+                'chip_time': (
+                    format_timedelta(td)
+                    if (td := getattr(arunner, 'chip_time', None)) is not None
+                    else None
                 ),
                 'average_pace': (
                     format_timedelta(td)

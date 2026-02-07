@@ -97,7 +97,14 @@ class runners(models.Model):
     )
     race = models.ForeignKey(race, on_delete=models.PROTECT)
     race_completed = models.BooleanField(null=True, blank=True)
-    total_race_time = models.DurationField(blank=True, null=True)
+    total_race_time = models.DurationField(
+        blank=True, null=True,
+        help_text='Gun time: from race start to finish'
+    )
+    chip_time = models.DurationField(
+        blank=True, null=True,
+        help_text='Chip time: from first crossing (lap 0) or race start to finish'
+    )
     race_avg_speed = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True)
     race_avg_pace = models.DurationField(blank=True, null=True)
