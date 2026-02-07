@@ -5,26 +5,26 @@
     <div class="row">
         <div class="col-12 col-lg-8">
             <h1 class="mb-4">Send Email to Runners</h1>
-            <p class="text-muted">Select a race, enter subject and message. Each runner receives a separate email. Emails are sent in the background and throttled to stay within provider limits.</p>
+            <p class="text-muted">Select one or more races, enter subject and message. Each runner receives a separate email (one per person for general email; one per unpaid entry for payment reminders so each link is correct). Emails are sent in the background and throttled to stay within provider limits.</p>
             <form id="send-email-form" method="post" action="{% url 'tracker:email_list' %}">
                 {% csrf_token %}
                 <!-- Do not use name="action" - it shadows form.action and breaks the submit URL -->
                 <div class="mb-3">
-                    <label for="race-select" class="form-label">Race <span class="text-danger">*</span></label>
-                    <select id="race-select" name="race_id" class="form-select" required aria-label="Select race">
-                        <option value="">--- Select a Race ---</option>
+                    <label for="race-select" class="form-label">Race(s) <span class="text-danger">*</span></label>
+                    <select id="race-select" name="race_ids" class="form-select" multiple size="8" aria-label="Select one or more races">
                         {% for race_obj in races %}
                         <option value="{{ race_obj.id }}">{{ race_obj.name }}</option>
                         {% endfor %}
                     </select>
+                    <p class="form-text small text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple races.</p>
                     <div id="recipient-count" class="form-text text-muted" aria-live="polite"></div>
                 </div>
                 <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="unpaid-reminder" name="unpaid_reminder" value="1" aria-describedby="unpaid-reminder-help">
-                        <label class="form-check-label" for="unpaid-reminder">Send payment reminders only to unpaid runners for the selected race</label>
+                        <label class="form-check-label" for="unpaid-reminder">Send payment reminders only to unpaid runners for the selected race(s)</label>
                     </div>
-                    <p id="unpaid-reminder-help" class="form-text small text-muted">When checked, only unpaid runners of the race selected above will receive the email, with a unique payment link appended to each message.</p>
+                    <p id="unpaid-reminder-help" class="form-text small text-muted">When checked, each unpaid entry gets one email with that entry’s payment link. Otherwise, the list is deduplicated by email (one email per person).</p>
                 </div>
                 <div class="mb-3">
                     <label for="email-subject" class="form-label">Subject <span class="text-danger">*</span></label>
@@ -40,7 +40,7 @@
             <div id="send-result" class="mt-3" role="alert" aria-live="polite"></div>
             {% if recent_jobs %}
             <div class="mt-4">
-                <h2 class="h6 text-muted mb-2">Last send job</h2>
+                <h2 class="h6 text-muted mb-2">Recent send jobs</h2>
                 <p class="small text-muted">Emails are sent in the background. If a job stays on &quot;Sending&quot;, open the Send Email page again (to start the worker), or run <code>python manage.py reset_stuck_email_jobs</code>, or in Admin → EmailSendJob use the action &quot;Reset stuck (Sending → Failed)&quot;.</p>
                 <ul class="list-group list-group-flush small">
                     {% for job in recent_jobs %}
@@ -90,9 +90,19 @@
         return d.innerHTML;
     }
 
+    function getSelectedRaceIds() {
+        if (!raceSelect || !raceSelect.options) return [];
+        var ids = [];
+        for (var i = 0; i < raceSelect.options.length; i++) {
+            if (raceSelect.options[i].selected && raceSelect.options[i].value) ids.push(raceSelect.options[i].value);
+        }
+        return ids;
+    }
+
     function updateRecipientCount() {
         var countEl = document.getElementById('recipient-count');
-        if (!countEl || !raceSelect || !raceSelect.value) {
+        var ids = getSelectedRaceIds();
+        if (!countEl || ids.length === 0) {
             if (countEl) countEl.textContent = '';
             return;
         }
@@ -109,18 +119,18 @@
                 var n = data.count != null ? data.count : 0;
                 var unpaidReminder = document.getElementById('unpaid-reminder') && document.getElementById('unpaid-reminder').checked;
                 if (unpaidReminder) {
-                    countEl.textContent = n === 0 ? 'No unpaid runners with email for this race.' : (n + ' unpaid runner(s) will receive a reminder with payment link.');
+                    countEl.textContent = n === 0 ? 'No unpaid runners with email for selected race(s).' : (n + ' unpaid runner(s) will receive a reminder with payment link.');
                 } else {
-                    countEl.textContent = n === 0 ? 'No runners with email for this race.' : (n + ' runner(s) will receive this email.');
+                    countEl.textContent = n === 0 ? 'No runners with email for selected race(s).' : (n + ' runner(s) will receive this email.');
                 }
             } catch (e) {
                 countEl.textContent = '';
             }
         };
         var unpaidReminder = document.getElementById('unpaid-reminder') && document.getElementById('unpaid-reminder').checked;
-        var body = 'action=recipient_count&race_id=' + encodeURIComponent(raceSelect.value) +
-            (unpaidReminder ? '&unpaid_reminder=1' : '') +
-            '&csrfmiddlewaretoken=' + encodeURIComponent(getCsrfToken());
+        var body = 'action=recipient_count&csrfmiddlewaretoken=' + encodeURIComponent(getCsrfToken());
+        if (unpaidReminder) body += '&unpaid_reminder=1';
+        ids.forEach(function(id) { body += '&race_ids=' + encodeURIComponent(id); });
         xhr.send(body);
     }
 
@@ -131,8 +141,9 @@
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            if (!raceSelect.value) {
-                setResult('Please select a race.', true);
+            var ids = getSelectedRaceIds();
+            if (ids.length === 0) {
+                setResult('Please select at least one race.', true);
                 return;
             }
             var subject = document.getElementById('email-subject');
@@ -143,11 +154,11 @@
             sendResult.innerHTML = '';
             if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Queuing…'; }
             var unpaidReminder = document.getElementById('unpaid-reminder') && document.getElementById('unpaid-reminder').checked;
-            var body = 'action=send&race_id=' + encodeURIComponent(raceSelect.value) +
-                '&subject=' + encodeURIComponent((subject && subject.value) || '') +
+            var body = 'action=send&subject=' + encodeURIComponent((subject && subject.value) || '') +
                 '&body=' + encodeURIComponent((document.getElementById('email-body') && document.getElementById('email-body').value) || '') +
                 (unpaidReminder ? '&unpaid_reminder=1' : '') +
                 '&csrfmiddlewaretoken=' + encodeURIComponent(getCsrfToken());
+            ids.forEach(function(id) { body += '&race_ids=' + encodeURIComponent(id); });
             var xhr = new XMLHttpRequest();
             xhr.open('POST', form.action || window.location.href, true);
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
@@ -162,7 +173,7 @@
                     if (data.success && data.message) {
                         setResult(escapeHtml(data.message), false);
                         form.reset();
-                        raceSelect.value = '';
+                        for (var i = 0; i < raceSelect.options.length; i++) raceSelect.options[i].selected = false;
                         var rc = document.getElementById('recipient-count');
                         if (rc) rc.textContent = '';
                         return;

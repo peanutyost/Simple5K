@@ -720,55 +720,70 @@ def email_list_view(request):
         action = data.get('action')
         if action == 'send':
             try:
-                race_id = data.get('race_id')
+                race_ids = data.getlist('race_ids') or ([data.get('race_id')] if data.get('race_id') else [])
+                race_ids = [x for x in race_ids if x]
                 subject = (data.get('subject') or '').strip()
                 body = (data.get('body') or '').strip()
-                if not race_id:
-                    return JsonResponse({'success': False, 'error': 'Please select a race.'}, status=400)
+                if not race_ids:
+                    return JsonResponse({'success': False, 'error': 'Please select at least one race.'}, status=400)
                 if not subject:
                     return JsonResponse({'success': False, 'error': 'Subject is required.'}, status=400)
-                try:
-                    race_obj = race.objects.get(pk=race_id)
-                except (race.DoesNotExist, ValueError):
-                    return JsonResponse({'success': False, 'error': 'Invalid race.'}, status=400)
                 unpaid_reminder = data.get('unpaid_reminder') in ('1', 'true', 'yes')
-                if unpaid_reminder:
-                    recipient_count = race_obj.unpaid_runner_email_count()
-                    if recipient_count == 0:
-                        return JsonResponse({'success': False, 'error': 'This race has no unpaid runners with email addresses.'}, status=400)
+                total_count = 0
+                race_objs = []
+                for rid in race_ids:
+                    try:
+                        race_obj = race.objects.get(pk=rid)
+                    except (race.DoesNotExist, ValueError):
+                        return JsonResponse({'success': False, 'error': f'Invalid race id: {rid}.'}, status=400)
+                    race_objs.append(race_obj)
+                    if unpaid_reminder:
+                        n = race_obj.unpaid_runner_email_count()
+                    else:
+                        n = race_obj.runner_email_count()
+                    total_count += n
+                if unpaid_reminder and total_count == 0:
+                    return JsonResponse({'success': False, 'error': 'Selected race(s) have no unpaid runners with email addresses.'}, status=400)
+                if not unpaid_reminder and total_count == 0:
+                    return JsonResponse({'success': False, 'error': 'Selected race(s) have no runners with email addresses.'}, status=400)
+                for race_obj in race_objs:
+                    EmailSendJob.objects.create(
+                        race=race_obj,
+                        subject=subject[:255],
+                        body=body,
+                        unpaid_reminder=unpaid_reminder,
+                        status=EmailSendJob.STATUS_QUEUED,
+                    )
+                num_races = len(race_objs)
+                if num_races == 1:
+                    msg = f'Your email has been queued and will be sent to {total_count} runner(s).'
                 else:
-                    recipient_count = race_obj.runner_email_count()
-                    if recipient_count == 0:
-                        return JsonResponse({'success': False, 'error': 'This race has no runners with email addresses.'}, status=400)
-                job = EmailSendJob.objects.create(
-                    race=race_obj,
-                    subject=subject[:255],
-                    body=body,
-                    unpaid_reminder=unpaid_reminder,
-                    status=EmailSendJob.STATUS_QUEUED,
-                )
+                    msg = f'Your email has been queued for {num_races} race(s) and will be sent to {total_count} runner(s).'
                 return JsonResponse({
                     'success': True,
-                    'message': f'Your email has been queued and will be sent to {recipient_count} runner(s).',
-                    'job_id': job.id,
-                    'recipient_count': recipient_count,
+                    'message': msg,
+                    'recipient_count': total_count,
+                    'num_races': num_races,
                 })
             except Exception as e:
                 logger.exception('email_list_view send failed')
                 return JsonResponse({'success': False, 'error': 'An error occurred. Please try again.'}, status=500)
         if action == 'recipient_count':
-            race_id = data.get('race_id')
-            if not race_id:
+            race_ids = data.getlist('race_ids') or ([data.get('race_id')] if data.get('race_id') else [])
+            race_ids = [x for x in race_ids if x]
+            if not race_ids:
                 return JsonResponse({'count': 0})
             unpaid_reminder = data.get('unpaid_reminder') in ('1', 'true', 'yes')
-            try:
-                race_obj = race.objects.get(pk=race_id)
-                count = race_obj.unpaid_runner_email_count() if unpaid_reminder else race_obj.runner_email_count()
-                return JsonResponse({'count': count})
-            except (race.DoesNotExist, ValueError):
-                return JsonResponse({'count': 0})
+            total = 0
+            for rid in race_ids:
+                try:
+                    race_obj = race.objects.get(pk=rid)
+                    total += race_obj.unpaid_runner_email_count() if unpaid_reminder else race_obj.runner_email_count()
+                except (race.DoesNotExist, ValueError):
+                    pass
+            return JsonResponse({'count': total})
 
-    recent_jobs = EmailSendJob.objects.order_by('-created_at')[:1]
+    recent_jobs = EmailSendJob.objects.order_by('-created_at')[:10]
     context = {'races': races, 'recent_jobs': recent_jobs}
     return render(request, 'tracker/email_list.html', context)
 
