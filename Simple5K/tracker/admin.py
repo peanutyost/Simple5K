@@ -3,35 +3,45 @@ from datetime import timedelta
 from django.contrib import admin
 from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, EmailSendJob
 
-admin.site.register(ApiKey)
+@admin.register(ApiKey)
+class ApiKeyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'key', 'created_at', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+    readonly_fields = ('created_at',)
+    fields = ('name', 'key', 'created_at', 'is_active')
 
 
 @admin.register(RfidTag)
 class RfidTagAdmin(admin.ModelAdmin):
-    list_display = ('tag_number', 'rfid_hex_short')
+    list_display = ('tag_number', 'rfid_hex')
     ordering = ('tag_number',)
     search_fields = ('tag_number', 'rfid_hex')
-
-    @admin.display(description='RFID hex')
-    def rfid_hex_short(self, obj):
-        if not obj.rfid_hex:
-            return ''
-        return obj.rfid_hex[:24] + '...' if len(obj.rfid_hex) > 24 else obj.rfid_hex
+    fields = ('tag_number', 'rfid_hex')
 
 
 @admin.register(race)
 class RaceAdmin(admin.ModelAdmin):
-    list_display = ('name', 'date', 'status')
-    fields = ('name', 'status', 'Entry_fee', 'date', 'distance', 'laps_count', 'max_runners',
-              'number_start', 'scheduled_time', 'start_time', 'end_time', 'all_emails_sent',
-              'min_lap_time', 'logo', 'notes')
+    list_display = (
+        'name', 'status', 'date', 'scheduled_time', 'Entry_fee', 'distance', 'laps_count',
+        'max_runners', 'number_start', 'start_time', 'end_time', 'min_lap_time',
+        'all_emails_sent', 'notes', 'logo',
+    )
+    list_filter = ('status',)
+    search_fields = ('name', 'notes')
+    fields = (
+        'name', 'status', 'Entry_fee', 'date', 'scheduled_time', 'distance', 'laps_count',
+        'max_runners', 'number_start', 'start_time', 'end_time', 'min_lap_time',
+        'all_emails_sent', 'notes', 'logo',
+    )
 
 
 @admin.register(Banner)
 class BannerAdmin(admin.ModelAdmin):
-    list_display = ('title', 'subtitle', 'background_color', 'active')
-
-    fields = ('title', 'subtitle', 'background_color', 'image', 'active')
+    list_display = ('title', 'subtitle', 'background_color', 'image', 'pages', 'active')
+    list_filter = ('active', 'pages')
+    search_fields = ('title', 'subtitle')
+    fields = ('title', 'subtitle', 'background_color', 'image', 'pages', 'active')
 
 
 def _recompute_runner_times_from_laps(runner_obj):
@@ -89,8 +99,23 @@ def _reassign_places_for_race(race_obj):
 
 @admin.register(runners)
 class RunnersAdmin(admin.ModelAdmin):
-    list_display = ('first_name', 'last_name', 'race', 'number', 'paid', 'tag', 'rfid_tag_hex')
+    list_display = (
+        'first_name', 'last_name', 'email', 'race', 'number', 'age', 'gender', 'type',
+        'shirt_size', 'tag', 'race_completed', 'total_race_time', 'chip_time',
+        'race_avg_speed', 'race_avg_pace', 'place', 'notes', 'email_sent', 'paid',
+        'signup_confirmation_sent', 'created_at',
+    )
+    list_filter = ('race', 'gender', 'type', 'paid', 'race_completed', 'signup_confirmation_sent', 'email_sent')
+    search_fields = ('first_name', 'last_name', 'email', 'number')
+    autocomplete_fields = ('race', 'tag')
     actions = ['recompute_times', 'mark_signup_email_sent', 'mark_results_email_sent']
+    fields = (
+        'first_name', 'last_name', 'email', 'age', 'gender', 'type', 'shirt_size', 'notes',
+        'number', 'tag', 'race',
+        'race_completed', 'total_race_time', 'chip_time', 'race_avg_speed', 'race_avg_pace', 'place',
+        'email_sent', 'paid', 'signup_confirmation_sent', 'created_at',
+    )
+    readonly_fields = ('created_at',)
 
     @admin.action(description='Recompute times from laps')
     def recompute_times(self, request, queryset):
@@ -120,22 +145,41 @@ class RunnersAdmin(admin.ModelAdmin):
 
 @admin.register(laps)
 class LapsAdmin(admin.ModelAdmin):
-    list_display = ('runner', 'lap', 'time')
+    list_display = ('runner', 'attach_to_race', 'lap', 'time', 'duration', 'average_speed', 'average_pace')
+    list_filter = ('attach_to_race',)
+    search_fields = ('runner__first_name', 'runner__last_name', 'runner__number')
+    autocomplete_fields = ('runner', 'attach_to_race')
+    fields = ('runner', 'attach_to_race', 'lap', 'time', 'duration', 'average_speed', 'average_pace')
 
 
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
-    list_display = ('id', 'paypal_enabled', 'paypal_business_email', 'paypal_sandbox')
+    list_display = (
+        'id', 'paypal_enabled', 'paypal_business_email', 'paypal_sandbox',
+        'signup_confirmation_timeout_minutes', 'site_base_url',
+    )
     list_editable = ('paypal_enabled', 'paypal_business_email', 'paypal_sandbox')
+    fields = (
+        'paypal_enabled', 'paypal_business_email', 'paypal_sandbox',
+        'signup_confirmation_timeout_minutes', 'site_base_url',
+    )
 
 
 @admin.register(EmailSendJob)
 class EmailSendJobAdmin(admin.ModelAdmin):
-    list_display = ('id', 'race', 'subject', 'status', 'error_message_short', 'created_at', 'updated_at')
+    list_display = ('id', 'race', 'subject', 'body_short', 'status', 'error_message_short', 'created_at', 'updated_at')
     list_filter = ('status',)
     readonly_fields = ('created_at', 'updated_at', 'error_message')
-    search_fields = ('subject', 'race__name')
+    search_fields = ('subject', 'body', 'race__name')
+    autocomplete_fields = ('race',)
+    fields = ('race', 'subject', 'body', 'status', 'created_at', 'updated_at', 'error_message')
     actions = ['reset_stuck_sending']
+
+    @admin.display(description='Body')
+    def body_short(self, obj):
+        if not obj.body:
+            return ''
+        return obj.body[:80] + '…' if len(obj.body) > 80 else obj.body
 
     @admin.display(description='Error')
     def error_message_short(self, obj):
