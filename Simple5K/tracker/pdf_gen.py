@@ -85,9 +85,9 @@ def generate_race_report(filename, race_data, return_type):
 
     def draw_runner_card(canvas_obj, x, y, width, height, name, detail_lines, top_padding=0.3 * inch):
         """Draws a card-style box: name in large type, then detail lines. top_padding = space from top of box to first line."""
-        canvas_obj.setFillColor(row_alt)
+        canvas_obj.setFillColor(header_bg)
         canvas_obj.rect(x, y, width, height, fill=1, stroke=0)
-        canvas_obj.setStrokeColor(grid_light)
+        canvas_obj.setStrokeColor(colors.black)
         canvas_obj.setLineWidth(0.5)
         canvas_obj.rect(x, y, width, height, fill=0, stroke=1)
         text_x = x + 0.2 * inch
