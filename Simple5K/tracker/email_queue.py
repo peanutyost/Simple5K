@@ -38,8 +38,9 @@ def _process_one_job(job):
         if getattr(job, "unpaid_reminder", False):
             from .views import _pay_link_for_runner
 
+            # Only unpaid runners for this job's race (the selected race)
             recipient_runners = list(
-                runners.objects.filter(race=race_obj, paid=False)
+                runners.objects.filter(race_id=race_obj.pk, paid=False)
                 .exclude(email__isnull=True)
                 .exclude(email="")
                 .select_related("race")
