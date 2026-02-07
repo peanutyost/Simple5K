@@ -155,7 +155,8 @@ class RunnerInfoSelectionForm(forms.Form):
         ('id', 'Runner ID'),
         ('last_name', 'Last Name'),
         ('first_name', 'First Name'),
-        ('number', 'Runner Number'),  # Added number as a sort option
+        ('number', 'Runner Number'),
+        ('paid', 'Payment Status'),
     )
 
     race = forms.ModelChoiceField(

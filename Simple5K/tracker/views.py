@@ -817,6 +817,9 @@ def generate_runner_pdf_report(request):
     elif sort_by == 'number':
         # Handle potential nulls if sorting by number
         runners_list = runners_list.order_by(Coalesce('number', Value(999999)))  # Put nulls last
+    elif sort_by == 'paid':
+        # Unpaid first, then by last name
+        runners_list = runners_list.order_by('paid', Lower('last_name'), Lower('first_name'))
     else:
         # Default sort or raise error if sort_by is unexpected
         runners_list = runners_list.order_by(Lower('last_name'), Lower('first_name'))
