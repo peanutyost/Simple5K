@@ -6,8 +6,10 @@ includes an unmonitored-account footer.
 import threading
 import time
 
-# Throttle: seconds between each email (30/min = 1 every 2 sec)
+# Microsoft 365 SMTP (authenticated) limit is 30 messages per minute.
+# Use 2 seconds between sends to stay safely under that (30/min).
 EMAIL_SEND_INTERVAL_SECONDS = 2
+MAX_EMAILS_PER_MINUTE = 30
 
 # SMTP connection timeout (seconds) so we don't hang forever
 EMAIL_TIMEOUT_SECONDS = 60
@@ -110,8 +112,9 @@ SIGNUP_CONFIRMATION_CHECK_INTERVAL_SECONDS = 5 * 60  # 5 minutes
 def _signup_confirmation_loop():
     """Background loop: every SIGNUP_CONFIRMATION_CHECK_INTERVAL_SECONDS, send signup
     confirmations to runners who have not received one and are either paid or older than
-    signup_confirmation_timeout_minutes (from Site Settings). Throttled like race emails.
-    Uses select_for_update so only one worker process sends to a given runner.
+    signup_confirmation_timeout_minutes (from Site Settings). Stays under Microsoft
+    SMTP limit (30/min) and claims runners in the same transaction so only one process
+    sends to each runner (no duplicate emails).
     """
     from django.utils import timezone
     from django.db.models import Q
@@ -126,22 +129,30 @@ def _signup_confirmation_loop():
             site_settings = SiteSettings.get_settings()
             timeout_minutes = site_settings.signup_confirmation_timeout_minutes
             cutoff = timezone.now() - timedelta(minutes=timeout_minutes)
+            # Cap batch size so we don't exceed MAX_EMAILS_PER_MINUTE in one burst;
+            # we sleep EMAIL_SEND_INTERVAL_SECONDS between each, so 30/min is safe.
+            batch_size = min(50, MAX_EMAILS_PER_MINUTE)
             with transaction.atomic():
                 due = list(
                     runners.objects.filter(signup_confirmation_sent=False)
                     .filter(Q(paid=True) | Q(created_at__lte=cutoff))
                     .select_related('race')
                     .order_by('created_at')
-                    .select_for_update(skip_locked=True)[:50]
+                    .select_for_update(skip_locked=True)[:batch_size]
                 )
+                if due:
+                    # Claim immediately so other worker processes don't pick the same runners
+                    runner_ids = [r.id for r in due]
+                    runners.objects.filter(id__in=runner_ids).update(signup_confirmation_sent=True)
             if due:
                 from .views import send_signup_confirmation_email
                 for runner in due:
                     try:
                         send_signup_confirmation_email(runner)
                     except Exception:
-                        pass
-                    time.sleep(max(0, EMAIL_SEND_INTERVAL_SECONDS - 0.1))
+                        # So next run can retry this runner
+                        runners.objects.filter(id=runner.id).update(signup_confirmation_sent=False)
+                    time.sleep(EMAIL_SEND_INTERVAL_SECONDS)
         except Exception:
             pass
         finally:

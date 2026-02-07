@@ -1434,17 +1434,15 @@ def send_signup_confirmation_email(runner):
             body += "\n\nYou can also pay on race day when you check in."
         body += "\n\nSee you on race day!"
     body += "\n\n---\nThis is an unmonitored email account. Please do not reply."
-    try:
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=from_email,
-            recipient_list=[runner.email],
-            fail_silently=False,
-        )
-    finally:
-        runner.signup_confirmation_sent = True
-        runner.save(update_fields=['signup_confirmation_sent'])
+    send_mail(
+        subject=subject,
+        message=body,
+        from_email=from_email,
+        recipient_list=[runner.email],
+        fail_silently=False,
+    )
+    runner.signup_confirmation_sent = True
+    runner.save(update_fields=['signup_confirmation_sent'])
 
 
 def race_signup(request):
