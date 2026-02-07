@@ -731,13 +731,20 @@ def email_list_view(request):
                     race_obj = race.objects.get(pk=race_id)
                 except (race.DoesNotExist, ValueError):
                     return JsonResponse({'success': False, 'error': 'Invalid race.'}, status=400)
-                recipient_count = race_obj.runner_email_count()
-                if recipient_count == 0:
-                    return JsonResponse({'success': False, 'error': 'This race has no runners with email addresses.'}, status=400)
+                unpaid_reminder = data.get('unpaid_reminder') in ('1', 'true', 'yes')
+                if unpaid_reminder:
+                    recipient_count = race_obj.unpaid_runner_email_count()
+                    if recipient_count == 0:
+                        return JsonResponse({'success': False, 'error': 'This race has no unpaid runners with email addresses.'}, status=400)
+                else:
+                    recipient_count = race_obj.runner_email_count()
+                    if recipient_count == 0:
+                        return JsonResponse({'success': False, 'error': 'This race has no runners with email addresses.'}, status=400)
                 job = EmailSendJob.objects.create(
                     race=race_obj,
                     subject=subject[:255],
                     body=body,
+                    unpaid_reminder=unpaid_reminder,
                     status=EmailSendJob.STATUS_QUEUED,
                 )
                 return JsonResponse({
@@ -753,9 +760,11 @@ def email_list_view(request):
             race_id = data.get('race_id')
             if not race_id:
                 return JsonResponse({'count': 0})
+            unpaid_reminder = data.get('unpaid_reminder') in ('1', 'true', 'yes')
             try:
                 race_obj = race.objects.get(pk=race_id)
-                return JsonResponse({'count': race_obj.runner_email_count()})
+                count = race_obj.unpaid_runner_email_count() if unpaid_reminder else race_obj.runner_email_count()
+                return JsonResponse({'count': count})
             except (race.DoesNotExist, ValueError):
                 return JsonResponse({'count': 0})
 

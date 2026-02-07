@@ -33,32 +33,65 @@ def _process_one_job(job):
 
     try:
         race_obj = job.race
-        recipient_list = list(
-            runners.objects.filter(race=race_obj)
-            .exclude(email__isnull=True)
-            .exclude(email="")
-            .values_list("email", flat=True)
-            .distinct()
-        )
-        body = (job.body or "").strip() + EMAIL_FOOTER
         from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or settings.EMAIL_HOST_USER
-        for email in recipient_list:
-            try:
-                conn = get_connection(fail_silently=False, timeout=EMAIL_TIMEOUT_SECONDS)
-                msg = EmailMessage(
-                    subject=job.subject,
-                    body=body,
-                    from_email=from_email,
-                    to=[email],
-                )
-                conn.send_messages([msg])
-                conn.close()
-            except Exception as e:
-                job.status = EmailSendJob.STATUS_FAILED
-                job.error_message = str(e)[:2000]
-                job.save()
-                return
-            time.sleep(EMAIL_SEND_INTERVAL_SECONDS)
+
+        if getattr(job, "unpaid_reminder", False):
+            from .views import _pay_link_for_runner
+
+            recipient_runners = list(
+                runners.objects.filter(race=race_obj, paid=False)
+                .exclude(email__isnull=True)
+                .exclude(email="")
+                .select_related("race")
+            )
+            for runner in recipient_runners:
+                body = (job.body or "").strip()
+                pay_link = _pay_link_for_runner(runner)
+                if pay_link:
+                    body += f"\n\nIf you haven't paid yet, you can pay here: {pay_link}"
+                body += EMAIL_FOOTER
+                try:
+                    conn = get_connection(fail_silently=False, timeout=EMAIL_TIMEOUT_SECONDS)
+                    msg = EmailMessage(
+                        subject=job.subject,
+                        body=body,
+                        from_email=from_email,
+                        to=[runner.email],
+                    )
+                    conn.send_messages([msg])
+                    conn.close()
+                except Exception as e:
+                    job.status = EmailSendJob.STATUS_FAILED
+                    job.error_message = str(e)[:2000]
+                    job.save()
+                    return
+                time.sleep(EMAIL_SEND_INTERVAL_SECONDS)
+        else:
+            recipient_list = list(
+                runners.objects.filter(race=race_obj)
+                .exclude(email__isnull=True)
+                .exclude(email="")
+                .values_list("email", flat=True)
+                .distinct()
+            )
+            body = (job.body or "").strip() + EMAIL_FOOTER
+            for email in recipient_list:
+                try:
+                    conn = get_connection(fail_silently=False, timeout=EMAIL_TIMEOUT_SECONDS)
+                    msg = EmailMessage(
+                        subject=job.subject,
+                        body=body,
+                        from_email=from_email,
+                        to=[email],
+                    )
+                    conn.send_messages([msg])
+                    conn.close()
+                except Exception as e:
+                    job.status = EmailSendJob.STATUS_FAILED
+                    job.error_message = str(e)[:2000]
+                    job.save()
+                    return
+                time.sleep(EMAIL_SEND_INTERVAL_SECONDS)
         job.status = EmailSendJob.STATUS_COMPLETED
         job.save()
     except Exception as e:

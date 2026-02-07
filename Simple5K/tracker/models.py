@@ -39,6 +39,10 @@ class race(models.Model):
         """Return count of distinct runner emails for this race (for bulk email)."""
         return self.runners_set.exclude(email__isnull=True).exclude(email='').values('email').distinct().count()
 
+    def unpaid_runner_email_count(self):
+        """Return count of unpaid runners with email (for payment reminder bulk email)."""
+        return self.runners_set.filter(paid=False).exclude(email__isnull=True).exclude(email='').count()
+
 
 class RfidTag(models.Model):
     """Reusable RFID tag: tag_number matches runner number when auto-assigned. Can be used for multiple runners over time."""
@@ -268,6 +272,10 @@ class EmailSendJob(models.Model):
     race = models.ForeignKey(race, on_delete=models.CASCADE)
     subject = models.CharField(max_length=255)
     body = models.TextField()
+    unpaid_reminder = models.BooleanField(
+        default=False,
+        help_text='When True, send only to unpaid runners and append payment link to each email.',
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_QUEUED, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
