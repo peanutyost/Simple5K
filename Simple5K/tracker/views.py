@@ -188,22 +188,23 @@ def prepare_race_data(race_obj, runner_obj):
             'average_pace': str(timedelta(seconds=round(lap.average_pace.total_seconds()))),
         })
 
-    # Competitor Placement Data (2 faster, 2 slower)
-    # Find 2 runners faster
+    # Competitor Placement Data (2 faster, 2 slower) — same gender only
     if runner_obj.total_race_time == "N/A" or runner_obj.total_race_time is None:
         competitor_data = {
             'faster_runners': None,
             'slower_runners': None,
         }
     else:
-
+        base_filter = {'race': race_obj}
+        if runner_obj.gender:
+            base_filter['gender'] = runner_obj.gender
         faster_runners = runners.objects.filter(
-            race=race_obj,
+            **base_filter,
             total_race_time__lt=runner_obj.total_race_time
         ).order_by('total_race_time')[:2]
 
         slower_runners = runners.objects.filter(
-            race=race_obj,
+            **base_filter,
             total_race_time__gt=runner_obj.total_race_time
         ).order_by('-total_race_time')[:2]
 
