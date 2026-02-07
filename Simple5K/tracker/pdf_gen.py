@@ -287,12 +287,14 @@ def generate_race_report(filename, race_data, return_type):
         ('TOPPADDING', (0, 1), (-1, -1), 8),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
     ]
+    # Alternate row color by sequence so no two consecutive rows match (including divider rows)
+    use_alt = True
     for i in range(1, len(data)):
+        bg = row_alt if use_alt else row_white
+        comp_style.append(('BACKGROUND', (0, i), (-1, i), bg))
+        use_alt = not use_alt
         if '—' in str(data[i][0]):
-            comp_style.append(('BACKGROUND', (0, i), (-1, i), row_alt))
             comp_style.append(('FONTNAME', (0, i), (-1, i), 'Helvetica-Bold'))
-        else:
-            comp_style.append(('BACKGROUND', (0, i), (-1, i), row_white if i % 2 == 0 else row_alt))
     competitor_table.setStyle(TableStyle(comp_style))
 
     _, competitor_table_height = competitor_table.wrapOn(c, usable_width, usable_height)
