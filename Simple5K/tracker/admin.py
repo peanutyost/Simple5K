@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib import admin
 from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, EmailSendJob
 
@@ -32,9 +34,78 @@ class BannerAdmin(admin.ModelAdmin):
     fields = ('title', 'subtitle', 'background_color', 'image', 'active')
 
 
+def _recompute_runner_times_from_laps(runner_obj):
+    """Recompute total_race_time, chip_time, race_avg_speed, race_avg_pace from laps. Returns True if updated."""
+    race_obj = runner_obj.race
+    if not race_obj.start_time:
+        return False
+    final_lap = (
+        laps.objects.filter(
+            runner=runner_obj,
+            attach_to_race=race_obj,
+            lap=race_obj.laps_count,
+        ).first()
+    )
+    if not final_lap:
+        return False
+    finish_time = final_lap.time
+    # Gun time
+    runner_obj.total_race_time = finish_time - race_obj.start_time
+    # Chip time
+    lap0 = laps.objects.filter(
+        runner=runner_obj, attach_to_race=race_obj, lap=0
+    ).first()
+    chip_start = lap0.time if lap0 else race_obj.start_time
+    runner_obj.chip_time = finish_time - chip_start
+    # Pace and speed from gun time and race distance
+    total_seconds = runner_obj.total_race_time.total_seconds()
+    if total_seconds <= 0:
+        return False
+    kmh = (race_obj.distance / 1000) / (total_seconds / 3600)
+    runner_obj.race_avg_speed = kmh * 0.621371  # mph
+    avg_pace_seconds = ((total_seconds / 60) / (race_obj.distance / 1609.34)) * 60
+    runner_obj.race_avg_pace = timedelta(seconds=avg_pace_seconds)
+    runner_obj.race_completed = True
+    runner_obj.save()
+    return True
+
+
+def _reassign_places_for_race(race_obj):
+    """Set place for all finished runners in this race by total_race_time, per gender."""
+    for gender in ('female', 'male'):
+        finishers = list(
+            runners.objects.filter(
+                race=race_obj,
+                race_completed=True,
+                gender=gender,
+                total_race_time__isnull=False,
+            ).order_by('total_race_time')
+        )
+        for idx, r in enumerate(finishers, start=1):
+            if r.place != idx:
+                r.place = idx
+                r.save(update_fields=['place'])
+
+
 @admin.register(runners)
 class RunnersAdmin(admin.ModelAdmin):
     list_display = ('first_name', 'last_name', 'race', 'number', 'paid', 'tag', 'rfid_tag_hex')
+    actions = ['recompute_times']
+
+    @admin.action(description='Recompute times from laps')
+    def recompute_times(self, request, queryset):
+        updated = 0
+        races_to_reassign = set()
+        for runner in queryset:
+            if _recompute_runner_times_from_laps(runner):
+                updated += 1
+                races_to_reassign.add(runner.race_id)
+        for race_id in races_to_reassign:
+            _reassign_places_for_race(race.objects.get(pk=race_id))
+        self.message_user(
+            request,
+            f'Recomputed times for {updated} runner(s). Places updated for affected races.',
+        )
 
 
 @admin.register(laps)
