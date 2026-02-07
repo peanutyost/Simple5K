@@ -215,8 +215,24 @@ def prepare_race_data(race_obj, runner_obj):
             'slower_runners': [format_runner(runner) for runner in slower_runners],
         }
 
-    # Total finishers (for "Place: X of Y" on PDF)
+    # Total finishers (for overall placement on PDF)
     total_finishers = runners.objects.filter(race=race_obj).exclude(place__isnull=True).count()
+
+    # Gender placement: place among same gender only
+    gender_place = None
+    gender_total = None
+    if runner_obj.gender and runner_obj.place is not None and runner_obj.total_race_time is not None:
+        same_gender = runners.objects.filter(
+            race=race_obj, gender=runner_obj.gender
+        ).exclude(place__isnull=True).exclude(total_race_time__isnull=True)
+        gender_total = same_gender.count()
+        faster_same_gender = same_gender.filter(
+            total_race_time__lt=runner_obj.total_race_time
+        ).count()
+        gender_place = faster_same_gender + 1
+
+    runner_details['gender_place'] = gender_place
+    runner_details['gender_total'] = gender_total
 
     return {
         'race': race_info,

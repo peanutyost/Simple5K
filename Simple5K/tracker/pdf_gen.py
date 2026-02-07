@@ -151,12 +151,12 @@ def generate_race_report(filename, race_data, return_type):
     else:
         c.drawRightString(race_info_x, race_info_y - 0.32 * inch, race_date)
     rs = race_data['runner']
-    place = rs.get('place', 'N/A')
-    total_finishers = race_data.get('total_finishers')
-    if total_finishers is not None and place != 'N/A':
-        place_str = f"Place: {place} of {total_finishers}"
+    gender_place = rs.get('gender_place')
+    gender_total = rs.get('gender_total')
+    if gender_total is not None and gender_place is not None:
+        place_str = f"Place: {gender_place} of {gender_total}"
     else:
-        place_str = f"Place: {place}"
+        place_str = f"Place: {rs.get('place', 'N/A')}"
     c.setFillColor(colors.black)
     c.setFont("Helvetica-Bold", 16)
     c.drawRightString(race_info_x, race_info_y - 0.64 * inch, place_str)
@@ -223,8 +223,15 @@ def generate_race_report(filename, race_data, return_type):
         place_str = f"{age_place} of {age_total}"
     else:
         place_str = str(age_place)
+    overall_place = rs.get('place', 'N/A')
+    total_finishers = race_data.get('total_finishers')
+    if total_finishers is not None and overall_place != 'N/A':
+        overall_str = f"{overall_place} of {total_finishers}"
+    else:
+        overall_str = str(overall_place)
     data = [["Age group", "Place"]]
     data.append([str(rs['age_bracket']), place_str])
+    data.append(["Overall", overall_str])
 
     bracket_table = Table(data, colWidths=[2.5 * inch, 2 * inch])  # total = table_width_uniform
     bracket_table.setStyle(TableStyle([
@@ -235,8 +242,9 @@ def generate_race_report(filename, race_data, return_type):
         ('TOPPADDING', (0, 0), (-1, 0), 10),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
         ('BACKGROUND', (0, 1), (-1, 1), row_white),
-        ('TOPPADDING', (0, 1), (-1, 1), 8),
-        ('BOTTOMPADDING', (0, 1), (-1, 1), 8),
+        ('BACKGROUND', (0, 2), (-1, 2), row_alt),
+        ('TOPPADDING', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
