@@ -52,7 +52,7 @@ def generate_race_report(filename, race_data, return_type):
     header_bg = HexColor('#f4ede0')
     header_text = colors.black
     section_gray = colors.black  # section titles and secondary text
-    grid_light = HexColor('#e2e8f0')
+    grid_light = HexColor('#faf5ef')  # a shade or two lighter than header
     row_alt = HexColor('#f8fafc')
     row_white = colors.white
 
@@ -197,6 +197,7 @@ def generate_race_report(filename, race_data, return_type):
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
         ('FONTSIZE', (0, 1), (-1, -1), 9),
         ('TOPPADDING', (0, 1), (-1, -1), 8),
         ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
@@ -239,6 +240,7 @@ def generate_race_report(filename, race_data, return_type):
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
     ]))
     _, bracket_table_height = bracket_table.wrapOn(c, usable_width, usable_height)
     bracket_table.drawOn(c, center_x - table_width_uniform / 2, y_pos - bracket_table_height)
@@ -271,6 +273,7 @@ def generate_race_report(filename, race_data, return_type):
         ('ALIGN', (1, 0), (1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
         ('LEFTPADDING', (0, 0), (0, -1), 10),
         ('RIGHTPADDING', (0, 0), (-1, -1), 10),
         ('TOPPADDING', (0, 1), (-1, -1), 8),
