@@ -1385,6 +1385,16 @@ def _paypal_runner_id_from_custom(custom_value):
     return runner_id
 
 
+def _paypal_base_url(request):
+    """Base URL for PayPal return/cancel/notify. Use PAYPAL_IPN_BASE_URL if set (for local dev with tunnel)."""
+    base = getattr(settings, 'PAYPAL_IPN_BASE_URL', None) or ''
+    if isinstance(base, str):
+        base = base.strip().rstrip('/')
+    if base:
+        return base
+    return request.build_absolute_uri('/').rstrip('/')
+
+
 def _pay_link_for_runner(runner):
     """Build the pay-later URL for a runner, or None if site_base_url is not set."""
     site_settings = SiteSettings.get_settings()
@@ -1455,20 +1465,19 @@ def race_signup(request):
             selected_race = form.cleaned_data['race']
             runner = form.save()
             site_settings = SiteSettings.get_settings()
-            paypal_email = (site_settings.paypal_business_email or '').strip()
-            if not paypal_email:
-                paypal_email = getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or ''
+            paypal_email = (getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or '').strip()
             entry_fee = float(selected_race.Entry_fee or 0)
             if site_settings.paypal_enabled and paypal_email and entry_fee > 0:
                 # Redirect to PayPal donation with entry fee pre-filled
-                use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
+                use_sandbox = getattr(settings, 'PAYPAL_SANDBOX', False)
                 base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
                 custom = _paypal_custom_for_runner(runner.id)
-                return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
+                paypal_base = _paypal_base_url(request)
+                return_url = paypal_base + reverse('tracker:paypal-return')
                 return_url += '?' + urllib.parse.urlencode({'runner_id': runner.id, 'sig': custom.split(':', 1)[1]})
-                cancel_url = request.build_absolute_uri(reverse('tracker:paypal-cancel'))
+                cancel_url = paypal_base + reverse('tracker:paypal-cancel')
                 cancel_url += '?' + urllib.parse.urlencode({'runner_id': runner.id, 'sig': custom.split(':', 1)[1]})
-                notify_url = request.build_absolute_uri(reverse('tracker:paypal-ipn'))
+                notify_url = paypal_base + reverse('tracker:paypal-ipn')
                 item_name = f"Race entry: {selected_race.name}"
                 params = {
                     'cmd': '_donations',
@@ -1577,7 +1586,7 @@ def paypal_ipn(request):
     if not raw_body:
         return HttpResponse('ok')
     site_settings = SiteSettings.get_settings()
-    use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
+    use_sandbox = getattr(settings, 'PAYPAL_SANDBOX', False)
     paypal_url = 'https://ipnpb.sandbox.paypal.com/cgi-bin/webscr' if use_sandbox else 'https://ipnpb.paypal.com/cgi-bin/webscr'
     # PayPal spec: PREFIX the message with cmd=_notify-validate (do not append)
     verify_data = b'cmd=_notify-validate&' + raw_body
@@ -1642,20 +1651,19 @@ def pay_entry(request, runner_id, signature):
     if runner_obj.paid:
         return redirect(reverse('tracker:signup-success', args=[runner_obj.race_id]))
     site_settings = SiteSettings.get_settings()
-    paypal_email = (site_settings.paypal_business_email or '').strip()
-    if not paypal_email:
-        paypal_email = getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or ''
+    paypal_email = (getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or '').strip()
     race_obj = runner_obj.race
     entry_fee = float(race_obj.Entry_fee or 0)
     if not site_settings.paypal_enabled or not paypal_email or entry_fee <= 0:
         return redirect(reverse('tracker:signup-success', args=[race_obj.id]))
-    use_sandbox = site_settings.paypal_sandbox or getattr(settings, 'PAYPAL_SANDBOX', False)
+    use_sandbox = getattr(settings, 'PAYPAL_SANDBOX', False)
     base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
-    return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
+    paypal_base = _paypal_base_url(request)
+    return_url = paypal_base + reverse('tracker:paypal-return')
     return_url += '?' + urllib.parse.urlencode({'runner_id': runner_obj.id, 'sig': signature})
-    cancel_url = request.build_absolute_uri(reverse('tracker:paypal-cancel'))
+    cancel_url = paypal_base + reverse('tracker:paypal-cancel')
     cancel_url += '?' + urllib.parse.urlencode({'runner_id': runner_obj.id, 'sig': signature})
-    notify_url = request.build_absolute_uri(reverse('tracker:paypal-ipn'))
+    notify_url = paypal_base + reverse('tracker:paypal-ipn')
     custom_val = _paypal_custom_for_runner(runner_obj.id)
     item_name = f"Race entry: {race_obj.name}"
     params = {

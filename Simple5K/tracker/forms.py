@@ -126,20 +126,16 @@ class SiteSettingsForm(forms.ModelForm):
     class Meta:
         model = SiteSettings
         fields = [
-            'paypal_enabled', 'paypal_business_email', 'paypal_sandbox',
+            'paypal_enabled',
             'signup_confirmation_timeout_minutes', 'site_base_url',
         ]
         widgets = {
             'paypal_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'paypal_business_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'you@example.com'}),
-            'paypal_sandbox': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'signup_confirmation_timeout_minutes': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
             'site_base_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com'}),
         }
         labels = {
             'paypal_enabled': 'Enable PayPal donation at signup',
-            'paypal_business_email': 'PayPal business email',
-            'paypal_sandbox': 'Use PayPal Sandbox (testing)',
             'signup_confirmation_timeout_minutes': 'Send signup email if runner is older than (minutes)',
             'site_base_url': 'Site base URL (for pay-later links in emails)',
         }

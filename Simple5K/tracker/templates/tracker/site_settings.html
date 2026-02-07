@@ -27,19 +27,7 @@
                                 {{ form.paypal_enabled }}
                                 <label class="form-check-label" for="{{ form.paypal_enabled.id_for_label }}">{{ form.paypal_enabled.label }}</label>
                             </div>
-                        </div>
-                        <div class="mb-4">
-                            <label for="{{ form.paypal_business_email.id_for_label }}" class="form-label">{{ form.paypal_business_email.label }}</label>
-                            {{ form.paypal_business_email }}
-                            {% if form.paypal_business_email.help_text %}<small class="form-text text-muted">{{ form.paypal_business_email.help_text }}</small>{% endif %}
-                            {% if form.paypal_business_email.errors %}<div class="invalid-feedback d-block">{{ form.paypal_business_email.errors }}</div>{% endif %}
-                        </div>
-                        <div class="mb-4">
-                            <div class="form-check form-switch">
-                                {{ form.paypal_sandbox }}
-                                <label class="form-check-label" for="{{ form.paypal_sandbox.id_for_label }}">{{ form.paypal_sandbox.label }}</label>
-                            </div>
-                            {% if form.paypal_sandbox.help_text %}<small class="form-text text-muted">{{ form.paypal_sandbox.help_text }}</small>{% endif %}
+                            <small class="form-text text-muted">PayPal business email and sandbox mode are set via <code>PAYPAL_BUSINESS_EMAIL</code> and <code>PAYPAL_SANDBOX</code> in your environment.</small>
                         </div>
                         <hr class="my-4">
                         <h5 class="mb-3">Signup confirmation email</h5>

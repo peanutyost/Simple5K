@@ -179,3 +179,7 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')  # The email address y
 PAYPAL_BUSINESS_EMAIL = os.environ.get('PAYPAL_BUSINESS_EMAIL', '')  # Your PayPal email for receiving donations
 PAYPAL_SANDBOX = os.environ.get('PAYPAL_SANDBOX', 'False').upper() in ('1', 'TRUE', 'YES')  # Use sandbox for testing
 PAYPAL_CUSTOM_SECRET = os.environ.get('PAYPAL_CUSTOM_SECRET', SECRET_KEY)  # Used to sign runner_id in custom field
+# Optional: public base URL for PayPal return/cancel/notify URLs. Required for IPN in sandbox when running
+# locally—PayPal cannot reach localhost. Set to your tunnel URL (e.g. https://abc.ngrok.io) and add that
+# host to ALLOWED_HOSTS; use this URL when opening the site so return/cancel match. See docs/PAYPAL_IPN.md.
+PAYPAL_IPN_BASE_URL = (os.environ.get('PAYPAL_IPN_BASE_URL', '') or '').strip().rstrip('/') or None

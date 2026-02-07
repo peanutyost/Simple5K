@@ -169,12 +169,12 @@ class LapsAdmin(admin.ModelAdmin):
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'paypal_enabled', 'paypal_business_email', 'paypal_sandbox',
+        'id', 'paypal_enabled',
         'signup_confirmation_timeout_minutes', 'site_base_url',
     )
-    list_editable = ('paypal_enabled', 'paypal_business_email', 'paypal_sandbox')
+    list_editable = ('paypal_enabled',)
     fields = (
-        'paypal_enabled', 'paypal_business_email', 'paypal_sandbox',
+        'paypal_enabled',
         'signup_confirmation_timeout_minutes', 'site_base_url',
     )
 

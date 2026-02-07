@@ -230,15 +230,6 @@ class SiteSettings(models.Model):
         default=False,
         help_text='When on, signup redirects to PayPal with entry fee; when off, signup goes to success page only.'
     )
-    paypal_business_email = models.EmailField(
-        max_length=254,
-        blank=True,
-        help_text='PayPal email that receives entry fee donations.'
-    )
-    paypal_sandbox = models.BooleanField(
-        default=False,
-        help_text='Use PayPal Sandbox for testing. Turn off for live payments.'
-    )
     signup_confirmation_timeout_minutes = models.PositiveIntegerField(
         default=15,
         help_text='Send signup confirmation to runners who have not received one and signed up more than this many minutes ago (or have already paid). The background worker (same as race emails) uses this value.'
