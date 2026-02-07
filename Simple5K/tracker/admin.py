@@ -90,7 +90,7 @@ def _reassign_places_for_race(race_obj):
 @admin.register(runners)
 class RunnersAdmin(admin.ModelAdmin):
     list_display = ('first_name', 'last_name', 'race', 'number', 'paid', 'tag', 'rfid_tag_hex')
-    actions = ['recompute_times']
+    actions = ['recompute_times', 'mark_signup_email_sent', 'mark_results_email_sent']
 
     @admin.action(description='Recompute times from laps')
     def recompute_times(self, request, queryset):
@@ -106,6 +106,16 @@ class RunnersAdmin(admin.ModelAdmin):
             request,
             f'Recomputed times for {updated} runner(s). Places updated for affected races.',
         )
+
+    @admin.action(description='Mark signup confirmation email sent')
+    def mark_signup_email_sent(self, request, queryset):
+        count = queryset.update(signup_confirmation_sent=True)
+        self.message_user(request, f'Marked signup confirmation sent for {count} runner(s).')
+
+    @admin.action(description='Mark results email sent')
+    def mark_results_email_sent(self, request, queryset):
+        count = queryset.update(email_sent=True)
+        self.message_user(request, f'Marked results email sent for {count} runner(s).')
 
 
 @admin.register(laps)
