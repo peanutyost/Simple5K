@@ -48,6 +48,23 @@ def require_api_key(view_func):
     return wrapped_view
 
 
+def require_api_key_or_login(view_func):
+    """Allow either valid X-API-Key header or authenticated session."""
+    @wraps(view_func)
+    def wrapped_view(request, *args, **kwargs):
+        api_key = request.headers.get('X-API-Key')
+        if api_key:
+            try:
+                ApiKey.objects.get(key=api_key, is_active=True)
+                return view_func(request, *args, **kwargs)
+            except ApiKey.DoesNotExist:
+                pass
+        if request.user.is_authenticated:
+            return view_func(request, *args, **kwargs)
+        return JsonResponse({'error': 'Invalid API key'}, status=401)
+    return wrapped_view
+
+
 def cache_unless_authenticated(timeout):
     def decorator(view_func):
         @wraps(view_func)
@@ -453,9 +470,10 @@ def show_runners(request, pk):
     return render(request, 'tracker/view_runners.html', context)
 
 
-@login_required
+@csrf_exempt
+@require_api_key_or_login
 def add_runner(request):
-    """POST: create a new runner for the given race. Expects race_id and runner fields. Returns JSON."""
+    """POST: create a new runner for the given race. Expects race_id and runner fields. Returns JSON. Auth: API key or session."""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'errors': ['Method not allowed']}, status=405)
     try:
@@ -540,9 +558,10 @@ def add_runner(request):
     })
 
 
-@login_required
+@csrf_exempt
+@require_api_key_or_login
 def edit_runner(request):
-    """POST: update runner fields. Expects runner_id and editable fields. Returns JSON."""
+    """POST: update runner fields. Expects runner_id and editable fields. Returns JSON. Auth: API key or session."""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'errors': ['Method not allowed']}, status=405)
     try:

@@ -19,9 +19,11 @@ X-API-Key: <your-api-key>
 - **Generate a key:** Log in to the site and use **POST** `/generate-api-key/` with form body `name=<key-name>`. The key is shown once on the response page.
 - Missing or invalid key returns `401` with `{"error": "Invalid API key"}`.
 
-### Session (runner endpoints)
+### API key or session (runner endpoints)
 
-- **Add runner** and **Edit runner** require an authenticated session (log in via the web app). No `X-API-Key` header is used for these.
+- **Add runner** and **Edit runner** accept either:
+  - **API key:** same `X-API-Key` header as timing endpoints, or
+  - **Session:** log in via the web app (no header needed).
 
 ---
 
@@ -244,13 +246,13 @@ No request body or query parameters.
 
 ### 5. Add runner
 
-Create a new runner for a race. Requires **session authentication** (logged-in user), not API key.
+Create a new runner for a race. **Auth:** API key (`X-API-Key` header) or session (logged-in user).
 
 | | |
 |---|---|
 | **Method** | `POST` |
 | **Path** | `api/add-runner/` |
-| **Auth** | Session (login required) |
+| **Auth** | API key or session |
 | **Content-Type** | `application/json` or form-encoded |
 
 **Request body (JSON or form):**
@@ -323,13 +325,13 @@ Possible validation errors include: missing/invalid `race_id`, name/email length
 
 ### 6. Edit runner
 
-Update an existing runner. Requires **session authentication**, not API key.
+Update an existing runner. **Auth:** API key (`X-API-Key` header) or session (logged-in user).
 
 | | |
 |---|---|
 | **Method** | `POST` |
 | **Path** | `api/edit-runner/` |
-| **Auth** | Session (login required) |
+| **Auth** | API key or session |
 | **Content-Type** | `application/json` or form-encoded |
 
 **Request body:**
@@ -410,8 +412,8 @@ Create a new API key. This is a **web view**, not a JSON API: it renders HTML an
 | `api/update-race-time/` | POST | API key | Start or stop a race |
 | `api/update-rfid/` | POST | API key | Assign RFID tag to runner (by race + bib) |
 | `api/available-races/` | GET | API key | List non-completed races |
-| `api/add-runner/` | POST | Session | Create runner in a race |
-| `api/edit-runner/` | POST | Session | Update runner fields |
+| `api/add-runner/` | POST | API key or session | Create runner in a race |
+| `api/edit-runner/` | POST | API key or session | Update runner fields |
 | `generate-api-key/` | POST | Session | Create API key (HTML response) |
 
 ---
