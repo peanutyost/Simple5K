@@ -213,7 +213,7 @@ def generate_race_report(filename, race_data, return_type):
 
     # --- Age Bracket (centered) ---
     y_pos = y_pos - 0.2 * inch
-    y_pos = draw_section_title(c, "Age group", y_pos, usable_width)
+    y_pos = draw_section_title(c, "Your placement (age group and overall)", y_pos, usable_width)
     y_pos -= 0.1 * inch
 
     rs = race_data['runner']
@@ -229,7 +229,7 @@ def generate_race_report(filename, race_data, return_type):
         overall_str = f"{overall_place} of {total_finishers}"
     else:
         overall_str = str(overall_place)
-    data = [["Age group", "Place"]]
+    data = [["Category", "Place"]]
     data.append([str(rs['age_bracket']), place_str])
     data.append(["Overall", overall_str])
 
