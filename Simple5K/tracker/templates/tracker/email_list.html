@@ -34,6 +34,7 @@
                     <label for="email-body" class="form-label">Message</label>
                     <textarea class="form-control" id="email-body" name="body" rows="10" placeholder="Your message to runners..."></textarea>
                     <p class="form-text small text-muted">A line will be appended: &quot;This is an unmonitored email account. Please do not reply.&quot;</p>
+                    <p id="unpaid-append-preview" class="form-text small text-muted mt-1" style="display: none;">When sending payment reminders, the following will be appended to each email: <em>If you haven&apos;t paid yet, you can pay here: [unique link per runner]</em></p>
                 </div>
                 <button type="submit" class="btn btn-primary" id="send-btn">Send email</button>
             </form>
@@ -134,9 +135,21 @@
         xhr.send(body);
     }
 
+    function toggleUnpaidAppendPreview() {
+        var preview = document.getElementById('unpaid-append-preview');
+        var unpaidReminder = document.getElementById('unpaid-reminder') && document.getElementById('unpaid-reminder').checked;
+        if (preview) preview.style.display = unpaidReminder ? 'block' : 'none';
+    }
+
     if (raceSelect) raceSelect.addEventListener('change', updateRecipientCount);
     var unpaidReminderEl = document.getElementById('unpaid-reminder');
-    if (unpaidReminderEl) unpaidReminderEl.addEventListener('change', updateRecipientCount);
+    if (unpaidReminderEl) {
+        unpaidReminderEl.addEventListener('change', function() {
+            updateRecipientCount();
+            toggleUnpaidAppendPreview();
+        });
+        toggleUnpaidAppendPreview();
+    }
 
     if (form) {
         form.addEventListener('submit', function(e) {
