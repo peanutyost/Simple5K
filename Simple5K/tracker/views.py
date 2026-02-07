@@ -491,8 +491,13 @@ def add_runner(request):
     email = (data.get('email') or '').strip()
     age = (data.get('age') or '').strip()
     gender = (data.get('gender') or '').strip() or None
+    auto_assign_number = data.get('auto_assign_number') in (True, 'true', 'True', 1, '1')
     number = data.get('number')
-    if number is not None and number != '':
+    if auto_assign_number:
+        # Assign next available number for this race (same logic as assign_numbers)
+        existing_numbers = runners.objects.filter(race=race_obj, number__isnull=False).values_list('number', flat=True)
+        number = (max(existing_numbers) + 1) if existing_numbers else (race_obj.number_start or 1)
+    elif number is not None and number != '':
         try:
             number = int(number)
             if number < 0:

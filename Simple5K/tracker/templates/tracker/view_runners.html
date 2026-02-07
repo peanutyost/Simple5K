@@ -194,6 +194,10 @@
                     <div class="mb-3">
                         <label for="add-number" class="form-label">Number</label>
                         <input type="number" class="form-control" id="add-number" name="number" min="0" placeholder="Optional">
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="add-auto-assign-number" name="auto_assign_number" checked>
+                            <label class="form-check-label" for="add-auto-assign-number">Auto assign the new number</label>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="add-type" class="form-label">Type</label>
@@ -407,6 +411,20 @@
     var addRunnerForm = document.getElementById('add-runner-form');
     var addRunnerSubmit = document.getElementById('add-runner-submit');
     var addRunnerErrors = document.getElementById('add-runner-errors');
+    var addNumberEl = document.getElementById('add-number');
+    var addAutoAssignEl = document.getElementById('add-auto-assign-number');
+    function setAddNumberDisabled() {
+        if (addNumberEl && addAutoAssignEl) {
+            addNumberEl.disabled = addAutoAssignEl.checked;
+            if (addAutoAssignEl.checked) addNumberEl.value = '';
+        }
+    }
+    if (addAutoAssignEl && addNumberEl) {
+        addAutoAssignEl.addEventListener('change', setAddNumberDisabled);
+    }
+    if (addRunnerModal) {
+        addRunnerModal.addEventListener('show.bs.modal', function() { setAddNumberDisabled(); });
+    }
     if (addRunnerModal && addRunnerForm && addRunnerSubmit) {
         addRunnerSubmit.addEventListener('click', function() {
             var first = (document.getElementById('add-first-name') && document.getElementById('add-first-name').value) || '';
@@ -415,9 +433,14 @@
             var age = (document.getElementById('add-age') && document.getElementById('add-age').value) || '';
             var genderEl = document.getElementById('add-gender');
             var gender = genderEl && genderEl.value ? genderEl.value : null;
+            var autoAssignEl = document.getElementById('add-auto-assign-number');
+            var autoAssignNumber = autoAssignEl && autoAssignEl.checked;
             var numberEl = document.getElementById('add-number');
-            var number = numberEl && numberEl.value !== '' ? parseInt(numberEl.value, 10) : null;
-            if (number !== null && isNaN(number)) number = null;
+            var number = null;
+            if (!autoAssignNumber && numberEl && numberEl.value !== '') {
+                number = parseInt(numberEl.value, 10);
+                if (isNaN(number)) number = null;
+            }
             var typeEl = document.getElementById('add-type');
             var runnerType = typeEl && typeEl.value ? typeEl.value : null;
             var shirtEl = document.getElementById('add-shirt-size');
@@ -436,6 +459,7 @@
                     email: email.trim(),
                     age: age,
                     gender: gender,
+                    auto_assign_number: autoAssignNumber,
                     number: number,
                     type: runnerType,
                     shirt_size: shirt
@@ -472,6 +496,8 @@
                     var modal = bootstrap.Modal.getInstance(addRunnerModal);
                     if (modal) modal.hide();
                     addRunnerForm.reset();
+                    addAutoAssignEl.checked = true;
+                    setAddNumberDisabled();
                 } else {
                     var msg = (data.errors && data.errors.length) ? data.errors.join(' ') : 'Failed to add runner';
                     addRunnerErrors.textContent = msg;
