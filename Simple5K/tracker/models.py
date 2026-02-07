@@ -186,7 +186,7 @@ class SiteSettings(models.Model):
     )
     signup_confirmation_timeout_minutes = models.PositiveIntegerField(
         default=15,
-        help_text='Minutes to wait for PayPal confirmation before sending signup confirmation email. If unpaid after this, email is sent with a link to pay.'
+        help_text='Send signup confirmation to runners who have not received one and signed up more than this many minutes ago (or have already paid). The background worker (same as race emails) uses this value.'
     )
     site_base_url = models.URLField(
         blank=True,

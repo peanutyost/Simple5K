@@ -103,6 +103,70 @@ def _worker_loop():
         time.sleep(5)
 
 
+# How often to check for runners due a signup confirmation (same process as race emails worker)
+SIGNUP_CONFIRMATION_CHECK_INTERVAL_SECONDS = 5 * 60  # 5 minutes
+
+
+def _signup_confirmation_loop():
+    """Background loop: every SIGNUP_CONFIRMATION_CHECK_INTERVAL_SECONDS, send signup
+    confirmations to runners who have not received one and are either paid or older than
+    signup_confirmation_timeout_minutes (from Site Settings). Throttled like race emails.
+    Uses select_for_update so only one worker process sends to a given runner.
+    """
+    from django.utils import timezone
+    from django.db.models import Q
+    from django.db import transaction
+    from datetime import timedelta
+
+    from .models import runners, SiteSettings
+
+    while True:
+        try:
+            time.sleep(SIGNUP_CONFIRMATION_CHECK_INTERVAL_SECONDS)
+            site_settings = SiteSettings.get_settings()
+            timeout_minutes = site_settings.signup_confirmation_timeout_minutes
+            cutoff = timezone.now() - timedelta(minutes=timeout_minutes)
+            with transaction.atomic():
+                due = list(
+                    runners.objects.filter(signup_confirmation_sent=False)
+                    .filter(Q(paid=True) | Q(created_at__lte=cutoff))
+                    .select_related('race')
+                    .order_by('created_at')
+                    .select_for_update(skip_locked=True)[:50]
+                )
+            if due:
+                from .views import send_signup_confirmation_email
+                for runner in due:
+                    try:
+                        send_signup_confirmation_email(runner)
+                    except Exception:
+                        pass
+                    time.sleep(max(0, EMAIL_SEND_INTERVAL_SECONDS - 0.1))
+        except Exception:
+            pass
+        finally:
+            try:
+                from django.db import connection
+                connection.close()
+            except Exception:
+                pass
+
+
+_signup_worker_started = False
+_signup_worker_lock = threading.Lock()
+
+
+def start_signup_confirmation_worker():
+    """Start the background signup confirmation worker thread (idempotent). Same pattern as email worker."""
+    global _signup_worker_started
+    with _signup_worker_lock:
+        if _signup_worker_started:
+            return
+        _signup_worker_started = True
+    t = threading.Thread(target=_signup_confirmation_loop, daemon=True)
+    t.start()
+
+
 _worker_started = False
 _worker_lock = threading.Lock()
 

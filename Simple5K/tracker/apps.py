@@ -10,7 +10,8 @@ class TrackerConfig(AppConfig):
         if 'migrate' in sys.argv or 'makemigrations' in sys.argv:
             return
         try:
-            from .email_queue import start_email_worker
+            from .email_queue import start_email_worker, start_signup_confirmation_worker
             start_email_worker()
+            start_signup_confirmation_worker()
         except Exception:
             pass

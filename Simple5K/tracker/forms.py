@@ -140,7 +140,7 @@ class SiteSettingsForm(forms.ModelForm):
             'paypal_enabled': 'Enable PayPal donation at signup',
             'paypal_business_email': 'PayPal business email',
             'paypal_sandbox': 'Use PayPal Sandbox (testing)',
-            'signup_confirmation_timeout_minutes': 'Signup confirmation timeout (minutes)',
+            'signup_confirmation_timeout_minutes': 'Send signup email if runner is older than (minutes)',
             'site_base_url': 'Site base URL (for pay-later links in emails)',
         }
 
