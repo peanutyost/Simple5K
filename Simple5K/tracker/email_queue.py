@@ -108,13 +108,16 @@ def _worker_loop():
 # How often to check for runners due a signup confirmation (same process as race emails worker)
 SIGNUP_CONFIRMATION_CHECK_INTERVAL_SECONDS = 5 * 60  # 5 minutes
 
+# Only send timeout confirmation to signups from the last 24 hours (ignore older ones)
+SIGNUP_CONFIRMATION_MAX_AGE_HOURS = 24
+
 
 def _signup_confirmation_loop():
     """Background loop: every SIGNUP_CONFIRMATION_CHECK_INTERVAL_SECONDS, send signup
     confirmations to runners who have not received one and are either paid or older than
-    signup_confirmation_timeout_minutes (from Site Settings). Stays under Microsoft
-    SMTP limit (30/min) and claims runners in the same transaction so only one process
-    sends to each runner (no duplicate emails).
+    signup_confirmation_timeout_minutes (from Site Settings). Ignores signups older than
+    24 hours. Stays under Microsoft SMTP limit (30/min) and claims runners in the same
+    transaction so only one process sends to each runner (no duplicate emails).
     """
     from django.utils import timezone
     from django.db.models import Q
@@ -129,12 +132,15 @@ def _signup_confirmation_loop():
             site_settings = SiteSettings.get_settings()
             timeout_minutes = site_settings.signup_confirmation_timeout_minutes
             cutoff = timezone.now() - timedelta(minutes=timeout_minutes)
+            # Only consider signups from the last 24 hours (don't send to very old signups)
+            cutoff_24h = timezone.now() - timedelta(hours=SIGNUP_CONFIRMATION_MAX_AGE_HOURS)
             # Cap batch size so we don't exceed MAX_EMAILS_PER_MINUTE in one burst;
             # we sleep EMAIL_SEND_INTERVAL_SECONDS between each, so 30/min is safe.
             batch_size = min(50, MAX_EMAILS_PER_MINUTE)
             with transaction.atomic():
                 due = list(
                     runners.objects.filter(signup_confirmation_sent=False)
+                    .filter(created_at__gte=cutoff_24h)
                     .filter(Q(paid=True) | Q(created_at__lte=cutoff))
                     .select_related('race')
                     .order_by('created_at')

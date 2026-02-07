@@ -4,6 +4,17 @@ import django.utils.timezone
 from django.db import migrations, models
 
 
+def set_existing_runners_confirmation_sent(apps, schema_editor):
+    """All runners that exist at migration time are treated as already confirmed (no backlog emails)."""
+    runners = apps.get_model('tracker', 'runners')
+    runners.objects.all().update(signup_confirmation_sent=True)
+
+
+def noop_reverse(apps, schema_editor):
+    """Cannot undo: we don't know which were originally True vs False."""
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -22,6 +33,7 @@ class Migration(migrations.Migration):
             name='signup_confirmation_sent',
             field=models.BooleanField(default=False),
         ),
+        migrations.RunPython(set_existing_runners_confirmation_sent, noop_reverse),
         migrations.AddField(
             model_name='sitesettings',
             name='signup_confirmation_timeout_minutes',
