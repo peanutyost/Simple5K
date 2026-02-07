@@ -53,8 +53,8 @@ def generate_race_report(filename, race_data, return_type):
     header_text = colors.black
     section_gray = colors.black  # section titles and secondary text
     grid_light = HexColor('#faf5ef')  # a shade or two lighter than header
-    row_alt = HexColor('#f8fafc')
-    row_white = colors.white
+    row_alt = HexColor('#faf5ef')   # light beige (alternating rows)
+    row_white = colors.white       # other rows
 
     # --- Define Layout Constants ---
     margin = inch
