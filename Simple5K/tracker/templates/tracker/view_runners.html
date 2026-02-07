@@ -184,9 +184,8 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="add-gender" class="form-label">Gender</label>
-                        <select class="form-select" id="add-gender" name="gender">
-                            <option value="">—</option>
+                        <label for="add-gender" class="form-label">Gender <span class="text-danger">*</span></label>
+                        <select class="form-select" id="add-gender" name="gender" required>
                             {% for value, label in genders %}
                             <option value="{{ value }}">{{ label }}</option>
                             {% endfor %}
@@ -226,7 +225,7 @@
 <script id="runner-choices" type="application/json">
 {
   "age_brackets": [{% for value, label in age_brackets %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
-  "genders": [{"value": "", "label": "—"}, {% for value, label in genders %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
+  "genders": [{% for value, label in genders %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
   "race_types": [{"value": "", "label": "—"}, {% for value, label in race_types %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
   "shirt_sizes": [{% for value, label in shirt_sizes %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}]
 }

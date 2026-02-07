@@ -85,7 +85,7 @@ class runners(models.Model):
     age = models.CharField(
         max_length=50, choices=age_bracket)
     gender = models.CharField(
-        max_length=50, choices=gender, blank=True, null=True)
+        max_length=50, choices=gender)
     number = models.IntegerField(null=True, blank=True)
     tag = models.ForeignKey(
         RfidTag,

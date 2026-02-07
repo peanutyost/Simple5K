@@ -515,7 +515,9 @@ def add_runner(request):
         errors.append('Email too long')
     if not age or age not in [c[0] for c in runners.age_bracket]:
         errors.append('Valid age bracket is required')
-    if gender is not None and gender not in [c[0] for c in runners._meta.get_field('gender').choices]:
+    if not gender:
+        errors.append('Gender is required')
+    elif gender not in [c[0] for c in runners._meta.get_field('gender').choices]:
         errors.append('Invalid gender')
     if runner_type is not None and runner_type not in [c[0] for c in runners.race_type]:
         errors.append('Invalid type')
@@ -600,7 +602,9 @@ def edit_runner(request):
             runner_obj.age = v
     if 'gender' in data:
         v = (data.get('gender') or '').strip() or None
-        if v is not None and v not in [c[0] for c in runners._meta.get_field('gender').choices]:
+        if not v:
+            errors.append('Gender is required')
+        elif v not in [c[0] for c in runners._meta.get_field('gender').choices]:
             errors.append('Invalid gender')
         else:
             runner_obj.gender = v
