@@ -74,13 +74,10 @@ def generate_race_report(filename, race_data, return_type):
     center_x = margin + usable_width / 2
 
     def draw_section_title(canvas_obj, text, y, full_width):
-        """Draw section title centered with a thin line under it."""
+        """Draw section title centered."""
         canvas_obj.setFillColor(section_gray)
         canvas_obj.setFont("Helvetica-Bold", 10)
         canvas_obj.drawCentredString(center_x, y, text.upper())
-        canvas_obj.setStrokeColor(grid_light)
-        canvas_obj.setLineWidth(0.5)
-        canvas_obj.line(margin, y - 0.1 * inch, margin + full_width, y - 0.1 * inch)
         return y - 0.2 * inch
 
     def draw_runner_card(canvas_obj, x, y, width, height, name, detail_lines, top_padding=0.3 * inch):
