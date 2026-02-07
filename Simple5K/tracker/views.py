@@ -21,8 +21,11 @@ import hmac
 import hashlib
 import io
 import json
+import logging
 import pytz
 import urllib.parse
+
+logger = logging.getLogger(__name__)
 
 from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, EmailSendJob
 from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm, RaceSummaryForm, SiteSettingsForm
@@ -151,8 +154,6 @@ def prepare_race_data(race_obj, runner_obj):
         'distance': race_obj.distance,
         'logo': race_obj.logo.path if race_obj.logo else '',
     }
-    if race_info is None:
-        return None
 
     # Runner Details
     runner_details = {
@@ -178,8 +179,6 @@ def prepare_race_data(race_obj, runner_obj):
             race=race_obj, age=runner_obj.age, total_race_time__isnull=False
         ).count() if runner_obj.age else None,
     }
-    if runner_details is None:
-        return None
 
     # Lap Data
     laps_data = []
@@ -325,7 +324,7 @@ class ListRaces(LoginRequiredMixin, ListView):
 class GenerateRaceReportView(LoginRequiredMixin, View):
     def get(self, request, race_id, runner_id):
         race_obj = get_object_or_404(race, pk=race_id)
-        runner_obj = get_object_or_404(runners, number=runner_id)
+        runner_obj = get_object_or_404(runners, race=race_obj, number=runner_id)
 
         # Prepare data for the report
         race_data = prepare_race_data(race_obj, runner_obj)
@@ -345,14 +344,12 @@ def race_start_view(request):
 
     if request.method == "POST":
         if form.is_valid():
-            # need to loop thru and clear all other races to not current.
-            race.objects.update(is_current=False)
             lv = race.objects.get(name=form.cleaned_data['racename'])
-            now = datetime.now().astimezone()
+            now = timezone.now()
             lv.start_time = now
-            lv.is_current = True
+            lv.status = 'in_progress'
             lv.save()
-            return redirect("tracker:laps-record")
+            return redirect("tracker:race-overview")
         else:
             return render(request, "tracker/race_start.html",
                           context={
@@ -405,29 +402,13 @@ def select_race(request):
 
 @login_required
 def view_shirt_sizes(request, pk):
-    # Get all runners for the selected race
-    runners_in_race = runners.objects.filter(race=pk)
-
-    # Calculate total number of runners
-    total_runners = runners_in_race.count()
-
-    # Get shirt size counts
-    shirt_size_counts = {
-        'Kids XS': 0,
-        'Kids S': 0,
-        'Kids M': 0,
-        'Kids L': 0,
-        'Extra Small': 0,
-        'Small': 0,
-        'Medium': 0,
-        'Large': 0,
-        'XL': 0,
-        'XXL': 0
-    }
-
-    for runner in runners_in_race:
-        if runner.shirt_size in shirt_size_counts:
-            shirt_size_counts[runner.shirt_size] += 1
+    from django.db.models import Count
+    race_obj = get_object_or_404(race, pk=pk)
+    size_rows = runners.objects.filter(race=race_obj).values('shirt_size').annotate(count=Count('id'))
+    size_counts = {row['shirt_size']: row['count'] for row in size_rows}
+    all_sizes = ['Kids XS', 'Kids S', 'Kids M', 'Kids L', 'Extra Small', 'Small', 'Medium', 'Large', 'XL', 'XXL']
+    shirt_size_counts = {s: size_counts.get(s, 0) for s in all_sizes}
+    total_runners = sum(shirt_size_counts.values())
 
     return render(request, 'tracker/view_shirts.html', {
         'shirt_size_counts': shirt_size_counts,
@@ -701,15 +682,22 @@ def format_remaining_time(end_time):
 def mark_runner_finished(request):
     if request.method == 'POST':
         runner_number = request.POST.get('runner_number')
+        race_id = request.POST.get('race_id')
+        if not race_id:
+            return JsonResponse({'success': False, 'message': 'race_id is required.'}, status=400)
+        if runner_number is None or (isinstance(runner_number, str) and not runner_number.strip()):
+            return JsonResponse({'success': False, 'message': 'runner_number is required.'}, status=400)
         try:
-            runner = runners.objects.get(number=runner_number)
+            race_obj = get_object_or_404(race, pk=race_id)
+            runner = runners.objects.get(race=race_obj, number=runner_number)
             runner.race_completed = True
             runner.save()
             return JsonResponse({'success': True, 'message': f'Runner {runner_number} marked as finished.'})
         except runners.DoesNotExist:
             return JsonResponse({'success': False, 'message': f'Runner with number {runner_number} not found.'})
         except Exception as e:
-            return JsonResponse({'success': False, 'message': f'An error occurred: {str(e)}'})
+            logger.exception('mark_runner_finished failed')
+            return JsonResponse({'success': False, 'message': 'An error occurred.'})
     return JsonResponse({'success': False, 'message': 'Invalid request.'})
 
 
@@ -723,8 +711,8 @@ def email_list_view(request):
     try:
         from .email_queue import start_email_worker
         start_email_worker()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception("Failed to start email worker: %s", e)
     races = race.objects.all().order_by('-date', '-scheduled_time')
 
     if request.method == 'POST':
@@ -743,14 +731,7 @@ def email_list_view(request):
                     race_obj = race.objects.get(pk=race_id)
                 except (race.DoesNotExist, ValueError):
                     return JsonResponse({'success': False, 'error': 'Invalid race.'}, status=400)
-                recipient_count = (
-                    runners.objects.filter(race=race_obj)
-                    .exclude(email__isnull=True)
-                    .exclude(email="")
-                    .values_list("email", flat=True)
-                    .distinct()
-                    .count()
-                )
+                recipient_count = race_obj.runner_email_count()
                 if recipient_count == 0:
                     return JsonResponse({'success': False, 'error': 'This race has no runners with email addresses.'}, status=400)
                 job = EmailSendJob.objects.create(
@@ -766,22 +747,15 @@ def email_list_view(request):
                     'recipient_count': recipient_count,
                 })
             except Exception as e:
-                return JsonResponse({'success': False, 'error': str(e)}, status=500)
+                logger.exception('email_list_view send failed')
+                return JsonResponse({'success': False, 'error': 'An error occurred. Please try again.'}, status=500)
         if action == 'recipient_count':
             race_id = data.get('race_id')
             if not race_id:
                 return JsonResponse({'count': 0})
             try:
                 race_obj = race.objects.get(pk=race_id)
-                count = (
-                    runners.objects.filter(race=race_obj)
-                    .exclude(email__isnull=True)
-                    .exclude(email="")
-                    .values_list("email", flat=True)
-                    .distinct()
-                    .count()
-                )
-                return JsonResponse({'count': count})
+                return JsonResponse({'count': race_obj.runner_email_count()})
             except (race.DoesNotExist, ValueError):
                 return JsonResponse({'count': 0})
 
@@ -910,6 +884,11 @@ def record_lap(request):
 
             try:
                 time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
+            except (ValueError, TypeError):
+                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Invalid timestamp format"})
+                continue
+
+            try:
                 current_time = time_naive.replace(tzinfo=pytz.utc)
                 race_obj = race.objects.get(id=race_id)
                 rfid_tag_obj = RfidTag.objects.filter(
@@ -1025,12 +1004,14 @@ def record_lap(request):
                 results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Race not found"})
 
             except Exception as e:
-                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": str(e)})
+                logger.exception('record_lap item failed: runner_rfid=%s', runner_rfid_hex)
+                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Record failed"})
 
         return JsonResponse({'results': results})
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        logger.exception('record_lap request failed')
+        return JsonResponse({'error': 'Invalid request.'}, status=400)
 
 
 @csrf_exempt
@@ -1041,33 +1022,46 @@ def update_race_time(request):
 
     try:
         data = json.loads(request.body)
-        race_id = data.get('race_id')
-        action = data.get('action')  # 'start' or 'stop'
-        timestamp = data.get('timestamp')
+    except (json.JSONDecodeError, TypeError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    race_id = data.get('race_id')
+    action = data.get('action')
+    timestamp = data.get('timestamp')
+
+    if not timestamp:
+        return JsonResponse({'error': 'timestamp is required'}, status=400)
+    if not action or action not in ('start', 'stop'):
+        return JsonResponse({'error': 'action must be "start" or "stop"'}, status=400)
+
+    try:
         time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
         current_time = time_naive.replace(tzinfo=pytz.utc)
-        race_obj = race.objects.get(id=race_id)
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Invalid timestamp format'}, status=400)
 
+    race_obj = get_object_or_404(race, id=race_id)
+
+    try:
         if action == 'start':
             if race_obj.status not in ('in_progress', 'completed'):
                 race_obj.start_time = current_time
                 race_obj.status = 'in_progress'
                 race_obj.save()
         elif action == 'stop':
-            if race_obj != 'completed':
+            if race_obj.status != 'completed':
                 race_obj.end_time = current_time
                 race_obj.status = 'completed'
+                race_obj.save()
         else:
             return JsonResponse({'error': 'Invalid action'}, status=400)
-
-        race_obj.save()
 
         return JsonResponse({
             'status': 'success'
         })
-
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        logger.exception('update_race_time failed: %s', e)
+        return JsonResponse({'error': 'Invalid request.'}, status=400)
 
 
 @csrf_exempt
@@ -1078,26 +1072,31 @@ def update_rfid(request):
 
     try:
         data = json.loads(request.body)
-        runner_number = data.get('runner_number')
-        rfid_tag = data.get('rfid_tag')
-        race_id = data.get('race_id')
+    except (json.JSONDecodeError, TypeError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-        race_local = race.objects.get(id=race_id)
-        runner_obj = runners.objects.filter(number=runner_number).filter(race=race_local).first()
-        if not runner_obj:
-            return JsonResponse({'error': 'Runner not found'}, status=404)
-        rfid_tag_obj = RfidTag.objects.filter(rfid_hex__iexact=(rfid_tag or '').strip()).first()
-        if not rfid_tag_obj:
-            return JsonResponse({'error': 'RFID tag not found with that hex value'}, status=400)
-        runner_obj.tag = rfid_tag_obj
-        runner_obj.save()
+    race_id = data.get('race_id')
+    runner_number = data.get('runner_number')
+    rfid_tag = (data.get('rfid_tag') or '').strip()
 
-        return JsonResponse({
-            'status': 'success',
-        })
+    if not race_id:
+        return JsonResponse({'error': 'race_id is required'}, status=400)
+    if runner_number is None or runner_number == '':
+        return JsonResponse({'error': 'runner_number is required'}, status=400)
+    if not rfid_tag:
+        return JsonResponse({'error': 'rfid_tag is required'}, status=400)
 
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+    race_local = get_object_or_404(race, id=race_id)
+    runner_obj = runners.objects.filter(race=race_local, number=runner_number).first()
+    if not runner_obj:
+        return JsonResponse({'error': 'Runner not found'}, status=404)
+    rfid_tag_obj = RfidTag.objects.filter(rfid_hex__iexact=rfid_tag).first()
+    if not rfid_tag_obj:
+        return JsonResponse({'error': 'RFID tag not found with that hex value'}, status=400)
+
+    runner_obj.tag = rfid_tag_obj
+    runner_obj.save()
+    return JsonResponse({'status': 'success'})
 
 
 @require_api_key
@@ -1106,17 +1105,20 @@ def get_available_races(request):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
     try:
-        available_races = race.objects.exclude(
-            status__in=['completed']
-        ).values('id', 'name', 'status', 'date', 'scheduled_time')
-
-        return JsonResponse({
-            'status': 'success',
-            'races': list(available_races)
-        })
-
+        qs = race.objects.exclude(status__in=['completed']).values('id', 'name', 'status', 'date', 'scheduled_time')
+        races = []
+        for r in qs:
+            races.append({
+                'id': r['id'],
+                'name': r['name'],
+                'status': r['status'],
+                'date': r['date'].isoformat() if r.get('date') else None,
+                'scheduled_time': r['scheduled_time'].isoformat() if r.get('scheduled_time') else None,
+            })
+        return JsonResponse({'status': 'success', 'races': races})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        logger.exception('get_available_races failed: %s', e)
+        return JsonResponse({'error': 'Invalid request.'}, status=400)
 
 
 # ----------------------------Site Settings--------------------------------------
@@ -1281,7 +1283,8 @@ def race_overview(request):
     # Pass the runner times to the template
     context = {
         'runner_times': runner_times,
-        'race_name': current_race.name if current_race else "No current race"
+        'race_name': current_race.name if current_race else "No current race",
+        'current_race': current_race,
     }
 
     return render(request, 'tracker/race_overview.html', context)
@@ -1310,7 +1313,7 @@ def get_completed_race_overview(request, race_id):
     # Initialize an empty list to store runner times
     runner_times = []
     if current_race:
-        runnersall = runners.objects.filter(race=current_race).order_by('place').asc(nulls_last=True)
+        runnersall = runners.objects.filter(race=current_race).order_by(F('place').asc(nulls_last=True))
         for arunner in runnersall:
             run_laps = []
             alap = laps.objects.filter(runner=arunner).order_by('lap')
@@ -1486,7 +1489,7 @@ def race_signup(request):
     else:
         form = SignupForm()
     current_races = race.objects.filter(status='signup_open').order_by('date', 'scheduled_time')
-    banners = Banner.objects.filter(active=True)
+    banners = Banner.objects.active_for_page(Banner.PAGE_SIGNUP)
     context = {'form': form, 'current_races': current_races, 'banners': banners}
     return render(request, 'tracker/signup.html', context)
 
@@ -1702,7 +1705,6 @@ def race_countdown(request):
 
 
 def race_list(request):
-    banners = Banner.objects.filter(active=True)
-    """Render the race list page"""
-
+    """Render the race list page."""
+    banners = Banner.objects.active_for_page(Banner.PAGE_HOME)
     return render(request, 'tracker/race_list.html', context={'banners': banners})

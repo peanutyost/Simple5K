@@ -1,13 +1,15 @@
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
 
 def register_view(request):
     form = UserCreationForm(request.POST or None)
     if form.is_valid():
         form.save()
-        return redirect('/login')
+        return redirect(reverse('login'))
     context = {"form": form}
     return render(request, "accounts/register.html", context)
 
@@ -20,10 +22,9 @@ def login_view(request):
             nxt = request.GET.get("next", None)
             user = form.get_user()
             login(request, user)
-            if nxt is not None:
+            if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts=request.get_host()):
                 return redirect(nxt)
-            else:
-                return redirect('/tracker/')
+            return redirect(reverse('tracker:race-overview'))
     else:
         form = AuthenticationForm(request)
     context = {
@@ -35,5 +36,5 @@ def login_view(request):
 def logout_view(request):
     if request.method == "POST":
         logout(request)
-        return redirect("/login/")
+        return redirect(reverse('login'))
     return render(request, "accounts/logout.html", {})

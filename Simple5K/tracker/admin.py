@@ -5,11 +5,17 @@ from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, 
 
 @admin.register(ApiKey)
 class ApiKeyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'key', 'created_at', 'is_active')
+    list_display = ('name', 'key_masked', 'created_at', 'is_active')
     list_filter = ('is_active',)
     search_fields = ('name',)
-    readonly_fields = ('created_at',)
+    readonly_fields = ('created_at', 'key')
     fields = ('name', 'key', 'created_at', 'is_active')
+
+    @admin.display(description='Key')
+    def key_masked(self, obj):
+        if not obj.key:
+            return '—'
+        return obj.key[:10] + '…' if len(obj.key) > 10 else obj.key
 
 
 @admin.register(RfidTag)
@@ -38,10 +44,18 @@ class RaceAdmin(admin.ModelAdmin):
 
 @admin.register(Banner)
 class BannerAdmin(admin.ModelAdmin):
-    list_display = ('title', 'subtitle', 'background_color', 'image', 'pages', 'active')
-    list_filter = ('active', 'pages')
+    list_display = ('title', 'subtitle', 'background_color', 'image', 'pages_display', 'active')
+    list_filter = ('active', 'show_on_home', 'show_on_signup', 'show_on_results', 'show_on_countdown')
     search_fields = ('title', 'subtitle')
-    fields = ('title', 'subtitle', 'background_color', 'image', 'pages', 'active')
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'subtitle', 'background_color', 'image', 'active'),
+        }),
+        ('Show on pages', {
+            'fields': ('show_on_home', 'show_on_signup', 'show_on_results', 'show_on_countdown'),
+            'description': 'Check each page where this banner should appear. You can select multiple pages.',
+        }),
+    )
 
 
 def _recompute_runner_times_from_laps(runner_obj):

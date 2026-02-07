@@ -35,6 +35,10 @@ class race(models.Model):
     def get_absolute_edit_url(self):
         return reverse("tracker:edit-race", kwargs={"pk": self.id})
 
+    def runner_email_count(self):
+        """Return count of distinct runner emails for this race (for bulk email)."""
+        return self.runners_set.exclude(email__isnull=True).exclude(email='').values('email').distinct().count()
+
 
 class RfidTag(models.Model):
     """Reusable RFID tag: tag_number matches runner number when auto-assigned. Can be used for multiple runners over time."""
@@ -140,23 +144,67 @@ class laps(models.Model):
         return self.attach_to_race.name + "/" + str(self.runner.number)
 
 
+class BannerQuerySet(models.QuerySet):
+    _page_fields = {'home': 'show_on_home', 'signup': 'show_on_signup', 'results': 'show_on_results', 'countdown': 'show_on_countdown'}
+
+    def active_for_page(self, page_slug):
+        """Return banners that are active and shown on the given page (e.g. 'home', 'signup')."""
+        field = self._page_fields.get(page_slug)
+        if not field:
+            return self.none()
+        return self.filter(active=True, **{field: True})
+
+
 class Banner(models.Model):
-    pages = (
-        ('all', 'All Pages'),
-        ('signup', 'Sign Up Page'),
-        ('results', 'Results Page'),
-        ('countdown', 'Countdown Page'),
-    )
+    """Editable banners shown on public pages. Use the checkboxes to choose which pages each banner appears on."""
+
+    # Page slugs for filtering in views (use these with Banner.objects.active_for_page('home'))
+    PAGE_HOME = 'home'
+    PAGE_SIGNUP = 'signup'
+    PAGE_RESULTS = 'results'
+    PAGE_COUNTDOWN = 'countdown'
 
     title = models.CharField(max_length=200, blank=True)
     subtitle = models.CharField(max_length=1024, blank=True)
     background_color = models.CharField(max_length=30, default='#ffffff')
     image = models.ImageField(upload_to='banners/', blank=True)
     active = models.BooleanField(default=False)
-    pages = models.CharField(max_length=20, choices=pages, default='all')
+
+    # Which public pages this banner appears on (check as many as you want)
+    show_on_home = models.BooleanField(
+        default=False,
+        help_text='Show on the public home / race list page',
+    )
+    show_on_signup = models.BooleanField(
+        default=False,
+        help_text='Show on the sign-up page',
+    )
+    show_on_results = models.BooleanField(
+        default=False,
+        help_text='Show on results / completed race pages',
+    )
+    show_on_countdown = models.BooleanField(
+        default=False,
+        help_text='Show on countdown / upcoming race page',
+    )
 
     def __str__(self):
-        return self.title
+        return self.title or '(no title)'
+
+    objects = models.Manager.from_queryset(BannerQuerySet)()
+
+    def pages_display(self):
+        """Comma-separated list of page names for admin list display."""
+        names = []
+        if self.show_on_home:
+            names.append('Home')
+        if self.show_on_signup:
+            names.append('Sign up')
+        if self.show_on_results:
+            names.append('Results')
+        if self.show_on_countdown:
+            names.append('Countdown')
+        return ', '.join(names) if names else '—'
 
 
 class ApiKey(models.Model):

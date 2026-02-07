@@ -165,7 +165,7 @@
                 <h1 class="page-heading text-center mb-2">{{ race_name }}</h1>
                 <p class="text-center text-muted small mb-4">Live race results</p>
 
-                {% if request.user.is_authenticated %}
+                {% if request.user.is_authenticated and current_race %}
                 <div class="row justify-content-center mb-4">
                     <div class="col-12 col-md-8 col-lg-6">
                         <div class="card card-panel finish-form-card">
@@ -175,6 +175,7 @@
                                         <label for="runner_number" class="form-label small fw-600 text-body mb-1">Mark runner finished</label>
                                         <form id="finishRunnerForm" method="post" action="{% url 'tracker:mark_runner_finished' %}" class="d-flex flex-wrap gap-2 align-items-end">
                                             {% csrf_token %}
+                                            <input type="hidden" name="race_id" value="{{ current_race.id }}">
                                             <input type="number" class="form-control form-control-sm" id="runner_number" name="runner_number" min="1" placeholder="Runner #" required aria-required="true" style="max-width: 120px;">
                                             <button type="submit" class="btn btn-primary btn-sm">Mark finished</button>
                                         </form>
@@ -195,6 +196,10 @@
                         form.addEventListener('submit', function(e) {
                             e.preventDefault();
                             var runnerNumber = document.getElementById('runner_number').value;
+                            var raceIdInput = form.querySelector('input[name="race_id"]');
+                            var raceId = raceIdInput ? raceIdInput.value : '';
+                            var params = 'runner_number=' + encodeURIComponent(runnerNumber) + '&csrfmiddlewaretoken=' + encodeURIComponent(csrfInput.value);
+                            if (raceId) params += '&race_id=' + encodeURIComponent(raceId);
                             var xhr = new XMLHttpRequest();
                             xhr.open('POST', form.getAttribute('action'), true);
                             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
@@ -215,7 +220,7 @@
                                     }
                                 }
                             };
-                            xhr.send('runner_number=' + encodeURIComponent(runnerNumber) + '&csrfmiddlewaretoken=' + encodeURIComponent(csrfInput.value));
+                            xhr.send(params);
                         });
                     }
                     function escapeHtml(text) {

@@ -20,6 +20,10 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.colors import HexColor
 from PIL import Image as PILImage  # Use PIL for image manipulation
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def generate_race_report(filename, race_data, return_type):
     """
@@ -126,9 +130,9 @@ def generate_race_report(filename, race_data, return_type):
             c.restoreState()
 
         except (FileNotFoundError, OSError, AttributeError) as e:
-            print(f"Error loading or drawing background image: {e}. Skipping background.")
-        except Exception as e:  # General exception for other image-related problems
-            print(f"An unexpected error occurred with the image: {e}. Skipping background.")
+            logger.warning("Error loading or drawing background image: %s. Skipping background.", e)
+        except Exception as e:
+            logger.warning("Unexpected error with background image: %s. Skipping background.", e)
 
     # --- Race name block (right, high on page, larger) ---
     race_info_x = letter[0] - margin

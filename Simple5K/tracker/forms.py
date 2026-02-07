@@ -1,5 +1,5 @@
 from django import forms
-from .models import laps, runners, race, SiteSettings
+from .models import runners, race, SiteSettings
 from captcha.fields import CaptchaField
 
 BOOL_CHECKLIST_OPTIONS = (
@@ -58,7 +58,7 @@ class RaceForm(forms.ModelForm):
             'number_start': 'Enter the starting number for the runner numbers',
             'max_runners': 'Enter the max number of participants for the race.',
             'notes': 'Enter notes to display on signup page.',
-            'min_lap_time': 'Enter the minimun lap time in seconds.',
+            'min_lap_time': 'Enter the minimum lap time in seconds.',
             'logo': 'Upload a logo for the race'
         }
 
@@ -146,8 +146,13 @@ class SiteSettingsForm(forms.ModelForm):
 
 
 class RaceSelectionForm(forms.Form):
-    race = forms.ModelChoiceField(queryset=race.objects.exclude(status='in_progress').exclude(status='completed'),
-                                  label="Select Race")
+    race = forms.ModelChoiceField(queryset=race.objects.none(), label="Select Race")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['race'].queryset = race.objects.exclude(
+            status__in=['in_progress', 'completed']
+        ).order_by('date', 'name')
 
 
 class RunnerInfoSelectionForm(forms.Form):

@@ -1,4 +1,8 @@
+import logging
+
 from django.apps import AppConfig
+
+logger = logging.getLogger(__name__)
 
 
 class TrackerConfig(AppConfig):
@@ -13,5 +17,5 @@ class TrackerConfig(AppConfig):
             from .email_queue import start_email_worker, start_signup_confirmation_worker
             start_email_worker()
             start_signup_confirmation_worker()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("Failed to start email/signup workers in ready(): %s", e)

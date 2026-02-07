@@ -3,8 +3,11 @@ Background worker that processes EmailSendJob queue: sends one email per runner
 with throttling to stay under Microsoft SMTP limits (~30/min). Each email
 includes an unmonitored-account footer.
 """
+import logging
 import threading
 import time
+
+logger = logging.getLogger(__name__)
 
 # Microsoft 365 SMTP (authenticated) limit is 30 messages per minute.
 # Use 2 seconds between sends to stay safely under that (30/min).
@@ -95,13 +98,14 @@ def _worker_loop():
                 job.save(update_fields=["status"])
                 _process_one_job(job)
         except Exception as e:
+            logger.exception("Email worker failed processing job: %s", e)
             if job is not None:
                 try:
                     job.status = EmailSendJob.STATUS_FAILED
                     job.error_message = str(e)[:2000]
                     job.save(update_fields=["status", "error_message"])
-                except Exception:
-                    pass
+                except Exception as save_err:
+                    logger.exception("Failed to save job failure state: %s", save_err)
         time.sleep(5)
 
 
@@ -155,18 +159,18 @@ def _signup_confirmation_loop():
                 for runner in due:
                     try:
                         send_signup_confirmation_email(runner)
-                    except Exception:
-                        # So next run can retry this runner
+                    except Exception as e:
+                        logger.exception("Signup confirmation email failed for runner id=%s: %s", runner.id, e)
                         runners.objects.filter(id=runner.id).update(signup_confirmation_sent=False)
                     time.sleep(EMAIL_SEND_INTERVAL_SECONDS)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("Signup confirmation loop error: %s", e)
         finally:
             try:
                 from django.db import connection
                 connection.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Connection close in signup loop: %s", e)
 
 
 _signup_worker_started = False

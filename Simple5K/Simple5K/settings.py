@@ -20,17 +20,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
+# SECURITY WARNING: don't run with debug turned on in production!
+# Default to False when unset so production is safe if DEBUG is not set.
+DEBUG = os.environ.get("DEBUG", "FALSE").upper() in ("1", "TRUE", "YES")
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get(
     'SECRET_KEY',
     "django-insecure-ch78dw0!7!*umk0b501jgt(t3z(xp&j4w166t8kfq=*2obe0p)")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "TRUE").upper() in ("1", "TRUE", "YES")
+# Support multiple hosts: set ALLOWED_HOSTS to e.g. "localhost,example.com"
+_allowed = os.environ.get('ALLOWED_HOSTS', 'localhost')
+ALLOWED_HOSTS = [h.strip() for h in _allowed.split(',') if h.strip()]
 
-CSRF_TRUSTED_ORIGINS = [os.environ.get('TRUSTED_ORIGINS', "http://localhost")]
-
-ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', 'localhost')]
+_trusted = os.environ.get('TRUSTED_ORIGINS', "http://localhost")
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _trusted.split(',') if o.strip()]
 
 # Application definition
 
@@ -54,8 +58,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'django.middleware.cache.UpdateCacheMiddleware',
-    'django.middleware.cache.FetchFromCacheMiddleware',
 ]
 
 ROOT_URLCONF = "Simple5K.urls"
