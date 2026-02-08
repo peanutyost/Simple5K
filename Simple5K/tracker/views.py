@@ -1056,7 +1056,9 @@ def record_lap(request):
                     if runner_obj.gender is None:
                         runner_obj.gender = 'male'
 
-                    allfinnisher = runners.objects.filter(race_completed=True, gender=runner_obj.gender)
+                    allfinnisher = runners.objects.filter(
+                        race=race_obj, race_completed=True, gender=runner_obj.gender
+                    )
                     if not allfinnisher.exists():
                         runner_obj.place = 1
                     else:
