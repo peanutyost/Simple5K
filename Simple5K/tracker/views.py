@@ -229,7 +229,7 @@ def prepare_race_data(race_obj, runner_obj):
         slower_runners = runners.objects.filter(
             **base_filter,
             total_race_time__gt=runner_obj.total_race_time
-        ).order_by('-total_race_time')[:2]
+        ).order_by('total_race_time')[:2]
 
         def format_runner(runner):
             return [runner.first_name + ' ' + runner.last_name, f"{str(timedelta(seconds=round(runner.total_race_time.total_seconds())))}"] if runner else "N/A"
