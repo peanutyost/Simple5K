@@ -138,7 +138,7 @@ def generate_race_report(filename, race_data, return_type):
 
     # --- Race name block (right, high on page, larger) ---
     race_info_x = letter[0] - margin
-    race_info_y = usable_height + 1.0 * inch
+    race_info_y = letter[1] - margin  # at top of content area so it doesn't overlap runner block
     c.setFillColor(colors.black)
     c.setFont("Helvetica-Bold", 24)
     c.drawRightString(race_info_x, race_info_y, (race_data['race'].get('name') or '').upper())
@@ -166,7 +166,7 @@ def generate_race_report(filename, race_data, return_type):
 
     # --- Runner summary card (left, compact) ---
     runner_box_x = margin
-    runner_box_y = usable_height - 0.18 * inch
+    runner_box_y = usable_height - 0.65 * inch  # lower so it doesn't overlap race name block
     runner_box_width = 2.6 * inch
     runner_box_height = 1.28 * inch
     avg_speed_str = f"{rs['race_avg_speed']:.2f} mph" if isinstance(rs.get('race_avg_speed'), (int, float)) else f"{rs.get('race_avg_speed', 'N/A')}"
