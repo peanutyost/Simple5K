@@ -129,9 +129,11 @@ def _build_race_summary_data(race_obj):
     males = []
     for runner in finishers:
         runner_laps = list(laps.objects.filter(runner=runner).order_by('lap'))
-        if runner_laps:
-            fastest = min(runner_laps, key=lambda l: l.duration)
-            slowest = max(runner_laps, key=lambda l: l.duration)
+        # Exclude lap 0 (chip start) when computing fastest/slowest
+        running_laps = [l for l in runner_laps if l.lap != 0]
+        if running_laps:
+            fastest = min(running_laps, key=lambda l: l.duration)
+            slowest = max(running_laps, key=lambda l: l.duration)
             fastest_lap_time = fastest.duration
             fastest_lap_num = fastest.lap
             slowest_lap_time = slowest.duration
