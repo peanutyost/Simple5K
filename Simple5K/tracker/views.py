@@ -1538,6 +1538,8 @@ def race_overview(request):
 
 
 def format_timedelta(td):
+    if td is None:
+        return "—"
     total_seconds = int(td.total_seconds())
     hours = total_seconds // 3600
     minutes = (total_seconds % 3600) // 60
@@ -1560,16 +1562,19 @@ def get_completed_race_overview(request, race_id):
     # Initialize an empty list to store runner times
     runner_times = []
     if current_race:
-        runnersall = runners.objects.filter(race=current_race).order_by(F('place').asc(nulls_last=True))
+        try:
+            runnersall = runners.objects.filter(race=current_race).order_by(F('place').asc(nulls_last=True))
+        except (TypeError, AttributeError):
+            runnersall = runners.objects.filter(race=current_race).order_by('place')
         for arunner in runnersall:
             run_laps = []
             alap = laps.objects.filter(runner=arunner).order_by('lap')
             for lap in alap:
                 run_laps.append({
                     'lap': lap.lap,
-                    'duration': format_timedelta(lap.duration),
-                    'average_pace': format_timedelta(lap.average_pace),
-                    'average_speed': lap.average_speed
+                    'duration': format_timedelta(lap.duration) if lap.duration is not None else "—",
+                    'average_pace': format_timedelta(lap.average_pace) if lap.average_pace is not None else "—",
+                    'average_speed': lap.average_speed if lap.average_speed is not None else "—",
                 })
             runner_times.append({
                 'number': arunner.number,
