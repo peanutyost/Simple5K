@@ -114,6 +114,7 @@
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Name</th>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Age</th>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Number</th>
+                            <th scope="col" class="sortable-th" tabindex="0" role="button">Tag</th>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Type</th>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Shirt Size</th>
                             <th scope="col" class="sortable-th" tabindex="0" role="button">Paid</th>
@@ -129,12 +130,14 @@
                             data-age="{{ runner.age }}"
                             data-gender="{{ runner.gender|default:''|escapejs }}"
                             data-number="{{ runner.number|default:'' }}"
+                            data-tag-id="{{ runner.tag_id|default:'' }}"
                             data-type="{{ runner.type|default:''|escapejs }}"
                             data-shirt-size="{{ runner.shirt_size|escapejs }}"
                             data-paid="{{ runner.paid|yesno:'1,0' }}">
                             <td class="name-cell">{{ runner.first_name }} {{ runner.last_name }}</td>
                             <td class="age-cell">{{ runner.age }}</td>
                             <td class="number-cell">{% if runner.number %}{{ runner.number }}{% else %}—{% endif %}</td>
+                            <td class="tag-cell">{% if runner.tag %}{{ runner.tag }}{% else %}—{% endif %}</td>
                             <td class="type-cell">{{ runner.type|default:"—" }}</td>
                             <td class="shirt-cell">{{ runner.shirt_size }}</td>
                             <td class="paid-cell">{% if runner.paid %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
@@ -231,7 +234,8 @@
   "age_brackets": [{% for value, label in age_brackets %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
   "genders": [{% for value, label in genders %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
   "race_types": [{"value": "", "label": "—"}, {% for value, label in race_types %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
-  "shirt_sizes": [{% for value, label in shirt_sizes %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}]
+  "shirt_sizes": [{% for value, label in shirt_sizes %}{"value": "{{ value|escapejs }}", "label": "{{ label|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}],
+  "tags": [{"value": "", "label": "—"}, {% for tag in rfid_tags %}{"value": "{{ tag.id }}", "label": "{{ tag|escapejs }}"}{% if not forloop.last %}, {% endif %}{% endfor %}]
 }
 </script>
 <script>
@@ -239,7 +243,7 @@
     var table = document.getElementById('runnersTable');
     if (!table || !table.tHead) return;
     var choicesEl = document.getElementById('runner-choices');
-    var choices = choicesEl ? JSON.parse(choicesEl.textContent) : { age_brackets: [], genders: [], race_types: [], shirt_sizes: [] };
+    var choices = choicesEl ? JSON.parse(choicesEl.textContent) : { age_brackets: [], genders: [], race_types: [], shirt_sizes: [], tags: [] };
     var editRunnerUrl = '{% url "tracker:edit_runner" %}';
     var addRunnerUrl = '{% url "tracker:add_runner" %}';
     var currentRaceId = {{ race.id }};
@@ -281,6 +285,7 @@
         var age = tr.getAttribute('data-age') || '';
         var gender = tr.getAttribute('data-gender') || '';
         var number = tr.getAttribute('data-number') || '';
+        var tagId = tr.getAttribute('data-tag-id') || '';
         var type = tr.getAttribute('data-type') || '';
         var shirt = tr.getAttribute('data-shirt-size') || '';
 
@@ -291,6 +296,8 @@
         tr.querySelector('.age-cell').innerHTML = '<select class="form-select form-select-sm edit-age">' + selectOptions(choices.age_brackets) + '</select>';
         tr.querySelector('.age-cell').querySelector('select').value = age || (choices.age_brackets[0] && choices.age_brackets[0].value);
         tr.querySelector('.number-cell').innerHTML = '<input type="number" class="form-control form-control-sm edit-number" value="' + escapeAttr(number) + '" min="0" placeholder="—">';
+        tr.querySelector('.tag-cell').innerHTML = '<select class="form-select form-select-sm edit-tag">' + selectOptions(choices.tags) + '</select>';
+        tr.querySelector('.tag-cell').querySelector('select').value = tagId || '';
         tr.querySelector('.type-cell').innerHTML = '<select class="form-select form-select-sm edit-type">' + selectOptions(choices.race_types) + '</select>';
         tr.querySelector('.type-cell').querySelector('select').value = type || '';
         tr.querySelector('.shirt-cell').innerHTML = '<select class="form-select form-select-sm edit-shirt">' + selectOptions(choices.shirt_sizes) + '</select>';
@@ -312,13 +319,17 @@
         var lastName = tr.getAttribute('data-last-name') || '';
         var age = tr.getAttribute('data-age') || '';
         var number = tr.getAttribute('data-number');
+        var tagId = tr.getAttribute('data-tag-id') || '';
         var type = tr.getAttribute('data-type') || '';
         var shirt = tr.getAttribute('data-shirt-size') || '';
         var paid = tr.getAttribute('data-paid');
+        var tagDisplay = '—';
+        (choices.tags || []).forEach(function(o) { if (String(o.value) === String(tagId)) tagDisplay = o.label; });
         tr.classList.remove('editing');
         tr.querySelector('.name-cell').textContent = (firstName + ' ' + lastName).trim() || '—';
         tr.querySelector('.age-cell').textContent = age || '—';
         tr.querySelector('.number-cell').textContent = number !== '' && number != null ? number : '—';
+        tr.querySelector('.tag-cell').textContent = tagDisplay;
         tr.querySelector('.type-cell').textContent = type || '—';
         tr.querySelector('.shirt-cell').textContent = shirt || '—';
         tr.querySelector('.paid-cell').innerHTML = paid === '1' ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>';
@@ -334,6 +345,8 @@
         var age = (tr.querySelector('.edit-age') && tr.querySelector('.edit-age').value) || '';
         var numberEl = tr.querySelector('.edit-number');
         var number = numberEl && numberEl.value !== '' ? numberEl.value : null;
+        var tagEl = tr.querySelector('.edit-tag');
+        var tagId = tagEl && tagEl.value !== '' ? tagEl.value : null;
         var typeEl = tr.querySelector('.edit-type');
         var type = typeEl && typeEl.value !== '' ? typeEl.value : null;
         var shirtEl = tr.querySelector('.edit-shirt');
@@ -348,6 +361,7 @@
             email: email.trim(),
             age: age,
             number: number !== null ? (isNaN(parseInt(number, 10)) ? null : parseInt(number, 10)) : null,
+            tag_id: tagId !== null ? (tagId === '' ? null : (isNaN(parseInt(tagId, 10)) ? null : parseInt(tagId, 10))) : null,
             type: type,
             shirt_size: shirt,
             paid: paid
@@ -372,6 +386,7 @@
                 tr.setAttribute('data-email', r.email || '');
                 tr.setAttribute('data-age', r.age || '');
                 tr.setAttribute('data-number', r.number != null ? r.number : '');
+                tr.setAttribute('data-tag-id', r.tag_id != null ? r.tag_id : '');
                 tr.setAttribute('data-type', r.type || '');
                 tr.setAttribute('data-shirt-size', r.shirt_size || '');
                 tr.setAttribute('data-paid', r.paid ? '1' : '0');
@@ -379,6 +394,7 @@
                 tr.querySelector('.name-cell').textContent = ((r.first_name || '') + ' ' + (r.last_name || '')).trim() || '—';
                 tr.querySelector('.age-cell').textContent = r.age || '—';
                 tr.querySelector('.number-cell').textContent = r.number != null ? r.number : '—';
+                tr.querySelector('.tag-cell').textContent = r.tag_display || '—';
                 tr.querySelector('.type-cell').textContent = r.type || '—';
                 tr.querySelector('.shirt-cell').textContent = r.shirt_size || '—';
                 tr.querySelector('.paid-cell').innerHTML = r.paid ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>';
@@ -480,6 +496,7 @@
                     tr.setAttribute('data-age', r.age || '');
                     tr.setAttribute('data-gender', r.gender || '');
                     tr.setAttribute('data-number', r.number != null ? r.number : '');
+                    tr.setAttribute('data-tag-id', r.tag_id != null ? r.tag_id : '');
                     tr.setAttribute('data-type', r.type || '');
                     tr.setAttribute('data-shirt-size', r.shirt_size || '');
                     tr.setAttribute('data-paid', r.paid ? '1' : '0');
@@ -487,6 +504,7 @@
                         '<td class="name-cell">' + escapeHtml(((r.first_name || '') + ' ' + (r.last_name || '')).trim() || '—') + '</td>' +
                         '<td class="age-cell">' + escapeHtml(r.age || '—') + '</td>' +
                         '<td class="number-cell">' + (r.number != null ? escapeHtml(String(r.number)) : '—') + '</td>' +
+                        '<td class="tag-cell">' + escapeHtml(r.tag_display || '—') + '</td>' +
                         '<td class="type-cell">' + escapeHtml(r.type || '—') + '</td>' +
                         '<td class="shirt-cell">' + escapeHtml(r.shirt_size || '') + '</td>' +
                         '<td class="paid-cell">' + (r.paid ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>') + '</td>' +

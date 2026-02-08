@@ -467,6 +467,7 @@ def show_runners(request, pk):
         'genders': runners._meta.get_field('gender').choices,
         'race_types': runners.race_type,
         'shirt_sizes': runners._meta.get_field('shirt_size').choices,
+        'rfid_tags': RfidTag.objects.all().order_by('tag_number'),
     }
     return render(request, 'tracker/view_runners.html', context)
 
@@ -651,9 +652,35 @@ def edit_runner(request):
             runner_obj.paid = False
         else:
             errors.append('Invalid paid value')
+    if 'tag_id' in data:
+        v = data.get('tag_id')
+        if v is None or v == '':
+            runner_obj.tag_id = None
+        else:
+            try:
+                tag_pk = int(v)
+                tag_obj = RfidTag.objects.filter(pk=tag_pk).first()
+                if not tag_obj:
+                    errors.append('RFID tag not found')
+                else:
+                    other = runners.objects.filter(race_id=runner_obj.race_id, tag_id=tag_pk).exclude(pk=runner_obj.pk).first()
+                    if other:
+                        errors.append(
+                            'That RFID tag is already assigned to another runner in this race. '
+                            'Each tag can only be used by one runner per race.'
+                        )
+                    else:
+                        runner_obj.tag_id = tag_pk
+            except (TypeError, ValueError):
+                errors.append('Invalid tag_id')
     if errors:
         return JsonResponse({'success': False, 'errors': errors}, status=400)
     runner_obj.save()
+    tag_display = ''
+    tag_id = None
+    if runner_obj.tag_id:
+        tag_id = runner_obj.tag_id
+        tag_display = str(runner_obj.tag)
     return JsonResponse({
         'success': True,
         'runner': {
@@ -667,6 +694,8 @@ def edit_runner(request):
             'type': runner_obj.type or '',
             'shirt_size': runner_obj.shirt_size,
             'paid': runner_obj.paid,
+            'tag_id': tag_id,
+            'tag_display': tag_display,
         }
     })
 
