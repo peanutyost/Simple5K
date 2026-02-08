@@ -158,9 +158,9 @@ Set the race start or end time and update status.
 
 ---
 
-### 3. Update RFID (assign tag to runner)
+### 3. Update RFID (create tag if needed, assign to runner)
 
-Assign an RFID tag to a runner in a race (by bib number).
+Ensure an RFID tag is assigned to a runner. If no tag exists with the given hex value, a new tag is created (with the next available tag number), then assigned to the runner.
 
 | | |
 |---|---|
@@ -175,7 +175,53 @@ Assign an RFID tag to a runner in a race (by bib number).
 |-------|------|----------|-------------|
 | `race_id` | integer | Yes | Race ID. |
 | `runner_number` | integer | Yes | Runner’s bib number in that race. |
-| `rfid_tag` | string | Yes | RFID tag hex value. Case-insensitive. |
+| `rfid_tag` | string | Yes | RFID tag hex value. Case-insensitive. Creates a new tag if not found. |
+
+**Example:**
+
+```json
+{
+  "race_id": 1,
+  "runner_number": 42,
+  "rfid_tag": "A1B2C3D4E5F6"
+}
+```
+
+**Success response:** `200 OK`
+
+```json
+{
+  "status": "success"
+}
+```
+
+**Errors:**
+
+- `400` — Invalid JSON or missing required fields
+- `404` — `{"error": "Runner not found"}`
+- `405` — `{"error": "Method not allowed"}`
+- `401` — Invalid API key
+
+---
+
+### 4. Assign tag (existing tag to runner)
+
+Assign an **existing** RFID tag to a runner. The tag must already exist; use **Update RFID** if you want to create a new tag when the hex is unknown.
+
+| | |
+|---|---|
+| **Method** | `POST` |
+| **Path** | `tracker/api/assign-tag/` |
+| **Auth** | `X-API-Key` header |
+| **Content-Type** | `application/json` |
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `race_id` | integer | Yes | Race ID. |
+| `runner_number` | integer | Yes | Runner’s bib number in that race. |
+| `rfid_tag` | string | Yes | RFID tag hex value. Case-insensitive. Tag must exist. |
 
 **Example:**
 
@@ -204,7 +250,7 @@ Assign an RFID tag to a runner in a race (by bib number).
 
 ---
 
-### 4. Get available races
+### 5. Get available races
 
 List races that are not completed (e.g. for timing UIs or race selection).
 
@@ -244,7 +290,7 @@ No request body or query parameters.
 
 ---
 
-### 5. Add runner
+### 6. Add runner
 
 Create a new runner for a race. **Auth:** API key (`X-API-Key` header) or session (logged-in user).
 
@@ -323,7 +369,7 @@ Possible validation errors include: missing/invalid `race_id`, name/email length
 
 ---
 
-### 6. Edit runner
+### 7. Edit runner
 
 Update an existing runner. **Auth:** API key (`X-API-Key` header) or session (logged-in user).
 
@@ -388,7 +434,7 @@ Only include fields you want to change.
 
 ---
 
-### 7. Generate API key (web)
+### 8. Generate API key (web)
 
 Create a new API key. This is a **web view**, not a JSON API: it renders HTML and shows the new key once.
 
@@ -410,7 +456,8 @@ Create a new API key. This is a **web view**, not a JSON API: it renders HTML an
 |----------|--------|------|---------|
 | `tracker/api/record-lap/` | POST | API key | Record lap(s) by RFID and timestamp |
 | `tracker/api/update-race-time/` | POST | API key | Start or stop a race |
-| `tracker/api/update-rfid/` | POST | API key | Assign RFID tag to runner (by race + bib) |
+| `tracker/api/update-rfid/` | POST | API key | Create tag if needed and assign to runner (race + bib) |
+| `tracker/api/assign-tag/` | POST | API key | Assign existing RFID tag to runner (race + bib) |
 | `tracker/api/available-races/` | GET | API key | List non-completed races |
 | `tracker/api/add-runner/` | POST | API key or session | Create runner in a race |
 | `tracker/api/edit-runner/` | POST | API key or session | Update runner fields |

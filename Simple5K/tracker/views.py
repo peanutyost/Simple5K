@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.db import IntegrityError
-from django.db.models import F, Q, Window, IntegerField, OrderBy, Value
+from django.db.models import F, Max, Q, Window, IntegerField, OrderBy, Value
 from django.db.models.functions import Rank, Lower, Coalesce
 from django.urls import reverse
 from django.http import Http404, HttpResponse, JsonResponse, HttpResponseNotFound
@@ -1140,6 +1140,45 @@ def update_rfid(request):
     runner_obj = runners.objects.filter(race=race_local, number=runner_number).first()
     if not runner_obj:
         return JsonResponse({'error': 'Runner not found'}, status=404)
+
+    rfid_tag_obj = RfidTag.objects.filter(rfid_hex__iexact=rfid_tag).first()
+    if not rfid_tag_obj:
+        next_num = (RfidTag.objects.aggregate(max_num=Max('tag_number'))['max_num'] or 0) + 1
+        rfid_tag_obj = RfidTag.objects.create(tag_number=next_num, rfid_hex=rfid_tag)
+
+    runner_obj.tag = rfid_tag_obj
+    runner_obj.save()
+    return JsonResponse({'status': 'success'})
+
+
+@csrf_exempt
+@require_api_key
+def assign_tag(request):
+    """Assign an existing RFID tag to a runner. Tag must already exist (use update_rfid to create + assign)."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, TypeError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    race_id = data.get('race_id')
+    runner_number = data.get('runner_number')
+    rfid_tag = (data.get('rfid_tag') or '').strip()
+
+    if not race_id:
+        return JsonResponse({'error': 'race_id is required'}, status=400)
+    if runner_number is None or runner_number == '':
+        return JsonResponse({'error': 'runner_number is required'}, status=400)
+    if not rfid_tag:
+        return JsonResponse({'error': 'rfid_tag is required'}, status=400)
+
+    race_local = get_object_or_404(race, id=race_id)
+    runner_obj = runners.objects.filter(race=race_local, number=runner_number).first()
+    if not runner_obj:
+        return JsonResponse({'error': 'Runner not found'}, status=404)
+
     rfid_tag_obj = RfidTag.objects.filter(rfid_hex__iexact=rfid_tag).first()
     if not rfid_tag_obj:
         return JsonResponse({'error': 'RFID tag not found with that hex value'}, status=400)
