@@ -1025,10 +1025,20 @@ def record_lap(request):
                     duration = current_time - race_obj.start_time
 
                 # Create the counted lap (1 .. laps_count)
-                distance_per_lap = race_obj.distance / 1000 / race_obj.laps_count
-                speed = (distance_per_lap / duration.total_seconds()) * 3600 * 0.621371
-                pace_seconds = ((duration.total_seconds() / 60) / (distance_per_lap / 1.60934)) * 60
-                pace = timedelta(seconds=pace_seconds)
+                # distance in meters; per-lap distance in km for speed (km/h then to mph)
+                distance_meters = float(race_obj.distance)
+                lap_distance_km = (distance_meters / 1000.0) / race_obj.laps_count
+                lap_distance_miles = lap_distance_km / 1.60934
+                secs = duration.total_seconds()
+                if secs > 0 and lap_distance_miles > 0:
+                    # speed: mph = (lap_miles) / (secs/3600)
+                    speed = (lap_distance_miles * 3600) / secs
+                    # pace: seconds per mile (for timedelta)
+                    pace_seconds = secs * 1609.34 / (lap_distance_km * 1000) if lap_distance_km > 0 else 0
+                    pace = timedelta(seconds=pace_seconds)
+                else:
+                    speed = 0
+                    pace = timedelta(0)
 
                 laps.objects.create(
                     runner=runner_obj,
@@ -1062,13 +1072,16 @@ def record_lap(request):
                     chip_start = lap0.time if lap0 else race_obj.start_time
                     runner_obj.chip_time = current_time - chip_start
 
-                    totalracetimesecond = runner_obj.total_race_time.total_seconds()
-                    kmhtotal = (race_obj.distance / 1000) / (totalracetimesecond / 3600)
-                    mphtotal = kmhtotal * 0.621371
-                    runner_obj.race_avg_speed = mphtotal
-                    avg_pace_seconds = ((runner_obj.total_race_time.total_seconds() / 60) / (
-                        race_obj.distance / 1609.34)) * 60
-                    runner_obj.race_avg_pace = timedelta(seconds=avg_pace_seconds)
+                    # Avg speed (mph) and pace (sec/mile): use chip time when available (runner's actual time over distance)
+                    time_for_calc = runner_obj.chip_time if runner_obj.chip_time else runner_obj.total_race_time
+                    total_seconds = time_for_calc.total_seconds()
+                    distance_meters = float(race_obj.distance)
+                    if total_seconds > 0 and distance_meters > 0:
+                        distance_miles = distance_meters / 1609.34
+                        # speed_mph = distance_miles / time_hours
+                        runner_obj.race_avg_speed = (distance_miles * 3600) / total_seconds
+                        # pace: seconds per mile (for timedelta display as min:sec per mile)
+                        runner_obj.race_avg_pace = timedelta(seconds=total_seconds * 1609.34 / distance_meters)
                     runner_obj.save()
 
                 results.append({"runner_rfid": runner_rfid_hex, "status": "success"})

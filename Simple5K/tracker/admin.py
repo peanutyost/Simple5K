@@ -81,14 +81,15 @@ def _recompute_runner_times_from_laps(runner_obj):
     ).first()
     chip_start = lap0.time if lap0 else race_obj.start_time
     runner_obj.chip_time = finish_time - chip_start
-    # Pace and speed from gun time and race distance
-    total_seconds = runner_obj.total_race_time.total_seconds()
-    if total_seconds <= 0:
+    # Avg speed (mph) and pace (sec/mile): use chip time when available (runner's actual time over distance)
+    time_for_calc = runner_obj.chip_time if runner_obj.chip_time else runner_obj.total_race_time
+    total_seconds = time_for_calc.total_seconds()
+    distance_meters = float(race_obj.distance)
+    if total_seconds <= 0 or distance_meters <= 0:
         return False
-    kmh = (race_obj.distance / 1000) / (total_seconds / 3600)
-    runner_obj.race_avg_speed = kmh * 0.621371  # mph
-    avg_pace_seconds = ((total_seconds / 60) / (race_obj.distance / 1609.34)) * 60
-    runner_obj.race_avg_pace = timedelta(seconds=avg_pace_seconds)
+    distance_miles = distance_meters / 1609.34
+    runner_obj.race_avg_speed = (distance_miles * 3600) / total_seconds  # mph
+    runner_obj.race_avg_pace = timedelta(seconds=total_seconds * 1609.34 / distance_meters)  # sec/mile
     runner_obj.race_completed = True
     runner_obj.save()
     return True
