@@ -22,12 +22,12 @@
                     <div class="form-text">Tag number = bib number + offset. Use this if your RFID tag numbering differs from bib numbers (e.g. offset 99 → bib 1 uses tag 100).</div>
                 </div>
                 {% if assign_preview %}
-                <div class="alert alert-info mb-3" role="status">
+                <div class="alert alert-info mb-3" role="status" id="assign_preview_box">
                     <strong>Preview for this race</strong>
                     <ul class="mb-0 mt-1">
                         <li>Race starting number: <strong>{{ assign_preview.number_start }}</strong></li>
-                        <li>Next bib to assign: <strong id="next_number_display">{{ assign_preview.next_number }}</strong></li>
-                        <li>First tag number (with offset): <strong id="first_tag_display">{{ assign_preview.next_number }}</strong></li>
+                        <li>First runner number (next bib): <strong id="next_number_display">{{ assign_preview.next_number }}</strong></li>
+                        <li>First tag number (bib + offset): <strong id="first_tag_display">—</strong></li>
                         <li>Runners without number and tag: <strong>{{ assign_preview.unassigned_count|default:0 }}</strong></li>
                     </ul>
                 </div>
@@ -50,16 +50,21 @@
 (function() {
     var nextNumber = {{ assign_preview.next_number|default:0 }};
     var tagOffsetEl = document.getElementById('tag_offset');
+    var firstRunnerEl = document.getElementById('next_number_display');
     var firstTagEl = document.getElementById('first_tag_display');
-    if (!tagOffsetEl || !firstTagEl || !nextNumber) return;
-    function updateFirstTag() {
+    if (!tagOffsetEl) return;
+    function updatePreview() {
         var offset = parseInt(tagOffsetEl.value, 10) || 0;
-        firstTagEl.textContent = nextNumber + offset;
+        if (firstRunnerEl) firstRunnerEl.textContent = nextNumber;
+        if (firstTagEl) firstTagEl.textContent = nextNumber + offset;
     }
-    tagOffsetEl.addEventListener('input', updateFirstTag);
-    tagOffsetEl.addEventListener('change', updateFirstTag);
-    updateFirstTag();
-    document.getElementById('race').addEventListener('change', function() {
+    if (firstTagEl) {
+        tagOffsetEl.addEventListener('input', updatePreview);
+        tagOffsetEl.addEventListener('change', updatePreview);
+        updatePreview();
+    }
+    var raceEl = document.getElementById('race');
+    if (raceEl) raceEl.addEventListener('change', function() {
         var v = this.value;
         if (v) window.location = '?race=' + encodeURIComponent(v);
     });
