@@ -321,12 +321,22 @@
       container.appendChild(emptyState);
       return;
     }
-    var url = overviewUrl + encodeURIComponent(raceId) + '/';
+    var url = overviewUrl + raceId + '/';
     container.innerHTML = '<div class="empty-state"><p class="mb-0">Loading…</p></div>';
-    fetch(url, { credentials: 'same-origin' })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
+    fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function(r) {
+        return r.json().then(function(data) {
+          return { ok: r.ok, status: r.status, data: data };
+        });
+      })
+      .then(function(result) {
         container.innerHTML = '';
+        if (!result.ok) {
+          var msg = (result.data && result.data.error) ? result.data.error : 'Something went wrong. Please try again.';
+          container.innerHTML = '<div class="error-state" role="alert">' + escapeHtml(msg) + '</div>';
+          return;
+        }
+        var data = result.data;
         if (data.runner_times && data.runner_times.length) {
           container.appendChild(renderResults(data));
         } else {
@@ -336,7 +346,7 @@
           container.appendChild(empty);
         }
       })
-      .catch(function() {
+      .catch(function(err) {
         container.innerHTML = '<div class="error-state" role="alert">Something went wrong. Please try again.</div>';
       });
   });

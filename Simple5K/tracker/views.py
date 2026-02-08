@@ -1557,15 +1557,21 @@ def completed_races_selection(request):
 
 
 def get_completed_race_overview(request, race_id):
-    current_race = get_object_or_404(race, id=race_id, status='completed')
+    try:
+        try:
+            current_race = race.objects.get(id=race_id, status='completed')
+        except race.DoesNotExist:
+            return JsonResponse(
+                {'error': 'Race not found.', 'runner_times': [], 'race_name': '', 'race_id': race_id},
+                status=404
+            )
 
-    # Initialize an empty list to store runner times
-    runner_times = []
-    if current_race:
+        runner_times = []
         try:
             runnersall = runners.objects.filter(race=current_race).order_by(F('place').asc(nulls_last=True))
         except (TypeError, AttributeError):
             runnersall = runners.objects.filter(race=current_race).order_by('place')
+
         for arunner in runnersall:
             run_laps = []
             alap = laps.objects.filter(runner=arunner).order_by('lap')
@@ -1574,11 +1580,15 @@ def get_completed_race_overview(request, race_id):
                     'lap': lap.lap,
                     'duration': format_timedelta(lap.duration) if lap.duration is not None else "—",
                     'average_pace': format_timedelta(lap.average_pace) if lap.average_pace is not None else "—",
-                    'average_speed': lap.average_speed if lap.average_speed is not None else "—",
+                    'average_speed': float(lap.average_speed) if lap.average_speed is not None else "—",
                 })
+            name = f"{(arunner.first_name or '')} {(arunner.last_name or '')}".strip() or "—"
+            avg_speed = arunner.race_avg_speed
+            if avg_speed is not None and hasattr(avg_speed, '__float__'):
+                avg_speed = float(avg_speed)
             runner_times.append({
                 'number': arunner.number,
-                'name': f"{arunner.first_name} {arunner.last_name}",
+                'name': name,
                 'total_race_time': (
                     format_timedelta(td)
                     if (td := arunner.total_race_time) is not None
@@ -1599,19 +1609,25 @@ def get_completed_race_overview(request, race_id):
                     if (td := arunner.race_avg_pace) is not None
                     else "Not Finished"
                 ),
-                'average_speed': arunner.race_avg_speed if arunner.race_avg_speed is not None else "Not Finished",
+                'average_speed': avg_speed if avg_speed is not None else "Not Finished",
                 'place': arunner.place,
-                'gender': arunner.gender,
-                'type': arunner.type,
+                'gender': arunner.gender or None,
+                'type': arunner.type or None,
                 'laps': run_laps
             })
 
-    context = {
-        'runner_times': runner_times,
-        'race_name': current_race.name,
-        'race_id': race_id,
-    }
-    return JsonResponse(context)
+        context = {
+            'runner_times': runner_times,
+            'race_name': current_race.name,
+            'race_id': race_id,
+        }
+        return JsonResponse(context)
+    except Exception as e:
+        logger.exception("get_completed_race_overview failed for race_id=%s", race_id)
+        return JsonResponse(
+            {'error': 'Unable to load results. Please try again.', 'runner_times': [], 'race_name': '', 'race_id': race_id},
+            status=500
+        )
 
 
 def _paypal_custom_for_runner(runner_id):
