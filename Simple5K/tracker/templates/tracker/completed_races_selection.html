@@ -215,7 +215,7 @@
   var emptyState = document.getElementById('empty_state');
   if (!select || !container) return;
 
-  var overviewUrl = '{% url "tracker:get_completed_race_overview" 99999 %}'.replace('99999', '');
+  var overviewUrl = '{% url "tracker:get_completed_race_overview" 0 %}'.replace('/0/', '/');
 
   function renderLapsHtml(laps) {
     if (!laps || !laps.length) return '';
@@ -325,7 +325,13 @@
     container.innerHTML = '<div class="empty-state"><p class="mb-0">Loading…</p></div>';
     fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(function(r) {
-        return r.json().then(function(data) {
+        return r.text().then(function(text) {
+          var data;
+          try {
+            data = text ? JSON.parse(text) : {};
+          } catch (e) {
+            return { ok: false, status: r.status, data: { error: 'Invalid response. Please try again.' } };
+          }
           return { ok: r.ok, status: r.status, data: data };
         });
       })
