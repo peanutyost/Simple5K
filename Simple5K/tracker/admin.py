@@ -157,10 +157,23 @@ class RunnersAdmin(admin.ModelAdmin):
         self.message_user(request, f'Marked results email sent for {count} runner(s).')
 
 
+class RaceFilter(admin.SimpleListFilter):
+    title = 'race'
+    parameter_name = 'race'
+
+    def lookups(self, request, model_admin):
+        return [(r.id, str(r.name)) for r in race.objects.all().order_by('-date', 'name')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(attach_to_race_id=self.value())
+        return queryset
+
+
 @admin.register(laps)
 class LapsAdmin(admin.ModelAdmin):
     list_display = ('runner', 'attach_to_race', 'lap', 'time', 'duration', 'average_speed', 'average_pace')
-    list_filter = ('attach_to_race',)
+    list_filter = (RaceFilter,)
     search_fields = ('runner__first_name', 'runner__last_name', 'runner__number')
     autocomplete_fields = ('runner', 'attach_to_race')
     fields = ('runner', 'attach_to_race', 'lap', 'time', 'duration', 'average_speed', 'average_pace')
