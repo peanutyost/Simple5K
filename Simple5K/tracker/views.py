@@ -1491,6 +1491,8 @@ def race_overview(request):
             run_laps = []
             alap = laps.objects.filter(runner=arunner).order_by('lap')
             for lap in alap:
+                if lap.lap == 0:
+                    continue  # exclude chip start from lap list
                 run_laps.append({
                     'lap': lap.lap,
                     'duration': timedelta(seconds=round(lap.duration.total_seconds())),
@@ -1578,6 +1580,8 @@ def get_completed_race_overview(request, race_id):
             run_laps = []
             alap = laps.objects.filter(runner=arunner).order_by('lap')
             for lap in alap:
+                if lap.lap == 0:
+                    continue  # exclude chip start from lap list
                 run_laps.append({
                     'lap': lap.lap,
                     'duration': format_timedelta(lap.duration) if lap.duration is not None else "—",

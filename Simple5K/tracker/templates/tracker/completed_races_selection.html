@@ -194,7 +194,8 @@
     </select>
   </div>
 
-  <div class="race-overview-container" role="region" aria-live="polite" aria-label="Race results">
+  <div class="race-overview-container" role="region" aria-live="polite" aria-label="Race results"
+       data-overview-url="{% url 'tracker:get_completed_race_overview' 1 %}">
     <div class="empty-state" id="empty_state">
       <div class="icon" aria-hidden="true">🏁</div>
       <p class="mb-0">Select a race above to view results.</p>
@@ -215,14 +216,18 @@
   var emptyState = document.getElementById('empty_state');
   if (!select || !container) return;
 
-  var overviewUrl = '{% url "tracker:get_completed_race_overview" 0 %}'.replace('/0/', '/');
+  var overviewUrlTemplate = container.getAttribute('data-overview-url') || '';
+  function getOverviewUrl(raceId) {
+    if (!overviewUrlTemplate) return '';
+    return overviewUrlTemplate.replace(/\/1\/?$/, '/' + String(raceId) + '/');
+  }
 
   function renderLapsHtml(laps) {
     if (!laps || !laps.length) return '';
     var html = '';
     laps.forEach(function(lap) {
-      var label = lap.lap === 0 ? 'Chip start' : 'Lap ' + lap.lap;
-      html += '<div class="lap-line">' + escapeHtml(label) + ': ' + escapeHtml(lap.duration) + ' — ' + escapeHtml(lap.average_pace) + ' — ' + escapeHtml(lap.average_speed) + ' MPH</div>';
+      if (lap.lap === 0) return;
+      html += '<div class="lap-line">Lap ' + escapeHtml(lap.lap) + ': ' + escapeHtml(lap.duration) + ' — ' + escapeHtml(lap.average_pace) + ' — ' + escapeHtml(lap.average_speed) + ' MPH</div>';
     });
     return html;
   }
@@ -321,16 +326,20 @@
       container.appendChild(emptyState);
       return;
     }
-    var url = overviewUrl + raceId + '/';
+    var url = getOverviewUrl(raceId);
+    if (!url) {
+      container.innerHTML = '<div class="error-state" role="alert">Unable to load results.</div>';
+      return;
+    }
     container.innerHTML = '<div class="empty-state"><p class="mb-0">Loading…</p></div>';
     fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(function(r) {
         return r.text().then(function(text) {
           var data;
           try {
-            data = text ? JSON.parse(text) : {};
+            data = (text && text.trim()) ? JSON.parse(text) : {};
           } catch (e) {
-            return { ok: false, status: r.status, data: { error: 'Invalid response. Please try again.' } };
+            return { ok: false, status: r.status, data: { error: 'Could not load results (response was not JSON). Check the console or try again.' } };
           }
           return { ok: r.ok, status: r.status, data: data };
         });
