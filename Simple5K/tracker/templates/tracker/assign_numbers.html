@@ -11,11 +11,27 @@
                     <label for="race" class="form-label">Select Race</label>
                     <select name="race" id="race" class="form-select" required aria-required="true">
                         <option value="">Choose a race...</option>
-                        {% for race in races %}
-                        <option value="{{ race.id }}">{{ race.name }}</option>
+                        {% for r in races %}
+                        <option value="{{ r.id }}" {% if selected_race_id == r.id|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
+                <div class="mb-3">
+                    <label for="tag_offset" class="form-label">Tag number offset</label>
+                    <input type="number" name="tag_offset" id="tag_offset" class="form-control" value="{{ tag_offset|default:'0' }}" placeholder="0">
+                    <div class="form-text">Tag number = bib number + offset. Use this if your RFID tag numbering differs from bib numbers (e.g. offset 99 → bib 1 uses tag 100).</div>
+                </div>
+                {% if assign_preview %}
+                <div class="alert alert-info mb-3" role="status">
+                    <strong>Preview for this race</strong>
+                    <ul class="mb-0 mt-1">
+                        <li>Race starting number: <strong>{{ assign_preview.number_start }}</strong></li>
+                        <li>Next bib to assign: <strong id="next_number_display">{{ assign_preview.next_number }}</strong></li>
+                        <li>First tag number (with offset): <strong id="first_tag_display">{{ assign_preview.next_number }}</strong></li>
+                        <li>Runners without number and tag: <strong>{{ assign_preview.unassigned_count|default:0 }}</strong></li>
+                    </ul>
+                </div>
+                {% endif %}
                 {% if error_message %}
                 <div class="alert alert-danger" role="alert">{{ error_message }}</div>
                 {% endif %}
@@ -24,9 +40,29 @@
                 <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
                 {% endfor %}
                 {% endif %}
-                <button type="submit" class="btn btn-primary">Assign Numbers</button>
+                <button type="submit" class="btn btn-primary">Assign Numbers &amp; Tags</button>
             </form>
+            <p class="text-muted small mt-2">Assigns the next available bib number and matching RFID tag (bib + offset) only to runners that have neither a number nor a tag. Run again to assign the next batch.</p>
         </div>
     </div>
 </div>
+<script>
+(function() {
+    var nextNumber = {{ assign_preview.next_number|default:0 }};
+    var tagOffsetEl = document.getElementById('tag_offset');
+    var firstTagEl = document.getElementById('first_tag_display');
+    if (!tagOffsetEl || !firstTagEl || !nextNumber) return;
+    function updateFirstTag() {
+        var offset = parseInt(tagOffsetEl.value, 10) || 0;
+        firstTagEl.textContent = nextNumber + offset;
+    }
+    tagOffsetEl.addEventListener('input', updateFirstTag);
+    tagOffsetEl.addEventListener('change', updateFirstTag);
+    updateFirstTag();
+    document.getElementById('race').addEventListener('change', function() {
+        var v = this.value;
+        if (v) window.location = '?race=' + encodeURIComponent(v);
+    });
+})();
+</script>
 {% endblock %}

@@ -1183,6 +1183,14 @@ def assign_tag(request):
     if not rfid_tag_obj:
         return JsonResponse({'error': 'RFID tag not found with that hex value'}, status=400)
 
+    # One tag per race: ensure no other runner in this race has this tag (allow reassigning to same runner)
+    other = runners.objects.filter(race=race_local, tag=rfid_tag_obj).exclude(pk=runner_obj.pk).first()
+    if other:
+        return JsonResponse({
+            'error': 'That RFID tag is already assigned to another runner in this race (e.g. bib {}). '
+                     'Each tag can only be assigned to one runner per race.'.format(other.number or other.id)
+        }, status=400)
+
     runner_obj.tag = rfid_tag_obj
     runner_obj.save()
     return JsonResponse({'status': 'success'})
@@ -1276,41 +1284,108 @@ def generate_api_key(request):
 
 
 # ----------------------------Assign numbers--------------------------------------
+def _assign_numbers_preview(race_local):
+    """Return dict with number_start, next_number for the given race (for assign page preview)."""
+    existing_numbers = runners.objects.filter(race=race_local, number__isnull=False).values_list('number', flat=True)
+    next_number = (max(existing_numbers) + 1) if existing_numbers else (race_local.number_start or 1)
+    return {
+        'number_start': race_local.number_start if race_local.number_start is not None else 1,
+        'next_number': next_number,
+    }
+
+
 @login_required
 def assign_numbers(request):
+    races = race.objects.exclude(status='in_progress').exclude(status='completed')
+
     if request.method == 'POST':
         race_id = request.POST.get('race')
         race_local = get_object_or_404(race, id=race_id)
 
-        # Get all runners in the race without a number
-        runners_without_number = runners.objects.filter(race=race_local, number__isnull=True).order_by('id')
-        if runners_without_number.exists():
-            # Check if there are any numbers already assigned
+        try:
+            tag_offset = int(request.POST.get('tag_offset') or 0)
+        except (TypeError, ValueError):
+            tag_offset = 0
+
+        # Only assign to runners that have neither number nor tag (so we can run multiple times)
+        runners_unassigned = runners.objects.filter(
+            race=race_local, number__isnull=True, tag__isnull=True
+        ).order_by('id')
+        if runners_unassigned.exists():
             existing_numbers = runners.objects.filter(race=race_local, number__isnull=False).values_list('number', flat=True)
+            next_number = (max(existing_numbers) + 1) if existing_numbers else (race_local.number_start or 1)
 
-            if existing_numbers:
-                next_number = max(existing_numbers) + 1
-            else:
-                next_number = race_local.number_start or 1  # Default to 1 if number_start is None
-
-            for runner in runners_without_number:
-                runner.number = next_number
-                try:
-                    rfid_tag = RfidTag.objects.get(tag_number=next_number)
-                    runner.tag = rfid_tag
-                except RfidTag.DoesNotExist:
-                    runner.tag = None
-                runner.save()
-                next_number += 1
-            messages.success(request, 'Numbers assigned successfully!')
-            return redirect('tracker:assign_numbers')  # Redirect back with success message
+            try:
+                for runner in runners_unassigned:
+                    runner.number = next_number
+                    tag_number_for_bib = next_number + tag_offset
+                    try:
+                        rfid_tag = RfidTag.objects.get(tag_number=tag_number_for_bib)
+                        runner.tag = rfid_tag
+                    except RfidTag.DoesNotExist:
+                        runner.tag = None
+                    runner.save()
+                    next_number += 1
+            except IntegrityError:
+                messages.error(
+                    request,
+                    'Cannot assign: one of these RFID tags is already assigned to another runner in this race. '
+                    'Each tag can only be used by one runner per race. Fix duplicate tag assignments and try again.'
+                )
+                assign_preview = _assign_numbers_preview(race_local)
+                assign_preview['unassigned_count'] = runners.objects.filter(
+                    race=race_local, number__isnull=True, tag__isnull=True
+                ).count()
+                return render(request, 'tracker/assign_numbers.html', {
+                    'races': races,
+                    'form': RaceSelectionForm(),
+                    'assign_preview': assign_preview,
+                    'selected_race_id': str(race_id),
+                    'tag_offset': request.POST.get('tag_offset', '0'),
+                })
+            count = runners_unassigned.count()
+            messages.success(request, f'Assigned numbers and tags to {count} runner(s). You can run again to assign the next batch.')
+            qs = f'?race={race_id}&tag_offset={tag_offset}'
+            return redirect(reverse('tracker:assign_numbers') + qs)
         else:
-            error_message = "All runners already have numbers assigned."
-            return render(request, 'tracker/assign_numbers.html', {'error_message': error_message})
+            assign_preview = _assign_numbers_preview(race_local)
+            assign_preview['unassigned_count'] = runners.objects.filter(
+                race=race_local, number__isnull=True, tag__isnull=True
+            ).count()
+            error_message = (
+                "No runners left to assign: every runner already has a number and a tag, "
+                "or there are no runners in this race."
+            )
+            return render(request, 'tracker/assign_numbers.html', {
+                'races': races,
+                'form': RaceSelectionForm(),
+                'error_message': error_message,
+                'assign_preview': assign_preview,
+                'selected_race_id': str(race_id),
+                'tag_offset': request.POST.get('tag_offset', '0'),
+            })
 
-    races = race.objects.exclude(status='in_progress').exclude(status='completed')
-    form = RaceSelectionForm()
-    return render(request, 'tracker/assign_numbers.html', {'races': races, 'form': form})
+    # GET: optional ?race=id and ?tag_offset=N to show preview and preserve offset
+    selected_race_id = request.GET.get('race')
+    tag_offset = request.GET.get('tag_offset', '0')
+    assign_preview = None
+    if selected_race_id:
+        try:
+            race_local = race.objects.get(id=selected_race_id)
+            assign_preview = _assign_numbers_preview(race_local)
+            assign_preview['unassigned_count'] = runners.objects.filter(
+                race=race_local, number__isnull=True, tag__isnull=True
+            ).count()
+        except (race.DoesNotExist, ValueError):
+            pass
+
+    return render(request, 'tracker/assign_numbers.html', {
+        'races': races,
+        'form': RaceSelectionForm(),
+        'assign_preview': assign_preview,
+        'selected_race_id': selected_race_id or '',
+        'tag_offset': tag_offset,
+    })
 
 
 # ---------------------------Public Views------------------------------------------

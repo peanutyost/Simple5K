@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.urls import reverse
 import secrets
 
@@ -131,6 +132,24 @@ class runners(models.Model):
     paid = models.BooleanField(default=False, help_text='True when PayPal donation/payment completed')
     created_at = models.DateTimeField(auto_now_add=True)
     signup_confirmation_sent = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['race', 'tag'],
+                name='unique_race_tag',
+                condition=Q(tag__isnull=False),
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.tag_id and self.race_id:
+            if runners.objects.filter(race_id=self.race_id, tag_id=self.tag_id).exclude(pk=self.pk).exists():
+                from django.core.exceptions import ValidationError
+                raise ValidationError(
+                    {'tag': 'This RFID tag is already assigned to another runner in this race. Each tag can only be used by one runner per race.'}
+                )
 
     def __str__(self):
         return self.first_name + " " + self.last_name
