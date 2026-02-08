@@ -1284,13 +1284,23 @@ def generate_api_key(request):
 
 
 # ----------------------------Assign numbers--------------------------------------
-def _assign_numbers_preview(race_local):
-    """Return dict with number_start, next_number for the given race (for assign page preview)."""
-    existing_numbers = runners.objects.filter(race=race_local, number__isnull=False).values_list('number', flat=True)
-    next_number = (max(existing_numbers) + 1) if existing_numbers else (race_local.number_start or 1)
+def _assign_numbers_preview(race_local, starting_tag):
+    """Return dict with next_tag_number (next unused tag >= starting_tag) and unassigned_count."""
+    tags_in_use = set(
+        runners.objects.filter(race=race_local).exclude(tag__isnull=True).values_list('tag_id', flat=True)
+    )
+    next_tag = (
+        RfidTag.objects.exclude(pk__in=tags_in_use)
+        .filter(tag_number__gte=starting_tag)
+        .order_by('tag_number')
+        .first()
+    )
+    unassigned_count = runners.objects.filter(
+        race=race_local, number__isnull=True, tag__isnull=True
+    ).count()
     return {
-        'number_start': race_local.number_start if race_local.number_start is not None else 1,
-        'next_number': next_number,
+        'next_tag_number': next_tag.tag_number if next_tag else None,
+        'unassigned_count': unassigned_count,
     }
 
 
@@ -1303,55 +1313,78 @@ def assign_numbers(request):
         race_local = get_object_or_404(race, id=race_id)
 
         try:
-            tag_offset = int(request.POST.get('tag_offset') or 0)
+            starting_tag = int(request.POST.get('starting_tag') or 1)
         except (TypeError, ValueError):
-            tag_offset = 0
+            starting_tag = 1
+        if starting_tag < 1:
+            starting_tag = 1
 
-        # Only assign to runners that have neither number nor tag (so we can run multiple times)
         runners_unassigned = runners.objects.filter(
             race=race_local, number__isnull=True, tag__isnull=True
         ).order_by('id')
         if runners_unassigned.exists():
-            existing_numbers = runners.objects.filter(race=race_local, number__isnull=False).values_list('number', flat=True)
-            next_number = (max(existing_numbers) + 1) if existing_numbers else (race_local.number_start or 1)
+            tags_in_use = set(
+                runners.objects.filter(race=race_local).exclude(tag__isnull=True).values_list('tag_id', flat=True)
+            )
+            available_tags = list(
+                RfidTag.objects.exclude(pk__in=tags_in_use)
+                .filter(tag_number__gte=starting_tag)
+                .order_by('tag_number')
+            )
+            existing_numbers = set(
+                runners.objects.filter(race=race_local, number__isnull=False).values_list('number', flat=True)
+            )
+            assigned_numbers = set()
+            assigned_with_tag = 0
+            assigned_no_tag = 0
 
             try:
-                for runner in runners_unassigned:
-                    runner.number = next_number
-                    tag_number_for_bib = next_number + tag_offset
-                    try:
-                        rfid_tag = RfidTag.objects.get(tag_number=tag_number_for_bib)
-                        runner.tag = rfid_tag
-                    except RfidTag.DoesNotExist:
+                for i, runner in enumerate(runners_unassigned):
+                    if i < len(available_tags):
+                        tag = available_tags[i]
+                        runner.number = tag.tag_number
+                        runner.tag = tag
+                        assigned_numbers.add(tag.tag_number)
+                        assigned_with_tag += 1
+                    else:
                         runner.tag = None
+                        next_num = 1
+                        while next_num in existing_numbers or next_num in assigned_numbers:
+                            next_num += 1
+                        runner.number = next_num
+                        assigned_numbers.add(next_num)
+                        assigned_no_tag += 1
                     runner.save()
-                    next_number += 1
             except IntegrityError:
                 messages.error(
                     request,
                     'Cannot assign: one of these RFID tags is already assigned to another runner in this race. '
                     'Each tag can only be used by one runner per race. Fix duplicate tag assignments and try again.'
                 )
-                assign_preview = _assign_numbers_preview(race_local)
-                assign_preview['unassigned_count'] = runners.objects.filter(
-                    race=race_local, number__isnull=True, tag__isnull=True
-                ).count()
+                assign_preview = _assign_numbers_preview(race_local, starting_tag)
                 return render(request, 'tracker/assign_numbers.html', {
                     'races': races,
                     'form': RaceSelectionForm(),
                     'assign_preview': assign_preview,
                     'selected_race_id': str(race_id),
-                    'tag_offset': request.POST.get('tag_offset', '0'),
+                    'starting_tag': starting_tag,
                 })
+
             count = runners_unassigned.count()
-            messages.success(request, f'Assigned numbers and tags to {count} runner(s). You can run again to assign the next batch.')
-            qs = f'?race={race_id}&tag_offset={tag_offset}'
-            return redirect(reverse('tracker:assign_numbers') + qs)
+            if assigned_no_tag == 0:
+                messages.success(
+                    request,
+                    f'Assigned {count} runner(s): runner number = tag number for each. You can run again to assign the next batch.'
+                )
+            else:
+                messages.warning(
+                    request,
+                    f'Assigned {count} runner(s): {assigned_with_tag} got a tag (runner number = tag number); '
+                    f'{assigned_no_tag} have a number but no tag (not enough unused tags). Add more tags and run again if needed.'
+                )
+            return redirect(reverse('tracker:assign_numbers') + f'?race={race_id}&starting_tag={starting_tag}')
         else:
-            assign_preview = _assign_numbers_preview(race_local)
-            assign_preview['unassigned_count'] = runners.objects.filter(
-                race=race_local, number__isnull=True, tag__isnull=True
-            ).count()
+            assign_preview = _assign_numbers_preview(race_local, starting_tag)
             error_message = (
                 "No runners left to assign: every runner already has a number and a tag, "
                 "or there are no runners in this race."
@@ -1362,20 +1395,23 @@ def assign_numbers(request):
                 'error_message': error_message,
                 'assign_preview': assign_preview,
                 'selected_race_id': str(race_id),
-                'tag_offset': request.POST.get('tag_offset', '0'),
+                'starting_tag': starting_tag,
             })
 
-    # GET: optional ?race=id and ?tag_offset=N to show preview and preserve offset
+    # GET: optional ?race=id and ?starting_tag=N
     selected_race_id = request.GET.get('race')
-    tag_offset = request.GET.get('tag_offset', '0')
+    try:
+        starting_tag = int(request.GET.get('starting_tag') or 1)
+    except (TypeError, ValueError):
+        starting_tag = 1
+    if starting_tag < 1:
+        starting_tag = 1
+
     assign_preview = None
     if selected_race_id:
         try:
             race_local = race.objects.get(id=selected_race_id)
-            assign_preview = _assign_numbers_preview(race_local)
-            assign_preview['unassigned_count'] = runners.objects.filter(
-                race=race_local, number__isnull=True, tag__isnull=True
-            ).count()
+            assign_preview = _assign_numbers_preview(race_local, starting_tag)
         except (race.DoesNotExist, ValueError):
             pass
 
@@ -1384,7 +1420,7 @@ def assign_numbers(request):
         'form': RaceSelectionForm(),
         'assign_preview': assign_preview,
         'selected_race_id': selected_race_id or '',
-        'tag_offset': tag_offset,
+        'starting_tag': starting_tag,
     })
 
 
