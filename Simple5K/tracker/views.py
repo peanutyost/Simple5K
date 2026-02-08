@@ -198,15 +198,17 @@ def prepare_race_data(race_obj, runner_obj):
         ).count() if runner_obj.age else None,
     }
 
-    # Lap Data
+    # Lap Data (use duration for "Lap time" column; lap.time is clock time, lap.duration is elapsed time; exclude lap 0)
     laps_data = []
     for lap in laps.objects.filter(runner=runner_obj).order_by('lap'):
+        if lap.lap == 0:
+            continue
         laps_data.append({
             'lap': lap.lap,
-            'time': lap.time.strftime('%H:%M:%S'),
+            'time': str(timedelta(seconds=round(lap.duration.total_seconds()))) if lap.duration else 'N/A',
             'duration': str(lap.duration),
             'average_speed': float(lap.average_speed),
-            'average_pace': str(timedelta(seconds=round(lap.average_pace.total_seconds()))),
+            'average_pace': str(timedelta(seconds=round(lap.average_pace.total_seconds()))) if lap.average_pace else 'N/A',
         })
 
     # Competitor Placement Data (2 faster, 2 slower) — same gender only
