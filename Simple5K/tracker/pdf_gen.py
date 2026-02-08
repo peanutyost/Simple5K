@@ -67,7 +67,7 @@ def generate_race_report(filename, race_data, return_type):
     usable_width = letter[0] - 2 * margin
     usable_height = letter[1] - 2 * margin
     y_pos = usable_height
-    spaceAfter = 0.09 * inch
+    spaceAfter = 0.105 * inch
     table_width_uniform = 4.5 * inch  # All tables same width for a classy, consistent look
 
     def draw_paragraph(text, style, canvas_obj, x, y):
@@ -84,7 +84,7 @@ def generate_race_report(filename, race_data, return_type):
         canvas_obj.setFillColor(section_gray)
         canvas_obj.setFont("Helvetica-Bold", 10)
         canvas_obj.drawCentredString(center_x, y, text.upper())
-        return y - 0.17 * inch
+        return y - 0.19 * inch
 
     def draw_runner_card(canvas_obj, x, y, width, height, name, detail_lines, top_padding=0.3 * inch):
         """Draws a card-style box: name in large type, then detail lines. top_padding = space from top of box to first line."""
@@ -98,11 +98,11 @@ def generate_race_report(filename, race_data, return_type):
         canvas_obj.setFillColor(colors.black)
         canvas_obj.setFont("Helvetica-Bold", 16)
         canvas_obj.drawString(text_x, text_y, name)
-        text_y -= 0.22 * inch
+        text_y -= 0.23 * inch
         canvas_obj.setFont("Helvetica", 10)
         for line in detail_lines:
             canvas_obj.drawString(text_x, text_y, line)
-            text_y -= 0.155 * inch
+            text_y -= 0.165 * inch
 
     # --- Background Image (Logo) ---
     if race_data['race'].get('logo'):
@@ -168,7 +168,7 @@ def generate_race_report(filename, race_data, return_type):
     runner_box_x = margin
     runner_box_y = usable_height - 0.65 * inch  # lower so it doesn't overlap race name block
     runner_box_width = 2.6 * inch
-    runner_box_height = 1.2 * inch
+    runner_box_height = 1.24 * inch
     avg_speed_str = f"{rs['race_avg_speed']:.2f} mph" if isinstance(rs.get('race_avg_speed'), (int, float)) else f"{rs.get('race_avg_speed', 'N/A')}"
     runner_name = (rs.get('name') or '').upper()
     gun_str = rs.get('gun_time', rs.get('total_time', 'N/A'))
@@ -180,12 +180,12 @@ def generate_race_report(filename, race_data, return_type):
         f"Avg pace   {rs['avg_pace']}",
         f"Avg speed   {avg_speed_str}",
     ]
-    draw_runner_card(c, runner_box_x, runner_box_y, runner_box_width, runner_box_height, runner_name, runner_details, top_padding=0.26 * inch)
+    draw_runner_card(c, runner_box_x, runner_box_y, runner_box_width, runner_box_height, runner_name, runner_details, top_padding=0.28 * inch)
 
     # --- Lap Times Table (centered) ---
-    y_pos = runner_box_y - spaceAfter - 0.16 * inch
+    y_pos = runner_box_y - spaceAfter - 0.18 * inch
     y_pos = draw_section_title(c, "Lap stats", y_pos, usable_width)
-    y_pos -= 0.08 * inch
+    y_pos -= 0.09 * inch
 
     data = [["Lap", "Lap time", "Avg. pace", "Avg. speed (mph)"]]
     for lap in race_data['laps']:
@@ -198,15 +198,15 @@ def generate_race_report(filename, race_data, return_type):
         ('TEXTCOLOR', (0, 0), (-1, 0), header_text),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 9),
-        ('TOPPADDING', (0, 0), (-1, 0), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 9),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
         ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
         ('FONTSIZE', (0, 1), (-1, -1), 9),
-        ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ('TOPPADDING', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 7),
     ]
     for i in range(1, len(data)):
         bg = row_alt if i % 2 == 0 else row_white
@@ -218,9 +218,9 @@ def generate_race_report(filename, race_data, return_type):
     y_pos -= table_height + spaceAfter
 
     # --- Age Bracket (centered) ---
-    y_pos = y_pos - 0.16 * inch
+    y_pos = y_pos - 0.18 * inch
     y_pos = draw_section_title(c, "Your placement (age group and overall)", y_pos, usable_width)
-    y_pos -= 0.08 * inch
+    y_pos -= 0.09 * inch
 
     rs = race_data['runner']
     age_place = rs.get('age_group_placement', 'N/A')
@@ -245,12 +245,12 @@ def generate_race_report(filename, race_data, return_type):
         ('TEXTCOLOR', (0, 0), (-1, 0), header_text),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('TOPPADDING', (0, 0), (-1, 0), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 9),
         ('BACKGROUND', (0, 1), (-1, 1), row_white),
         ('BACKGROUND', (0, 2), (-1, 2), row_alt),
-        ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ('TOPPADDING', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 7),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
@@ -261,9 +261,9 @@ def generate_race_report(filename, race_data, return_type):
     y_pos -= bracket_table_height + spaceAfter
 
     # --- Nearby finishers (centered) ---
-    y_pos = y_pos - 0.14 * inch
+    y_pos = y_pos - 0.16 * inch
     y_pos = draw_section_title(c, "Participants who placed around you", y_pos, usable_width)
-    y_pos -= 0.08 * inch
+    y_pos -= 0.09 * inch
 
     data = [["Name", "Total time"]]
     if race_data['competitors']['faster_runners']:
@@ -281,17 +281,17 @@ def generate_race_report(filename, race_data, return_type):
         ('TEXTCOLOR', (0, 0), (-1, 0), header_text),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('TOPPADDING', (0, 0), (-1, 0), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 9),
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('GRID', (0, 0), (-1, -1), 0.5, grid_light),
         ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
-        ('LEFTPADDING', (0, 0), (0, -1), 9),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 9),
-        ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (0, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 7),
     ]
     # Alternate row color by sequence so no two consecutive rows match; first data row is white
     use_alt = False
