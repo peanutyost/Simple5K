@@ -158,14 +158,14 @@ Set the race start or end time and update status.
 
 ---
 
-### 3. Update RFID (create tag if needed, assign to runner)
+### 3. Create RFID
 
-Ensure an RFID tag is assigned to a runner. If no tag exists with the given hex value, a new tag is created (with the next available tag number), then assigned to the runner.
+Create a new RFID tag. The tag can then be assigned to a runner via **Assign tag**.
 
 | | |
 |---|---|
 | **Method** | `POST` |
-| **Path** | `tracker/api/update-rfid/` |
+| **Path** | `tracker/api/create-rfid/` |
 | **Auth** | `X-API-Key` header |
 | **Content-Type** | `application/json` |
 
@@ -173,17 +173,17 @@ Ensure an RFID tag is assigned to a runner. If no tag exists with the given hex 
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `race_id` | integer | Yes | Race ID. |
-| `runner_number` | integer | Yes | Runner’s bib number in that race. |
-| `rfid_tag` | string | Yes | RFID tag hex value. Case-insensitive. Creates a new tag if not found. |
+| `number` | integer | Yes | Tag number (unique). Must be ≥ 1. |
+| `rfid_tag` | string | Yes | RFID tag hex value. Must be unique. |
+| `name` | string | No | Optional label for the tag. |
 
 **Example:**
 
 ```json
 {
-  "race_id": 1,
-  "runner_number": 42,
-  "rfid_tag": "A1B2C3D4E5F6"
+  "number": 42,
+  "rfid_tag": "A1B2C3D4E5F6",
+  "name": "Bib 42"
 }
 ```
 
@@ -197,8 +197,7 @@ Ensure an RFID tag is assigned to a runner. If no tag exists with the given hex 
 
 **Errors:**
 
-- `400` — Invalid JSON or missing required fields
-- `404` — `{"error": "Runner not found"}`
+- `400` — Invalid JSON, missing required fields, invalid `number`, tag number already exists, or hex already exists
 - `405` — `{"error": "Method not allowed"}`
 - `401` — Invalid API key
 
@@ -206,7 +205,7 @@ Ensure an RFID tag is assigned to a runner. If no tag exists with the given hex 
 
 ### 4. Assign tag (existing tag to runner)
 
-Assign an **existing** RFID tag to a runner. The tag must already exist; use **Update RFID** if you want to create a new tag when the hex is unknown.
+Assign an **existing** RFID tag to a runner. The tag must already exist; use **Create RFID** to create a tag first.
 
 | | |
 |---|---|
@@ -456,7 +455,7 @@ Create a new API key. This is a **web view**, not a JSON API: it renders HTML an
 |----------|--------|------|---------|
 | `tracker/api/record-lap/` | POST | API key | Record lap(s) by RFID and timestamp |
 | `tracker/api/update-race-time/` | POST | API key | Start or stop a race |
-| `tracker/api/update-rfid/` | POST | API key | Create tag if needed and assign to runner (race + bib) |
+| `tracker/api/create-rfid/` | POST | API key | Create a new RFID tag (number, rfid_tag, optional name) |
 | `tracker/api/assign-tag/` | POST | API key | Assign existing RFID tag to runner (race + bib) |
 | `tracker/api/available-races/` | GET | API key | List non-completed races |
 | `tracker/api/add-runner/` | POST | API key or session | Create runner in a race |

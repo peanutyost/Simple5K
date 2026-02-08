@@ -25,7 +25,7 @@ from .views import (
     generate_api_key,
     record_lap,
     update_race_time,
-    update_rfid,
+    create_rfid,
     assign_tag,
     get_available_races,
     mark_runner_finished,
@@ -75,7 +75,7 @@ urlpatterns = [
     path('generate-api-key/', generate_api_key, name='generate-api-key'),
     path('api/record-lap/', record_lap, name='api-record-lap'),
     path('api/update-race-time/', update_race_time, name='api-update-race-time'),
-    path('api/update-rfid/', update_rfid, name='api-update-rfid'),
+    path('api/create-rfid/', create_rfid, name='api-create-rfid'),
     path('api/assign-tag/', assign_tag, name='api-assign-tag'),
     path('api/available-races/', get_available_races, name='api-available-races'),
 

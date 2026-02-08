@@ -88,7 +88,8 @@ Simple5K/
 | `generate-api-key/` | `generate_api_key` | `generate-api-key` | Login |
 | `api/record-lap/` | `record_lap` | `api-record-lap` | API key |
 | `api/update-race-time/` | `update_race_time` | `api-update-race-time` | API key |
-| `api/update-rfid/` | `update_rfid` | `api-update-rfid` | API key |
+| `api/create-rfid/` | `create_rfid` | `api-create-rfid` | API key |
+| `api/assign-tag/` | `assign_tag` | `api-assign-tag` | API key |
 | `api/available-races/` | `get_available_races` | `api-available-races` | API key |
 
 ---
@@ -241,7 +242,7 @@ Property: `rfid_tag_hex` (hex string of `rfid_tag`).
 - **Place:** Per-gender place assigned when runner completes final lap in `record_lap` API.
 - **PDFs:** `pdf_gen.generate_race_report` (single-runner report); `pdf_gen.create_runner_pdf` (race runner list). Report includes race info, runner details, laps, age-bracket placement, “before/after” competitors.
 - **Email:** `send_race_report_email(runner_id, race_id)` builds PDF and sends via Django email (SMTP); management command `send_race_emails` processes completed races and marks `email_sent` / `all_emails_sent`.
-- **API:** All under `require_api_key` (header `X-API-Key`). Endpoints: record-lap (JSON list), update-race-time (start/stop), update-rfid, available-races (GET).
+- **API:** All under `require_api_key` (header `X-API-Key`). Endpoints: record-lap (JSON list), update-race-time (start/stop), create-rfid, assign-tag, available-races (GET).
 - **Countdown:** `race_countdown` returns JSON: upcoming races (with remaining time) and active_race; race_list page polls every 1s.
 
 ---

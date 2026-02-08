@@ -20,10 +20,10 @@ class ApiKeyAdmin(admin.ModelAdmin):
 
 @admin.register(RfidTag)
 class RfidTagAdmin(admin.ModelAdmin):
-    list_display = ('tag_number', 'rfid_hex')
+    list_display = ('tag_number', 'name', 'rfid_hex')
     ordering = ('tag_number',)
-    search_fields = ('tag_number', 'rfid_hex')
-    fields = ('tag_number', 'rfid_hex')
+    search_fields = ('tag_number', 'name', 'rfid_hex')
+    fields = ('tag_number', 'name', 'rfid_hex')
 
 
 @admin.register(race)

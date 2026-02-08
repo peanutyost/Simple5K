@@ -25,6 +25,10 @@
                                 <label for="tag_number" class="form-label">Tag number</label>
                                 <input type="number" class="form-control" id="tag_number" name="tag_number" min="1" required placeholder="e.g. 1">
                             </div>
+                            <div class="col">
+                                <label for="name" class="form-label">Name (optional)</label>
+                                <input type="text" class="form-control" id="name" name="name" maxlength="255" placeholder="e.g. Bib 42">
+                            </div>
                             <div class="col flex-grow-1">
                                 <label for="rfid_hex" class="form-label">RFID hex value</label>
                                 <input type="text" class="form-control font-monospace" id="rfid_hex" name="rfid_hex" maxlength="512" required placeholder="e.g. A1B2C3D4...">
@@ -43,6 +47,7 @@
                     <thead class="table-light">
                         <tr>
                             <th scope="col">Tag number</th>
+                            <th scope="col">Name</th>
                             <th scope="col">RFID hex</th>
                             <th scope="col" class="text-end">Actions</th>
                         </tr>
@@ -51,6 +56,7 @@
                         {% for tag in tags %}
                         <tr>
                             <td>{{ tag.tag_number }}</td>
+                            <td>{{ tag.name|default:"—" }}</td>
                             <td class="font-monospace small text-break">{{ tag.rfid_hex }}</td>
                             <td class="text-end">
                                 <form method="post" action="{% url 'tracker:rfid_tags_list' %}" class="d-inline" onsubmit="return confirm('Remove tag {{ tag.tag_number }}?');">
@@ -62,7 +68,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="3" class="text-muted">No RFID tags yet. Add one above.</td>
+                            <td colspan="4" class="text-muted">No RFID tags yet. Add one above.</td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -46,6 +46,7 @@ class race(models.Model):
 
 class RfidTag(models.Model):
     """Reusable RFID tag: tag_number matches runner number when auto-assigned. Can be used for multiple runners over time."""
+    name = models.CharField(max_length=255, blank=True, help_text="Optional label for this tag")
     tag_number = models.IntegerField(unique=True, help_text="Number used when auto-assigning (same as runner number)")
     rfid_hex = models.CharField(max_length=512, help_text="Hex string from the physical RFID tag")
 
@@ -55,7 +56,11 @@ class RfidTag(models.Model):
         verbose_name_plural = 'RFID tags'
 
     def __str__(self):
-        return f"Tag {self.tag_number} ({self.rfid_hex[:16]}...)" if len(self.rfid_hex or '') > 16 else f"Tag {self.tag_number}"
+        if self.name:
+            return f"{self.name} (#{self.tag_number})"
+        if self.rfid_hex and len(self.rfid_hex) > 16:
+            return f"Tag {self.tag_number} ({self.rfid_hex[:16]}...)"
+        return f"Tag {self.tag_number}"
 
 
 class runners(models.Model):

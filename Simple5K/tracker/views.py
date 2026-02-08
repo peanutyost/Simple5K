@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.db import IntegrityError
-from django.db.models import F, Max, Q, Window, IntegerField, OrderBy, Value
+from django.db.models import F, Q, Window, IntegerField, OrderBy, Value
 from django.db.models.functions import Rank, Lower, Coalesce
 from django.urls import reverse
 from django.http import Http404, HttpResponse, JsonResponse, HttpResponseNotFound
@@ -1116,7 +1116,8 @@ def update_race_time(request):
 
 @csrf_exempt
 @require_api_key
-def update_rfid(request):
+def create_rfid(request):
+    """Create a new RFID tag. Send name, number (tag_number), and rfid_tag (hex). Then use assign-tag to assign to a runner."""
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
@@ -1125,36 +1126,35 @@ def update_rfid(request):
     except (json.JSONDecodeError, TypeError):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-    race_id = data.get('race_id')
-    runner_number = data.get('runner_number')
-    rfid_tag = (data.get('rfid_tag') or '').strip()
+    name = (data.get('name') or '').strip()
+    number = data.get('number')
+    rfid_hex = (data.get('rfid_tag') or '').strip()
 
-    if not race_id:
-        return JsonResponse({'error': 'race_id is required'}, status=400)
-    if runner_number is None or runner_number == '':
-        return JsonResponse({'error': 'runner_number is required'}, status=400)
-    if not rfid_tag:
+    if number is None or number == '':
+        return JsonResponse({'error': 'number is required'}, status=400)
+    if not rfid_hex:
         return JsonResponse({'error': 'rfid_tag is required'}, status=400)
 
-    race_local = get_object_or_404(race, id=race_id)
-    runner_obj = runners.objects.filter(race=race_local, number=runner_number).first()
-    if not runner_obj:
-        return JsonResponse({'error': 'Runner not found'}, status=404)
+    try:
+        tag_number = int(number)
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'number must be an integer'}, status=400)
+    if tag_number < 1:
+        return JsonResponse({'error': 'number must be at least 1'}, status=400)
 
-    rfid_tag_obj = RfidTag.objects.filter(rfid_hex__iexact=rfid_tag).first()
-    if not rfid_tag_obj:
-        next_num = (RfidTag.objects.aggregate(max_num=Max('tag_number'))['max_num'] or 0) + 1
-        rfid_tag_obj = RfidTag.objects.create(tag_number=next_num, rfid_hex=rfid_tag)
+    if RfidTag.objects.filter(tag_number=tag_number).exists():
+        return JsonResponse({'error': f'Tag number {tag_number} already exists'}, status=400)
+    if RfidTag.objects.filter(rfid_hex__iexact=rfid_hex).exists():
+        return JsonResponse({'error': 'An RFID tag with that hex value already exists'}, status=400)
 
-    runner_obj.tag = rfid_tag_obj
-    runner_obj.save()
+    RfidTag.objects.create(name=name or '', tag_number=tag_number, rfid_hex=rfid_hex)
     return JsonResponse({'status': 'success'})
 
 
 @csrf_exempt
 @require_api_key
 def assign_tag(request):
-    """Assign an existing RFID tag to a runner. Tag must already exist (use update_rfid to create + assign)."""
+    """Assign an existing RFID tag to a runner. Tag must already exist (use create-rfid to create a tag first)."""
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
@@ -1241,6 +1241,7 @@ def rfid_tags_list(request):
                 messages.error(request, 'Tag not found.')
             return redirect('tracker:rfid_tags_list')
 
+        name = (request.POST.get('name') or '').strip()
         tag_number = request.POST.get('tag_number')
         rfid_hex = (request.POST.get('rfid_hex') or '').strip()
         if tag_number is not None and rfid_hex:
@@ -1249,7 +1250,7 @@ def rfid_tags_list(request):
                 if tag_number < 1:
                     messages.error(request, 'Tag number must be at least 1.')
                 else:
-                    RfidTag.objects.create(tag_number=tag_number, rfid_hex=rfid_hex)
+                    RfidTag.objects.create(name=name, tag_number=tag_number, rfid_hex=rfid_hex)
                     messages.success(request, f'RFID tag {tag_number} added.')
             except ValueError:
                 messages.error(request, 'Tag number must be a whole number.')

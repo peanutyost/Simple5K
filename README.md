@@ -126,7 +126,8 @@ The app exposes a JSON API for timing systems: record laps by RFID, update race 
 |----------|--------|------|---------|
 | `api/record-lap/` | POST | API key | Record lap(s) by RFID and timestamp |
 | `api/update-race-time/` | POST | API key | Start or stop a race |
-| `api/update-rfid/` | POST | API key | Assign RFID tag to runner (race + bib) |
+| `api/create-rfid/` | POST | API key | Create RFID tag (number, rfid_tag, optional name) |
+| `api/assign-tag/` | POST | API key | Assign RFID tag to runner (race + bib) |
 | `api/available-races/` | GET | API key | List non-completed races |
 | `api/add-runner/` | POST | Session | Create runner in a race |
 | `api/edit-runner/` | POST | Session | Update runner fields |
@@ -166,7 +167,7 @@ The image runs migrations, `collectstatic`, and Gunicorn (see `Simple5K/start-pr
 - `RaceAdd`, `RaceEdit`, `ListRaces`, `race_start_view`, `runner_stats`, `select_race`, `view_shirt_sizes`, `select_race_for_runners`, `show_runners`, `add_runner`, `edit_runner`, `assign_numbers`, `rfid_tags_list`, `mark_runner_finished`, `completed_races_selection`, `get_completed_race_overview`, `email_list_view`, `select_race_for_report`, `race_summary_pdf_page`, `generate_runner_pdf_report`, `generate_race_summary_pdf_report`, `GenerateRaceReportView`, `site_settings_view`, `generate_api_key`
 
 ### API
-- `record_lap`, `update_race_time`, `update_rfid`, `get_available_races`
+- `record_lap`, `update_race_time`, `create_rfid`, `assign_tag`, `get_available_races`
 
 ### Public
 - `race_overview`, `race_signup`, `signup_success`, `race_countdown`, `race_list`, `paypal_return`, `paypal_cancel`, `pay_entry`
