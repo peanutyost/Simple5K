@@ -513,8 +513,9 @@ def show_runners(request, pk):
         'race_types': runners.race_type,
         'shirt_sizes': runners._meta.get_field('shirt_size').choices,
         'rfid_tags': RfidTag.objects.all().order_by('tag_number'),
-        'add_runner_url': request.build_absolute_uri(reverse('tracker:add_runner')),
-        'edit_runner_url': request.build_absolute_uri(reverse('tracker:edit_runner')),
+        # Path-only URLs so fetch() uses the current page origin (HTTPS when page is HTTPS)
+        'add_runner_url': reverse('tracker:add_runner'),
+        'edit_runner_url': reverse('tracker:edit_runner'),
     }
     return render(request, 'tracker/view_runners.html', context)
 
