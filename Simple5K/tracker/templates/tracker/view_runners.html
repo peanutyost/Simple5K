@@ -246,10 +246,25 @@
 </script>
 <script>
 (function() {
+    function init() {
     var table = document.getElementById('runnersTable');
     if (!table || !table.tHead) return;
     var choicesEl = document.getElementById('runner-choices');
-    var choices = choicesEl ? JSON.parse(choicesEl.textContent) : { age_brackets: [], genders: [], race_types: [], shirt_sizes: [], tags: [] };
+    var choices = { age_brackets: [], genders: [], race_types: [], shirt_sizes: [], tags: [] };
+    if (choicesEl && choicesEl.textContent) {
+        try {
+            var parsed = JSON.parse(choicesEl.textContent);
+            if (parsed && typeof parsed === 'object') {
+                choices = {
+                    age_brackets: Array.isArray(parsed.age_brackets) ? parsed.age_brackets : [],
+                    genders: Array.isArray(parsed.genders) ? parsed.genders : [],
+                    race_types: Array.isArray(parsed.race_types) ? parsed.race_types : [],
+                    shirt_sizes: Array.isArray(parsed.shirt_sizes) ? parsed.shirt_sizes : [],
+                    tags: Array.isArray(parsed.tags) ? parsed.tags : []
+                };
+            }
+        } catch (e) { /* use defaults so Edit/Save still work */ }
+    }
     var editRunnerUrl = '{{ edit_runner_url|escapejs }}';
     var addRunnerUrl = '{{ add_runner_url|escapejs }}';
     var currentRaceId = {{ race.id }};
@@ -556,6 +571,12 @@
             rows.forEach(function(r) { tbody.appendChild(r); });
         });
     });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
 </script>
 {% endblock %}
