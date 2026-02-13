@@ -503,8 +503,20 @@ def select_race_for_runners(request):
 def show_runners(request, pk):
     selected_race = get_object_or_404(race, pk=pk)
     race_runners = runners.objects.filter(race_id=pk)
-    # Use field.choices for attributes that are shadowed by model fields (gender, shirt_size)
-    # Pass absolute API URLs so fetch() from view_runners.html works regardless of request path
+    rfid_tags = RfidTag.objects.all().order_by('tag_number')
+    # Build runner choices as JSON in the view so the template always gets valid JSON (dropdowns work)
+    def choice_list(choices, empty_option=False):
+        items = [{'value': str(v), 'label': str(l)} for v, l in choices]
+        if empty_option:
+            items = [{'value': '', 'label': '—'}] + items
+        return items
+    runner_choices = {
+        'age_brackets': choice_list(runners.age_bracket),
+        'genders': choice_list(runners._meta.get_field('gender').choices),
+        'race_types': choice_list(runners.race_type, empty_option=True),
+        'shirt_sizes': choice_list(runners._meta.get_field('shirt_size').choices),
+        'tags': [{'value': '', 'label': '—'}] + [{'value': str(t.id), 'label': str(t)} for t in rfid_tags],
+    }
     context = {
         'race': selected_race,
         'runners': race_runners,
@@ -512,7 +524,8 @@ def show_runners(request, pk):
         'genders': runners._meta.get_field('gender').choices,
         'race_types': runners.race_type,
         'shirt_sizes': runners._meta.get_field('shirt_size').choices,
-        'rfid_tags': RfidTag.objects.all().order_by('tag_number'),
+        'rfid_tags': rfid_tags,
+        'runner_choices_json': json.dumps(runner_choices),
         # Path-only URLs so fetch() uses the current page origin (HTTPS when page is HTTPS)
         'add_runner_url': reverse('tracker:add_runner'),
         'edit_runner_url': reverse('tracker:edit_runner'),
