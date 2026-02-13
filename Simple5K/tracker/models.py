@@ -29,6 +29,14 @@ class race(models.Model):
     notes = models.CharField(max_length=1024, null=True, blank=True)
     logo = models.ImageField(upload_to='images/', null=True, blank=True)
     all_emails_sent = models.BooleanField(default=False)
+    archived = models.BooleanField(
+        default=False,
+        help_text='If True, hide this race everywhere except on the View Past Races page.',
+    )
+    hidden_from_past_races = models.BooleanField(
+        default=False,
+        help_text='If True, hide this race on the View Past Races page as well.',
+    )
 
     def __str__(self):
         return self.name

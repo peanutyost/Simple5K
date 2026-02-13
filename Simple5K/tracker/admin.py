@@ -31,14 +31,14 @@ class RaceAdmin(admin.ModelAdmin):
     list_display = (
         'name', 'status', 'date', 'scheduled_time', 'Entry_fee', 'distance', 'laps_count',
         'max_runners', 'number_start', 'start_time', 'end_time', 'min_lap_time',
-        'all_emails_sent', 'notes', 'logo',
+        'all_emails_sent', 'archived', 'hidden_from_past_races', 'notes', 'logo',
     )
-    list_filter = ('status',)
+    list_filter = ('status', 'archived', 'hidden_from_past_races')
     search_fields = ('name', 'notes')
     fields = (
         'name', 'status', 'Entry_fee', 'date', 'scheduled_time', 'distance', 'laps_count',
         'max_runners', 'number_start', 'start_time', 'end_time', 'min_lap_time',
-        'all_emails_sent', 'notes', 'logo',
+        'all_emails_sent', 'archived', 'hidden_from_past_races', 'notes', 'logo',
     )
 
 

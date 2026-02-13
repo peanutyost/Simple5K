@@ -374,7 +374,7 @@ class RaceEdit(LoginRequiredMixin, UpdateView):
 
 class ListRaces(LoginRequiredMixin, ListView):
     model = race
-    queryset = race.objects.all()
+    queryset = race.objects.filter(archived=False)
     template_name = 'tracker/list_races.html'
     context_object_name = 'object_list'
     paginate_by = 50
@@ -440,9 +440,10 @@ def runner_stats(request):
 
 @login_required
 def select_race(request):
-    # Get all races where status is either 'signup_open' or 'signup_closed'
+    # Get all races where status is either 'signup_open' or 'signup_closed' (exclude archived)
     races = race.objects.filter(
-        Q(status='signup_open') | Q(status='signup_closed')
+        Q(status='signup_open') | Q(status='signup_closed'),
+        archived=False,
     ).order_by('date', 'name')
 
     if request.method == 'POST':
@@ -479,7 +480,8 @@ def view_shirt_sizes(request, pk):
 @login_required
 def select_race_for_runners(request):
     races = race.objects.filter(
-        Q(status='signup_open') | Q(status='signup_closed') | Q(status='in_progress') | Q(status='completed')
+        Q(status='signup_open') | Q(status='signup_closed') | Q(status='in_progress') | Q(status='completed'),
+        archived=False,
     ).order_by('date', 'name')
 
     if request.method == 'POST':
@@ -814,7 +816,7 @@ def email_list_view(request):
         start_email_worker()
     except Exception as e:
         logger.exception("Failed to start email worker: %s", e)
-    races = race.objects.all().order_by('-date', '-scheduled_time')
+    races = race.objects.filter(archived=False).order_by('-date', '-scheduled_time')
 
     if request.method == 'POST':
         data = request.POST
@@ -1293,7 +1295,7 @@ def get_available_races(request):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
     try:
-        qs = race.objects.exclude(status__in=['completed']).values('id', 'name', 'status', 'date', 'scheduled_time')
+        qs = race.objects.exclude(status__in=['completed']).filter(archived=False).values('id', 'name', 'status', 'date', 'scheduled_time')
         races = []
         for r in qs:
             races.append({
@@ -1397,7 +1399,7 @@ def _assign_numbers_preview(race_local, starting_tag):
 
 @login_required
 def assign_numbers(request):
-    races = race.objects.exclude(status='in_progress').exclude(status='completed')
+    races = race.objects.exclude(status='in_progress').exclude(status='completed').filter(archived=False)
 
     if request.method == 'POST':
         race_id = request.POST.get('race')
@@ -1520,7 +1522,7 @@ def assign_numbers(request):
 
 @cache_unless_authenticated(60)
 def race_overview(request):
-    current_race = race.objects.filter(status='in_progress').first()
+    current_race = race.objects.filter(status='in_progress', archived=False).first()
 
     # Initialize an empty list to store runner times
     runner_times = []
@@ -1596,7 +1598,7 @@ def format_timedelta(td):
 
 @cache_unless_authenticated(60)
 def completed_races_selection(request):
-    completed_races = race.objects.filter(status='completed')
+    completed_races = race.objects.filter(status='completed', hidden_from_past_races=False)
     context = {
         'completed_races': completed_races
     }
@@ -1833,7 +1835,7 @@ def race_signup(request):
             return redirect(reverse('tracker:signup-success', args=[selected_race.id]))
     else:
         form = SignupForm()
-    current_races = race.objects.filter(status='signup_open').order_by('date', 'scheduled_time')
+    current_races = race.objects.filter(status='signup_open', archived=False).order_by('date', 'scheduled_time')
     banners = Banner.objects.active_for_page(Banner.PAGE_SIGNUP)
     context = {'form': form, 'current_races': current_races, 'banners': banners}
     return render(request, 'tracker/signup.html', context)
@@ -1999,10 +2001,10 @@ def pay_entry(request, runner_id, signature):
 
 def race_countdown(request):
     """Get countdown for all upcoming races along with active race information"""
-    # Get races that haven't started yet (status is signup_open or signup_closed)
-    upcoming_races = race.objects.filter(status__in=['signup_open', 'signup_closed']).order_by('date', 'scheduled_time')
-    # Check for an active race
-    active_race = race.objects.filter(status='in_progress').first()
+    # Get races that haven't started yet (status is signup_open or signup_closed), exclude archived
+    upcoming_races = race.objects.filter(status__in=['signup_open', 'signup_closed'], archived=False).order_by('date', 'scheduled_time')
+    # Check for an active race (exclude archived)
+    active_race = race.objects.filter(status='in_progress', archived=False).first()
     active_race_data = None
 
     if active_race:

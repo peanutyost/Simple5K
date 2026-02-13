@@ -70,16 +70,16 @@ class LapForm(forms.Form):
 class raceStart(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['racename'] = forms.ModelChoiceField(queryset=race.objects.all())
+        self.fields['racename'] = forms.ModelChoiceField(queryset=race.objects.filter(archived=False))
 
 
 class runnerStats(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Move the database query here
-        current_race = race.objects.filter(status='in_progress').first() if race.objects.exists() else None
+        # Move the database query here (exclude archived)
+        current_race = race.objects.filter(status='in_progress', archived=False).first() if race.objects.filter(archived=False).exists() else None
         self.fields['racename'] = forms.ModelChoiceField(
-            queryset=race.objects.all(),
+            queryset=race.objects.filter(archived=False),
             initial=current_race
         )
         self.fields['runnernumber'] = forms.IntegerField(label="Runner Number")
@@ -118,8 +118,8 @@ class SignupForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filter the race choices to only show current races
-        self.fields['race'].queryset = race.objects.filter(status='signup_open')
+        # Filter the race choices to only show current races (exclude archived)
+        self.fields['race'].queryset = race.objects.filter(status='signup_open', archived=False)
 
 
 class SiteSettingsForm(forms.ModelForm):
@@ -146,7 +146,7 @@ class RaceSelectionForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['race'].queryset = race.objects.exclude(
+        self.fields['race'].queryset = race.objects.filter(archived=False).exclude(
             status__in=['in_progress', 'completed']
         ).order_by('date', 'name')
 
@@ -161,7 +161,7 @@ class RunnerInfoSelectionForm(forms.Form):
     )
 
     race = forms.ModelChoiceField(
-        queryset=race.objects.order_by('name'),
+        queryset=race.objects.filter(archived=False).order_by('name'),
         empty_label="-- Select a Race --",
         label="Select Race",
         widget=forms.Select(attrs={'class': 'form-control'})  # Optional styling
@@ -177,7 +177,7 @@ class RunnerInfoSelectionForm(forms.Form):
 class RaceSummaryForm(forms.Form):
     """Form to select a race for the race summary PDF (finishers by gender, lap stats, placements)."""
     race = forms.ModelChoiceField(
-        queryset=race.objects.order_by('name'),
+        queryset=race.objects.filter(archived=False).order_by('name'),
         empty_label="-- Select a Race --",
         label="Select Race",
         widget=forms.Select(attrs={'class': 'form-control'})
