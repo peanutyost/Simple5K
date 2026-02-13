@@ -279,6 +279,11 @@ class SiteSettings(models.Model):
         max_length=500,
         help_text='Base URL of this site (e.g. https://example.com). Used for pay-later links in signup confirmation emails.'
     )
+    background_image = models.URLField(
+        blank=True,
+        max_length=500,
+        help_text='URL of a background image for all pages (e.g. https://example.com/image.jpg). Leave blank to use the default logo background.'
+    )
 
     class Meta:
         verbose_name = 'Site settings'

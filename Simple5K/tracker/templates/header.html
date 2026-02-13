@@ -58,9 +58,13 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: linear-gradient(rgba(255, 255, 255, 0.95), rgba(136, 136, 136, 0.7)),
-                url('{% static "images/logo.png" %}');
+            {% if site_settings.background_image %}
+            background-image: linear-gradient(rgba(255, 255, 255, 0.92), rgba(136, 136, 136, 0.75)), url("{{ site_settings.background_image }}");
+            background-size: cover;
+            {% else %}
+            background-image: linear-gradient(rgba(255, 255, 255, 0.95), rgba(136, 136, 136, 0.7)), url('{% static "images/logo.png" %}');
             background-size: contain;
+            {% endif %}
             background-position: center;
             background-repeat: no-repeat;
             z-index: -1;

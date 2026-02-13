@@ -46,6 +46,14 @@
                             {% if form.site_base_url.help_text %}<small class="form-text text-muted">{{ form.site_base_url.help_text }}</small>{% endif %}
                             {% if form.site_base_url.errors %}<div class="invalid-feedback d-block">{{ form.site_base_url.errors }}</div>{% endif %}
                         </div>
+                        <hr class="my-4">
+                        <h5 class="mb-3">Appearance</h5>
+                        <div class="mb-4">
+                            <label for="{{ form.background_image.id_for_label }}" class="form-label">{{ form.background_image.label }}</label>
+                            {{ form.background_image }}
+                            <small class="form-text text-muted d-block">Full URL to an image (e.g. https://example.com/photo.jpg). Leave blank for the default logo background.</small>
+                            {% if form.background_image.errors %}<div class="invalid-feedback d-block">{{ form.background_image.errors }}</div>{% endif %}
+                        </div>
                         <button type="submit" class="btn btn-primary">Save settings</button>
                     </form>
                 </div>
