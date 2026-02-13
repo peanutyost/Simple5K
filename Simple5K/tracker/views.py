@@ -504,6 +504,7 @@ def show_runners(request, pk):
     selected_race = get_object_or_404(race, pk=pk)
     race_runners = runners.objects.filter(race_id=pk)
     # Use field.choices for attributes that are shadowed by model fields (gender, shirt_size)
+    # Pass absolute API URLs so fetch() from view_runners.html works regardless of request path
     context = {
         'race': selected_race,
         'runners': race_runners,
@@ -512,6 +513,8 @@ def show_runners(request, pk):
         'race_types': runners.race_type,
         'shirt_sizes': runners._meta.get_field('shirt_size').choices,
         'rfid_tags': RfidTag.objects.all().order_by('tag_number'),
+        'add_runner_url': request.build_absolute_uri(reverse('tracker:add_runner')),
+        'edit_runner_url': request.build_absolute_uri(reverse('tracker:edit_runner')),
     }
     return render(request, 'tracker/view_runners.html', context)
 

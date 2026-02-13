@@ -250,8 +250,8 @@
     if (!table || !table.tHead) return;
     var choicesEl = document.getElementById('runner-choices');
     var choices = choicesEl ? JSON.parse(choicesEl.textContent) : { age_brackets: [], genders: [], race_types: [], shirt_sizes: [], tags: [] };
-    var editRunnerUrl = '{% url "tracker:edit_runner" %}';
-    var addRunnerUrl = '{% url "tracker:add_runner" %}';
+    var editRunnerUrl = '{{ edit_runner_url|escapejs }}';
+    var addRunnerUrl = '{{ add_runner_url|escapejs }}';
     var currentRaceId = {{ race.id }};
     function getCsrf() {
         var x = document.querySelector('input[name="csrfmiddlewaretoken"]');
