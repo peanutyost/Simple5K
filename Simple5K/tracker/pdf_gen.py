@@ -163,6 +163,17 @@ def generate_race_report(filename, race_data, return_type):
     c.setFillColor(colors.black)
     c.setFont("Helvetica-Bold", 16)
     c.drawRightString(race_info_x, race_info_y - 0.64 * inch, place_str)
+    # Men / Women label below place (smaller)
+    gender_label = None
+    g = (rs.get('gender') or '').lower()
+    if g == 'female':
+        gender_label = 'Women'
+    elif g == 'male':
+        gender_label = 'Men'
+    if gender_label:
+        c.setFont("Helvetica", 10)
+        c.setFillColor(section_gray)
+        c.drawRightString(race_info_x, race_info_y - 0.88 * inch, gender_label)
 
     # --- Runner summary card (left, compact) ---
     runner_box_x = margin
