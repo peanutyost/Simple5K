@@ -229,12 +229,12 @@ def generate_race_report(filename, race_data, return_type):
         place_str = f"{age_place} of {age_total}"
     else:
         place_str = str(age_place)
-    overall_place = rs.get('place', 'N/A')
+    overall_place = rs.get('overall_place') or rs.get('place', 'N/A')
     total_finishers = race_data.get('total_finishers')
-    if total_finishers is not None and overall_place != 'N/A':
+    if total_finishers is not None and overall_place is not None and overall_place != 'N/A':
         overall_str = f"{overall_place} of {total_finishers}"
     else:
-        overall_str = str(overall_place)
+        overall_str = str(overall_place) if overall_place is not None else 'N/A'
     data = [["Category", "Place"]]
     data.append([str(rs['age_bracket']), place_str])
     data.append(["Overall", overall_str])

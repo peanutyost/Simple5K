@@ -119,6 +119,37 @@ def calculate_age_bracket_placement(runner, race_obj):
         return None  # if no same bracket runner exist
 
 
+def calculate_age_bracket_placement_in_gender(runner, race_obj):
+    """
+    Calculates a runner's placement within their age bracket and gender for a given race.
+    Used for the race summary PDF so men and women are ranked per age group separately.
+
+    Returns:
+        The runner's placement within their (age bracket, gender), or None if not available.
+    """
+    if runner.total_race_time is None or not runner.gender:
+        return None
+    same_bracket_same_gender = runners.objects.filter(
+        race=race_obj,
+        age=runner.age,
+        gender=runner.gender,
+        total_race_time__isnull=False,
+    ).annotate(
+        rank=Window(
+            expression=Rank(),
+            partition_by=[F('age'), F('gender')],
+            order_by='total_race_time',
+        )
+    ).values('pk', 'rank')
+    try:
+        return next(
+            (item['rank'] for item in same_bracket_same_gender if item['pk'] == runner.pk),
+            None,
+        )
+    except StopIteration:
+        return None
+
+
 def _build_race_summary_data(race_obj):
     """Build summary data for race summary PDF: finishers by gender with lap stats and placements."""
     finishers = runners.objects.filter(
@@ -150,7 +181,7 @@ def _build_race_summary_data(race_obj):
             'overall_time': runner.total_race_time,
             'overall_place': runner.place,
             'age_group': runner.get_age_display() if runner.age else None,
-            'age_group_place': calculate_age_bracket_placement(runner, race_obj),
+            'age_group_place': calculate_age_bracket_placement_in_gender(runner, race_obj),
         }
         if runner.gender == 'female':
             females.append(row)
@@ -241,8 +272,15 @@ def prepare_race_data(race_obj, runner_obj):
             'slower_runners': [format_runner(runner) for runner in slower_runners],
         }
 
-    # Total finishers (for overall placement on PDF)
-    total_finishers = runners.objects.filter(race=race_obj).exclude(place__isnull=True).count()
+    # Total finishers and overall place (by finish time; place field on runner is gender place)
+    finishers = runners.objects.filter(race=race_obj).exclude(total_race_time__isnull=True)
+    total_finishers = finishers.count()
+    overall_place = None
+    if runner_obj.total_race_time is not None:
+        faster_count = finishers.filter(total_race_time__lt=runner_obj.total_race_time).count()
+        overall_place = faster_count + 1
+    runner_details['overall_place'] = overall_place  # used for PDF "Overall" row
+    runner_details['total_finishers'] = total_finishers
 
     # Gender placement: place among same gender only
     gender_place = None
