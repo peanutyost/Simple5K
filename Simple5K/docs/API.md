@@ -314,6 +314,7 @@ Create a new runner for a race. **Auth:** API key (`X-API-Key` header) or sessio
 | `type` | string | No | `running` or `walking`. |
 | `shirt_size` | string | Yes | One of: `Kids XS`, `Kids S`, `Kids M`, `Kids L`, `Extra Small`, `Small`, `Medium`, `Large`, `XL`, `XXL`. |
 | `notes` | string | No | Max 512 chars. |
+| `send_confirmation_email` | boolean | No | If `true`, send signup confirmation email to the runner (and mark them eligible for background confirmation). Default `false` when omitted. |
 
 **Example:**
 

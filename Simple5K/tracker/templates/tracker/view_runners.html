@@ -219,6 +219,12 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="add-send-confirmation-email" name="send_confirmation_email">
+                            <label class="form-check-label" for="add-send-confirmation-email">Send confirmation email</label>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -461,6 +467,8 @@
             var runnerType = typeEl && typeEl.value ? typeEl.value : null;
             var shirtEl = document.getElementById('add-shirt-size');
             var shirt = shirtEl ? shirtEl.value : '';
+            var sendConfirmationEl = document.getElementById('add-send-confirmation-email');
+            var sendConfirmationEmail = sendConfirmationEl && sendConfirmationEl.checked;
             addRunnerErrors.classList.add('d-none');
             addRunnerErrors.textContent = '';
             addRunnerSubmit.disabled = true;
@@ -478,7 +486,8 @@
                     auto_assign_number: autoAssignNumber,
                     number: number,
                     type: runnerType,
-                    shirt_size: shirt
+                    shirt_size: shirt,
+                    send_confirmation_email: sendConfirmationEmail
                 }),
                 credentials: 'same-origin'
             }).then(function(r) { return r.json(); }).then(function(data) {

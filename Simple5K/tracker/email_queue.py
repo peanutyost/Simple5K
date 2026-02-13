@@ -177,7 +177,8 @@ def _signup_confirmation_loop():
             batch_size = min(50, MAX_EMAILS_PER_MINUTE)
             with transaction.atomic():
                 due = list(
-                    runners.objects.filter(signup_confirmation_sent=False)
+                    runners.objects.filter(send_signup_confirmation=True)
+                    .filter(signup_confirmation_sent=False)
                     .filter(created_at__gte=cutoff_24h)
                     .filter(Q(paid=True) | Q(created_at__lte=cutoff))
                     .select_related('race')

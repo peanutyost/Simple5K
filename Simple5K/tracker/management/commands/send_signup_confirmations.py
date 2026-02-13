@@ -18,6 +18,8 @@ class Command(BaseCommand):
         timeout_minutes = site_settings.signup_confirmation_timeout_minutes
         cutoff = timezone.now() - timedelta(minutes=timeout_minutes)
         due = runners.objects.filter(
+            send_signup_confirmation=True
+        ).filter(
             signup_confirmation_sent=False
         ).filter(
             Q(paid=True) | Q(created_at__lte=cutoff)

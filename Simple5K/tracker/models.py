@@ -132,6 +132,10 @@ class runners(models.Model):
     paid = models.BooleanField(default=False, help_text='True when PayPal donation/payment completed')
     created_at = models.DateTimeField(auto_now_add=True)
     signup_confirmation_sent = models.BooleanField(default=False)
+    send_signup_confirmation = models.BooleanField(
+        default=True,
+        help_text='If True, runner is eligible for signup confirmation email (set for signup-form signups, or when "Send confirmation email" is checked on runner page).',
+    )
 
     class Meta:
         constraints = [

@@ -576,6 +576,8 @@ def add_runner(request):
     if not shirt_size or shirt_size not in [c[0] for c in runners._meta.get_field('shirt_size').choices]:
         errors.append('Valid shirt size is required')
 
+    send_confirmation_email = data.get('send_confirmation_email') in (True, 'true', 'True', 1, '1')
+
     if errors:
         return JsonResponse({'success': False, 'errors': errors}, status=400)
     runner_obj = runners.objects.create(
@@ -589,7 +591,10 @@ def add_runner(request):
         type=runner_type,
         shirt_size=shirt_size,
         notes=notes,
+        send_signup_confirmation=send_confirmation_email,
     )
+    if send_confirmation_email and runner_obj.email and (runner_obj.email or '').strip():
+        send_signup_confirmation_email(runner_obj)
     return JsonResponse({
         'success': True,
         'runner': {
@@ -1812,6 +1817,8 @@ def race_signup(request):
         if form.is_valid():
             selected_race = form.cleaned_data['race']
             runner = form.save()
+            runner.send_signup_confirmation = True
+            runner.save(update_fields=['send_signup_confirmation'])
             site_settings = SiteSettings.get_settings()
             paypal_email = (getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or '').strip()
             entry_fee = float(selected_race.Entry_fee or 0)
@@ -1821,7 +1828,7 @@ def race_signup(request):
                 extra = {'runner_id': runner.id, 'sig': sig}
                 context = _paypal_post_context(request, runner, selected_race, return_url_extra=extra, cancel_url_extra=extra)
                 return render(request, 'tracker/paypal_redirect.html', context)
-            # No PayPal: send signup confirmation immediately
+            # No PayPal: send signup confirmation immediately (runner.send_signup_confirmation already True from above)
             send_signup_confirmation_email(runner)
             return redirect(reverse('tracker:signup-success', args=[selected_race.id]))
     else:
@@ -1863,7 +1870,7 @@ def paypal_return(request):
                 if not runner.paid:
                     runner.paid = True
                     runner.save(update_fields=['paid'])
-                if not runner.signup_confirmation_sent:
+                if runner.send_signup_confirmation and not runner.signup_confirmation_sent:
                     send_signup_confirmation_email(runner)
     return render(request, 'tracker/paypal_return.html')
 
@@ -1893,8 +1900,8 @@ def paypal_cancel(request):
                 runner = runners.objects.filter(pk=rid).first()
 
     if runner is not None:
-        # Only send if they haven't already had one (e.g. they came from pay-later link and already got the email)
-        if not runner.signup_confirmation_sent:
+        # Only send if eligible for confirmation and haven't already had one
+        if runner.send_signup_confirmation and not runner.signup_confirmation_sent:
             send_signup_confirmation_email(runner)
             return redirect(reverse('tracker:paypal-cancel') + '?sent=1')
 
@@ -1957,7 +1964,7 @@ def paypal_ipn(request):
         runner_obj = runners.objects.get(pk=runner_id)
         runner_obj.paid = True
         runner_obj.save(update_fields=['paid'])
-        if not runner_obj.signup_confirmation_sent:
+        if runner_obj.send_signup_confirmation and not runner_obj.signup_confirmation_sent:
             send_signup_confirmation_email(runner_obj)
         logger.info('PayPal IPN processed: runner_id=%s marked paid', runner_id)
     except runners.DoesNotExist:
