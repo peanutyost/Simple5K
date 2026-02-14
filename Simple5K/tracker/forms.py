@@ -129,18 +129,21 @@ class SiteSettingsForm(forms.ModelForm):
             'paypal_enabled',
             'signup_confirmation_timeout_minutes', 'site_base_url',
             'background_image',
+            'background_image_file',
         ]
         widgets = {
             'paypal_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'signup_confirmation_timeout_minutes': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
             'site_base_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com'}),
             'background_image': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com/background.jpg'}),
+            'background_image_file': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
         }
         labels = {
             'paypal_enabled': 'Enable PayPal donation at signup',
             'signup_confirmation_timeout_minutes': 'Send signup email if runner is older than (minutes)',
             'site_base_url': 'Site base URL (for pay-later links in emails)',
-            'background_image': 'Background image URL (for all pages)',
+            'background_image': 'Background image URL (optional)',
+            'background_image_file': 'Or upload background image',
         }
 
 

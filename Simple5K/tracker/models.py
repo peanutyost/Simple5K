@@ -284,6 +284,12 @@ class SiteSettings(models.Model):
         max_length=500,
         help_text='URL of a background image for all pages (e.g. https://example.com/image.jpg). Leave blank to use the default logo background.'
     )
+    background_image_file = models.ImageField(
+        upload_to='site/',
+        blank=True,
+        null=True,
+        help_text='Upload a background image (used instead of URL if set).'
+    )
 
     class Meta:
         verbose_name = 'Site settings'
@@ -291,6 +297,14 @@ class SiteSettings(models.Model):
 
     def __str__(self):
         return 'Site settings'
+
+    @property
+    def background_image_url(self):
+        """URL to use for the page background: uploaded file if set, else URL field, else None."""
+        if self.background_image_file:
+            return self.background_image_file.url
+        url = (self.background_image or '').strip()
+        return url if url else None
 
     @classmethod
     def get_settings(cls):

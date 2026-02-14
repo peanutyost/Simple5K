@@ -1334,7 +1334,7 @@ def site_settings_view(request):
     """Settings page: PayPal on/off and PayPal options."""
     site_settings = SiteSettings.get_settings()
     if request.method == 'POST':
-        form = SiteSettingsForm(request.POST, instance=site_settings)
+        form = SiteSettingsForm(request.POST, request.FILES, instance=site_settings)
         if form.is_valid():
             form.save()
             messages.success(request, 'Settings saved.')

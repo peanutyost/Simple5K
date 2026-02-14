@@ -20,7 +20,7 @@
                     <p class="text-muted small mb-4">
                         When enabled, new signups are sent to PayPal with the race entry fee. After they pay, they are marked as paid. If disabled, signup goes to the success page and runners can pay on race day.
                     </p>
-                    <form method="post" action="{% url 'tracker:site-settings' %}">
+                    <form method="post" action="{% url 'tracker:site-settings' %}" enctype="multipart/form-data">
                         {% csrf_token %}
                         <div class="mb-4">
                             <div class="form-check form-switch">
@@ -49,9 +49,19 @@
                         <hr class="my-4">
                         <h5 class="mb-3">Appearance</h5>
                         <div class="mb-4">
+                            <label for="{{ form.background_image_file.id_for_label }}" class="form-label">{{ form.background_image_file.label }}</label>
+                            {{ form.background_image_file }}
+                            {% if site_settings.background_image_file %}
+                            <small class="form-text text-muted d-block">Current: {{ site_settings.background_image_file.name }}. Upload a new image to replace, or check "Clear" to remove.</small>
+                            {% else %}
+                            <small class="form-text text-muted d-block">Choose an image file (e.g. JPG, PNG). Used as the page background if set.</small>
+                            {% endif %}
+                            {% if form.background_image_file.errors %}<div class="invalid-feedback d-block">{{ form.background_image_file.errors }}</div>{% endif %}
+                        </div>
+                        <div class="mb-4">
                             <label for="{{ form.background_image.id_for_label }}" class="form-label">{{ form.background_image.label }}</label>
                             {{ form.background_image }}
-                            <small class="form-text text-muted d-block">Full URL to an image (e.g. https://example.com/photo.jpg). Leave blank for the default logo background.</small>
+                            <small class="form-text text-muted d-block">Alternatively, enter a full image URL. Ignored if an image is uploaded above.</small>
                             {% if form.background_image.errors %}<div class="invalid-feedback d-block">{{ form.background_image.errors }}</div>{% endif %}
                         </div>
                         <button type="submit" class="btn btn-primary">Save settings</button>
