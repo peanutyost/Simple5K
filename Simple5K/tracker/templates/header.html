@@ -60,7 +60,7 @@
             height: 100%;
             {% if site_settings.background_image_url %}
             background-image: linear-gradient(rgba(255, 255, 255, 0.92), rgba(136, 136, 136, 0.75)), url("{{ site_settings.background_image_url }}");
-            background-size: cover;
+            background-size: contain;
             {% else %}
             background-image: linear-gradient(rgba(255, 255, 255, 0.95), rgba(136, 136, 136, 0.7)), url('{% static "images/logo.png" %}');
             background-size: contain;
