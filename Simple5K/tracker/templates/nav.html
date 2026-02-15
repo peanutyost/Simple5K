@@ -1,4 +1,5 @@
     {% load static %}
+    {% with url_name=request.resolver_match.url_name|default:"" %}
     <nav class="navbar navbar-expand-lg navbar-light bg-light" aria-label="Main navigation">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'race-until' %}">
@@ -15,33 +16,35 @@
           <div class="collapse navbar-collapse" id="navbarNav">
               <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                   <li class="nav-item">
-                      <a class="nav-link active" href="{% url 'race-until' %}">Home</a>
+                      <a class="nav-link{% if request.path == '/' or request.path == '/races/' %} active{% endif %}" href="{% url 'race-until' %}">Home</a>
                   </li>
                   {% if user.is_authenticated %}
                   <li class="nav-item dropdown">
-                      <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                      <a class="nav-link dropdown-toggle{% if url_name in 'list-races,race-add,edit-race,select_race,view_shirts,select_race_runners,view_runners,assign_numbers,rfid_tags_list,runner-stats,email_list,select_race_report,race_summary_pdf' %} active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-label="Races menu" aria-expanded="false">
                           Races
                       </a>
                       <ul class="dropdown-menu">
-                          <li><a class="dropdown-item" href="{% url 'tracker:list-races' %}">Races</a></li>
-                          <li><a class="dropdown-item" href="{% url 'tracker:select_race' %}">View Shirt Sizes</a></li>
+                          <li><a class="dropdown-item" href="{% url 'tracker:list-races' %}">All Races</a></li>
                           <li><a class="dropdown-item" href="{% url 'tracker:select_race_runners' %}">View Runners</a></li>
-                          <li><a class="dropdown-item" href="{% url 'tracker:rfid_tags_list' %}">Manage RFID Tags</a></li>
+                          <li><a class="dropdown-item" href="{% url 'tracker:select_race' %}">View Shirt Sizes</a></li>
+                          <li><hr class="dropdown-divider"></li>
                           <li><a class="dropdown-item" href="{% url 'tracker:runner-stats' %}">Runner Stats</a></li>
                           <li><a class="dropdown-item" href="{% url 'tracker:email_list' %}">Send Email</a></li>
-                          <li><a class="dropdown-item" href="{% url 'tracker:select_race_report' %}">Printable Runner List</a></li>
-                          <li><a class="dropdown-item" href="{% url 'tracker:race_summary_pdf' %}">Race Summary PDF</a></li>
+                          <li><a class="dropdown-item" href="{% url 'tracker:select_race_report' %}">Print Runner List</a></li>
+                          <li><a class="dropdown-item" href="{% url 'tracker:race_summary_pdf' %}">Race Summary</a></li>
+                          <li><hr class="dropdown-divider"></li>
+                          <li><a class="dropdown-item" href="{% url 'tracker:rfid_tags_list' %}">Manage RFID Tags</a></li>
                       </ul>
                   </li>
                   {% endif %}
                   <li class="nav-item">
-                      <a class="nav-link" href="{% url 'tracker:race-signup' %}">Signup</a>
+                      <a class="nav-link{% if url_name == 'race-signup' %} active{% endif %}" href="{% url 'tracker:race-signup' %}">Race Signup</a>
                   </li>
                   <li class="nav-item">
-                      <a class="nav-link" href="{% url 'tracker:race-overview' %}">Active Race</a>
+                      <a class="nav-link{% if url_name == 'race-overview' %} active{% endif %}" href="{% url 'tracker:race-overview' %}">Active Race</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" href="{% url 'tracker:completed_races_selection' %}">View Past Races</a>
+                    <a class="nav-link{% if url_name == 'completed_races_selection' or url_name == 'get_completed_race_overview' %} active{% endif %}" href="{% url 'tracker:completed_races_selection' %}">Past Races</a>
                 </li>
               </ul>
 
@@ -50,17 +53,18 @@
                   <!-- Authentication Links -->
                   {% if user.is_authenticated %}
                       <div class="dropdown">
-                          <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="userMenuButton">
+                          <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="userMenuButton" aria-label="User menu">
                               {{ user.get_full_name|default:user.username }}
                           </button>
                           <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuButton">
-                              <li><a class="dropdown-item" href="{% url 'tracker:banner-list' %}">Banners</a></li>
+                              <li><a class="dropdown-item" href="{% url 'tracker:banner-list' %}">Manage Banners</a></li>
                               <li><a class="dropdown-item" href="{% url 'tracker:site-settings' %}">Settings</a></li>
+                              {% if user.is_staff %}
                               <li><a class="dropdown-item" href="{% url 'admin:index' %}">Admin</a></li>
+                              {% endif %}
                               <li><hr class="dropdown-divider"></li>
-                              <li><a class="dropdown-item" href="{% url 'tracker:generate-api-key' %}">Generate API Key</a></li>
+                              <li><a class="dropdown-item" href="{% url 'tracker:generate-api-key' %}">API Key</a></li>
                               <li><hr class="dropdown-divider"></li>
-
                               <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
                           </ul>
                       </div>
@@ -71,3 +75,4 @@
           </div>
       </div>
   </nav>
+  {% endwith %}
