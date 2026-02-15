@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container py-3 py-md-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                <h1 class="mb-0">Banners</h1>
+                <a href="{% url 'tracker:banner-create' %}" class="btn btn-primary">Add banner</a>
+            </div>
+
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <p class="text-muted small mb-3">
+                Banners appear on the Home and Signup pages (and optionally Results and Countdown). Choose where each banner shows and set a background color with the color picker when editing.
+            </p>
+
+            {% if banners %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Title</th>
+                            <th scope="col">Color</th>
+                            <th scope="col">Pages</th>
+                            <th scope="col">Active</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in banners %}
+                        <tr>
+                            <td>
+                                <strong>{{ b.title|default:"(no title)" }}</strong>
+                                {% if b.subtitle %}<br><span class="text-muted small">{{ b.subtitle|truncatewords:12 }}</span>{% endif %}
+                            </td>
+                            <td>
+                                <span class="d-inline-block rounded border border-secondary" style="width:1.5rem;height:1.5rem;background-color:{{ b.background_color }};" title="{{ b.background_color }}"></span>
+                                <span class="small text-muted ms-1">{{ b.background_color }}</span>
+                            </td>
+                            <td>{{ b.pages_display }}</td>
+                            <td>{% if b.active %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
+                            <td>
+                                <a href="{% url 'tracker:banner-edit' b.pk %}" class="btn btn-sm btn-outline-primary me-1">Edit</a>
+                                <form method="post" action="{% url 'tracker:banner-delete' b.pk %}" class="d-inline" onsubmit="return confirm('Delete this banner?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No banners yet. <a href="{% url 'tracker:banner-create' %}">Add your first banner</a>.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

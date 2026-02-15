@@ -48,17 +48,11 @@
   }
 
   .upcoming-banner-wrap {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
   .upcoming-banner-wrap .banner-container {
-    min-height: 200px;
     border-radius: 1rem;
     overflow: hidden;
-  }
-  @media (min-width: 768px) {
-    .upcoming-banner-wrap .banner-container {
-      min-height: 260px;
-    }
   }
   .upcoming-banner-wrap .banner-content {
     padding: 1.25rem 1rem;
@@ -198,7 +192,7 @@
 <div class="container py-3 py-md-4 upcoming-races-page">
   {% if banners %}
   <div class="upcoming-banner-wrap">
-    <div class="banner-container min-vh-25 d-flex align-items-center rounded">
+    <div class="banner-container d-flex align-items-center rounded">
       {% for banner in banners %}
       <div class="banner w-100 text-center text-dark rounded" style="background-color: {{ banner.background_color }};">
         <div class="banner-content p-3 p-md-4">

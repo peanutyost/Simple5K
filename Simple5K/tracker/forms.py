@@ -1,5 +1,5 @@
 from django import forms
-from .models import runners, race, SiteSettings
+from .models import runners, race, SiteSettings, Banner
 from captcha.fields import CaptchaField
 
 BOOL_CHECKLIST_OPTIONS = (
@@ -188,3 +188,40 @@ class RaceSummaryForm(forms.Form):
         label="Select Race",
         widget=forms.Select(attrs={'class': 'form-control'})
     )
+
+
+class BannerForm(forms.ModelForm):
+    """Form for adding/editing banners. Background color uses a color picker."""
+    class Meta:
+        model = Banner
+        fields = [
+            'title', 'subtitle', 'background_color', 'image', 'active',
+            'show_on_home', 'show_on_signup', 'show_on_results', 'show_on_countdown',
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Banner title'}),
+            'subtitle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Optional subtitle'}),
+            'background_color': forms.TextInput(attrs={
+                'type': 'color',
+                'class': 'form-control form-control-color',
+                'style': 'width: 4rem; height: 2.5rem; cursor: pointer;',
+                'title': 'Choose background color',
+            }),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_on_home': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_on_signup': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_on_results': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_on_countdown': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'title': 'Title',
+            'subtitle': 'Subtitle',
+            'background_color': 'Background color',
+            'image': 'Image (optional)',
+            'active': 'Active (show on selected pages)',
+            'show_on_home': 'Show on Home',
+            'show_on_signup': 'Show on Signup',
+            'show_on_results': 'Show on Results',
+            'show_on_countdown': 'Show on Countdown',
+        }

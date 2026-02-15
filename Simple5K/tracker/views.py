@@ -28,7 +28,7 @@ import urllib.parse
 logger = logging.getLogger(__name__)
 
 from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, EmailSendJob
-from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm, RaceSummaryForm, SiteSettingsForm
+from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm, RaceSummaryForm, SiteSettingsForm, BannerForm
 from .pdf_gen import generate_race_report, create_runner_pdf, generate_race_summary_pdf
 from .utils import safe_content_disposition_filename
 
@@ -1342,6 +1342,55 @@ def site_settings_view(request):
     else:
         form = SiteSettingsForm(instance=site_settings)
     return render(request, 'tracker/site_settings.html', {'form': form, 'site_settings': site_settings})
+
+
+# ----------------------------Banners--------------------------------------
+@login_required
+def banner_list(request):
+    """List all banners; links to add and edit."""
+    banners = Banner.objects.all().order_by('id')
+    return render(request, 'tracker/banner_list.html', {'banners': banners})
+
+
+@login_required
+def banner_create(request):
+    """Create a new banner."""
+    if request.method == 'POST':
+        form = BannerForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Banner created.')
+            return redirect('tracker:banner-list')
+    else:
+        form = BannerForm(initial={'background_color': '#ffffff'})
+    return render(request, 'tracker/banner_form.html', {'form': form, 'banner': None})
+
+
+@login_required
+def banner_edit(request, pk):
+    """Edit an existing banner."""
+    banner = get_object_or_404(Banner, pk=pk)
+    if request.method == 'POST':
+        form = BannerForm(request.POST, request.FILES, instance=banner)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Banner updated.')
+            return redirect('tracker:banner-list')
+    else:
+        form = BannerForm(instance=banner)
+    return render(request, 'tracker/banner_form.html', {'form': form, 'banner': banner})
+
+
+@login_required
+def banner_delete(request, pk):
+    """Delete a banner (POST only)."""
+    banner = get_object_or_404(Banner, pk=pk)
+    if request.method == 'POST':
+        title = str(banner)
+        banner.delete()
+        messages.success(request, f'Banner "{title}" deleted.')
+        return redirect('tracker:banner-list')
+    return redirect('tracker:banner-list')
 
 
 # ----------------------------RFID Tags--------------------------------------
