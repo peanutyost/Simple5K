@@ -9,10 +9,10 @@ from accounts.views import (
 )
 
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path, include, re_path
+from django.urls import path, re_path, include
 from django.views.generic.base import RedirectView
+from django.views.static import serve
 from tracker.views import race_overview, race_list, race_countdown
 
 urlpatterns = [
@@ -28,5 +28,9 @@ urlpatterns = [
     path('race-countdown/', race_countdown, name='race-countdown'),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve uploaded media files (e.g. site background image) with DEBUG on or off.
+# Django's static() helper returns [] when DEBUG=False, so we add the pattern directly.
+# WhiteNoise only serves STATIC files (collectstatic); it does not serve MEDIA (user uploads).
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+]

@@ -138,8 +138,9 @@ USE_I18N = True
 USE_TZ = True
 
 MEDIA_URL = '/media/'
-
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# Note: WhiteNoise serves only STATIC files (from collectstatic). User uploads (media)
+# are served by Django in urls.py; for high-traffic production, serve /media/ from nginx etc.
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
