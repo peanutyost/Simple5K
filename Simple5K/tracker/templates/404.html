@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="error-page">
+    <div class="error-page__card">
+        <a href="{% url 'race-until' %}" class="error-page__logo-link" aria-label="Simple 5K Home">
+            {% if site_background_image_url %}
+            <img src="{{ site_background_image_url }}" alt="Simple 5K" class="error-page__logo">
+            {% else %}
+            <img src="{% static 'images/logo.png' %}" alt="Simple 5K" class="error-page__logo">
+            {% endif %}
+        </a>
+        <h1 class="error-page__title">404</h1>
+        <p class="error-page__subtitle">Page not found</p>
+        <p class="error-page__message">The page you’re looking for doesn’t exist or has been moved.</p>
+        <a href="{% url 'race-until' %}" class="btn error-page__btn">Back to Home</a>
+    </div>
+</div>
+<style>
+    .error-page {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 200px);
+        padding: 2rem 1rem;
+    }
+    .error-page__card {
+        text-align: center;
+        max-width: 420px;
+    }
+    .error-page__logo-link {
+        display: inline-block;
+        margin-bottom: 1.5rem;
+    }
+    .error-page__logo {
+        width: 88px;
+        height: 88px;
+        object-fit: contain;
+        opacity: 0.95;
+    }
+    .error-page__title {
+        font-size: clamp(4rem, 12vw, 6.5rem);
+        font-weight: 200;
+        letter-spacing: -0.04em;
+        color: #1a1a1a;
+        line-height: 1;
+        margin: 0 0 0.25rem;
+        font-variant-numeric: tabular-nums;
+    }
+    .error-page__subtitle {
+        font-size: 1.125rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: #333;
+        margin: 0 0 0.75rem;
+    }
+    .error-page__message {
+        font-size: 0.9375rem;
+        color: #666;
+        line-height: 1.5;
+        margin: 0 0 1.75rem;
+    }
+    .error-page__btn {
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        padding: 0.6rem 1.5rem;
+        background-color: #1a1a1a;
+        border-color: #1a1a1a;
+        color: #fff;
+    }
+    .error-page__btn:hover {
+        background-color: #000;
+        border-color: #000;
+        color: #fff;
+    }
+</style>
+{% endblock %}
