@@ -235,7 +235,7 @@
     </div>
 </div>
 
-<script id="runner-choices" type="application/json">{{ runner_choices_json|safe }}</script>
+{% json_script "runner-choices" runner_choices %}
 <script>
 (function() {
     function init() {

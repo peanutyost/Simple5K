@@ -1,6 +1,7 @@
 from django import forms
 from .models import runners, race, SiteSettings, Banner
 from captcha.fields import CaptchaField
+from .validators import validate_image_file
 
 BOOL_CHECKLIST_OPTIONS = (
     (True, 'Yes'),
@@ -61,6 +62,12 @@ class RaceForm(forms.ModelForm):
             'min_lap_time': 'Enter the minimum lap time in seconds.',
             'logo': 'Upload a logo for the race'
         }
+
+    def clean_logo(self):
+        value = self.cleaned_data.get('logo')
+        if value and hasattr(value, 'read'):
+            validate_image_file(value)
+        return value
 
 
 class LapForm(forms.Form):
@@ -146,6 +153,12 @@ class SiteSettingsForm(forms.ModelForm):
             'background_image_file': 'Or upload background image',
         }
 
+    def clean_background_image_file(self):
+        value = self.cleaned_data.get('background_image_file')
+        if value and hasattr(value, 'read'):
+            validate_image_file(value)
+        return value
+
 
 class RaceSelectionForm(forms.Form):
     race = forms.ModelChoiceField(queryset=race.objects.none(), label="Select Race")
@@ -225,3 +238,9 @@ class BannerForm(forms.ModelForm):
             'show_on_results': 'Show on Results',
             'show_on_countdown': 'Show on Countdown',
         }
+
+    def clean_image(self):
+        value = self.cleaned_data.get('image')
+        if value and hasattr(value, 'read'):
+            validate_image_file(value)
+        return value

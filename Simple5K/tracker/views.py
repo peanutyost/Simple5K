@@ -15,6 +15,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views.decorators.cache import cache_page
 from django.core.mail import EmailMessage, send_mail
+from django.core.validators import EmailValidator
 from django.conf import settings
 from functools import wraps
 import hmac
@@ -319,8 +320,13 @@ def send_race_report_email(runner_id, race_id):
     """
     race_obj = get_object_or_404(race, pk=race_id)
     runner_obj = get_object_or_404(runners, pk=runner_id)
-    # Generate the PDF
-    pdf_filename = f"race_report_{race_obj.name}_{runner_obj.first_name}_{runner_obj.last_name}.pdf"
+    # Generate the PDF; sanitize attachment filename to prevent header injection
+    safe_name = safe_content_disposition_filename(
+        f"{race_obj.name}_{runner_obj.first_name}_{runner_obj.last_name}"
+    )
+    pdf_filename = f"race_report_{safe_name}.pdf"
+    if not pdf_filename.endswith('.pdf'):
+        pdf_filename += '.pdf'
     race_data = prepare_race_data(race_obj, runner_obj)
 
     try:
@@ -336,7 +342,7 @@ def send_race_report_email(runner_id, race_id):
         # Create an EmailMessage object for attachments.  Use EmailMessage not send_mail for more control
         email = EmailMessage(subject, body, from_email, recipient_list)
 
-        # Attach the PDF directly from the bytes
+        # Attach the PDF directly from the bytes (filename already sanitized above)
         email.attach(pdf_filename, pdf_content, "application/pdf")  # Attach the report
         # If you're using Microsoft 365 and have configured TLS settings:
         # email.fail_silently = False  # Raise exceptions on email sending failures
@@ -525,7 +531,7 @@ def show_runners(request, pk):
         'race_types': runners.race_type,
         'shirt_sizes': runners._meta.get_field('shirt_size').choices,
         'rfid_tags': rfid_tags,
-        'runner_choices_json': json.dumps(runner_choices),
+        'runner_choices': runner_choices,
         # Path-only URLs so fetch() uses the current page origin (HTTPS when page is HTTPS)
         'add_runner_url': reverse('tracker:add_runner'),
         'edit_runner_url': reverse('tracker:edit_runner'),
@@ -584,6 +590,11 @@ def add_runner(request):
         errors.append('Email is required')
     elif len(email) > 254:
         errors.append('Email too long')
+    else:
+        try:
+            EmailValidator()(email)
+        except Exception:
+            errors.append('Enter a valid email address')
     if not age or age not in [c[0] for c in runners.age_bracket]:
         errors.append('Valid age bracket is required')
     if not gender:
@@ -669,7 +680,12 @@ def edit_runner(request):
         elif len(v) > 254:
             errors.append('Email too long')
         else:
-            runner_obj.email = v
+            try:
+                EmailValidator()(v)
+            except Exception:
+                errors.append('Enter a valid email address')
+            else:
+                runner_obj.email = v
     if 'age' in data:
         v = (data.get('age') or '').strip()
         valid_ages = [c[0] for c in runners.age_bracket]
