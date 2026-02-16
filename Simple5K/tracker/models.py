@@ -346,3 +346,24 @@ class EmailSendJob(models.Model):
 
     class Meta:
         ordering = ['created_at']
+
+
+class PayPalOrder(models.Model):
+    """Tracks PayPal Orders v2 REST API orders for audit trail and payment verification."""
+    order_id = models.CharField(max_length=64, unique=True, db_index=True, help_text='PayPal order ID')
+    runner = models.ForeignKey(runners, on_delete=models.CASCADE, related_name='paypal_orders')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, help_text='Expected payment amount')
+    currency = models.CharField(max_length=10, default='USD')
+    status = models.CharField(max_length=32, default='CREATED', help_text='Order status from PayPal')
+    capture_id = models.CharField(max_length=64, blank=True, help_text='PayPal capture/transaction ID')
+    payer_email = models.EmailField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    captured_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'PayPal order'
+        verbose_name_plural = 'PayPal orders'
+
+    def __str__(self):
+        return f"PayPal {self.order_id} ({self.status}) - runner {self.runner_id}"

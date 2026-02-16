@@ -4,9 +4,19 @@
 <div class="container py-3 py-md-4">
     <div class="row justify-content-center">
         <div class="col-12 col-md-8 col-lg-6">
+            {% if paid %}
             <h1 class="mb-4">Thank You</h1>
-            <p>Thank You for the donation. You have been registered for the race.</p>
+            <p>Your payment has been received. You are registered for the race.</p>
             <p class="mb-0">See you on race day!</p>
+            {% elif error %}
+            <h1 class="mb-4">Payment Issue</h1>
+            <div class="alert alert-warning">{{ error }}</div>
+            <p>You are still registered for the race. You can pay the entry fee on race day when you check in.</p>
+            {% else %}
+            <h1 class="mb-4">Payment Pending</h1>
+            <p>We could not confirm your payment at this time. You are still registered for the race.</p>
+            <p class="mb-0">You can pay the entry fee on race day when you check in.</p>
+            {% endif %}
         </div>
     </div>
 </div>

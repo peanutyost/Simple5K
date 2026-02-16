@@ -41,16 +41,15 @@ Use these in a `.env` file (with something like `python-dotenv` or your host’s
 
 ---
 
-## PayPal
+## PayPal (REST API — Orders v2)
 
-PayPal business email and sandbox mode are **only** configured via environment variables (not in the Settings page).
+PayPal uses the REST API (Orders v2) with OAuth2 credentials. Create an app at [developer.paypal.com/dashboard/applications](https://developer.paypal.com/dashboard/applications) to get a Client ID and Secret.
 
 | Variable | Required | Default | Notes |
 |----------|----------|---------|--------|
-| **PAYPAL_BUSINESS_EMAIL** | For PayPal flow | `''` | PayPal account that receives payments. |
-| **PAYPAL_SANDBOX** | No | `False` | Set `TRUE` or `1` for PayPal sandbox. |
-| **PAYPAL_CUSTOM_SECRET** | No | same as `SECRET_KEY` | Optional separate secret for signing PayPal custom field. |
-| **PAYPAL_IPN_BASE_URL** | No | — | Optional public base URL for IPN/return/cancel (e.g. ngrok URL for local testing). |
+| **PAYPAL_CLIENT_ID** | For PayPal flow | `''` | OAuth2 Client ID from your PayPal app. |
+| **PAYPAL_CLIENT_SECRET** | For PayPal flow | `''` | OAuth2 Client Secret from your PayPal app. |
+| **PAYPAL_SANDBOX** | No | `False` | Set `TRUE` or `1` to use PayPal sandbox environment for testing. |
 
 ---
 
@@ -94,7 +93,8 @@ EMAIL_HOST_USER=you@example.com
 EMAIL_HOST_PASSWORD=your-smtp-password
 DEFAULT_FROM_EMAIL=you@example.com
 
-PAYPAL_BUSINESS_EMAIL=you@paypal.com
+PAYPAL_CLIENT_ID=your-paypal-client-id
+PAYPAL_CLIENT_SECRET=your-paypal-client-secret
 # PAYPAL_SANDBOX=TRUE only for testing
 ```
 

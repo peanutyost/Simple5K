@@ -17,7 +17,7 @@ A Django-based web application for managing and tracking races, runners, and lap
 - **API key authentication** — Generate keys in the UI for timing endpoints
 
 ### Payments & Email
-- **PayPal integration** — Optional entry fee at signup; return/cancel/IPN handling; pay-later links in confirmation emails
+- **PayPal integration** — Optional entry fee at signup via PayPal REST API (Orders v2); server-side capture on return; pay-later links in confirmation emails
 - **Signup confirmations** — Email after signup (after payment or configurable timeout); background command `send_signup_confirmations`
 - **Post-race emails** — Send individual race report emails to runners; bulk job queue with `send_race_emails` management command
 - **Unpaid reminders** — Bulk email to unpaid runners with payment link via email queue
@@ -116,7 +116,7 @@ Summary:
 - **Core:** `DEBUG`, `SECRET_KEY`, `ALLOWED_HOSTS`, `TRUSTED_ORIGINS`
 - **Database:** `DATABASE_ENGINE`, `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT`
 - **Email:** `SMTP_HOST`, `SMTP_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`
-- **PayPal:** `PAYPAL_BUSINESS_EMAIL`, `PAYPAL_SANDBOX`, `PAYPAL_CUSTOM_SECRET`, `PAYPAL_IPN_BASE_URL`
+- **PayPal:** `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_SANDBOX`
 
 ## API
 
@@ -159,6 +159,7 @@ The image runs migrations, `collectstatic`, and Gunicorn (see `Simple5K/start-pr
 - **Banner** — Title, subtitle, image, background_color, active, show_on_home/signup/results/countdown
 - **ApiKey** — name, key, is_active
 - **SiteSettings** — paypal_enabled, signup_confirmation_timeout_minutes, site_base_url (singleton)
+- **PayPalOrder** — order_id, runner, amount, currency, status, capture_id, payer_email (audit trail)
 - **EmailSendJob** — race, subject, body, unpaid_reminder, status (queued/sending/completed/failed)
 
 ## Views (Summary)
@@ -183,7 +184,7 @@ The image runs migrations, `collectstatic`, and Gunicorn (see `Simple5K/start-pr
 
 - Python 3.x
 - Django
-- See `requirements.txt`: asgiref, Django, sqlparse, tzdata, django-dotenv, gunicorn, mysqlclient, whitenoise, reportlab, pillow, django-simple-captcha, pytz
+- See `requirements.txt`: asgiref, Django, sqlparse, tzdata, django-dotenv, gunicorn, mysqlclient, whitenoise, reportlab, pillow, django-simple-captcha, pytz, paypal-server-sdk
 
 ## Notes
 

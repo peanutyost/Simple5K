@@ -10,3 +10,4 @@ reportlab
 pillow
 django-simple-captcha
 pytz
+paypal-server-sdk==2.2.0

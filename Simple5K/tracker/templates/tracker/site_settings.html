@@ -27,7 +27,7 @@
                                 {{ form.paypal_enabled }}
                                 <label class="form-check-label" for="{{ form.paypal_enabled.id_for_label }}">{{ form.paypal_enabled.label }}</label>
                             </div>
-                            <small class="form-text text-muted">PayPal business email and sandbox mode are set via <code>PAYPAL_BUSINESS_EMAIL</code> and <code>PAYPAL_SANDBOX</code> in your environment.</small>
+                            <small class="form-text text-muted">PayPal API credentials are set via <code>PAYPAL_CLIENT_ID</code>, <code>PAYPAL_CLIENT_SECRET</code>, and <code>PAYPAL_SANDBOX</code> environment variables.</small>
                         </div>
                         <hr class="my-4">
                         <h5 class="mb-3">Signup confirmation email</h5>

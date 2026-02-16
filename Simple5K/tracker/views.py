@@ -17,6 +17,7 @@ from django.views.decorators.cache import cache_page
 from django.core.mail import EmailMessage, send_mail
 from django.core.validators import EmailValidator
 from django.conf import settings
+from decimal import Decimal
 from functools import wraps
 import hmac
 import hashlib
@@ -24,11 +25,10 @@ import io
 import json
 import logging
 import pytz
-import urllib.parse
 
 logger = logging.getLogger(__name__)
 
-from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, EmailSendJob
+from .models import race, runners, laps, Banner, ApiKey, RfidTag, SiteSettings, EmailSendJob, PayPalOrder
 from .forms import LapForm, raceStart, runnerStats, SignupForm, RaceForm, RaceSelectionForm, RunnerInfoSelectionForm, RaceSummaryForm, SiteSettingsForm, BannerForm
 from .pdf_gen import generate_race_report, create_runner_pdf, generate_race_summary_pdf
 from .utils import safe_content_disposition_filename
@@ -1795,73 +1795,112 @@ def get_completed_race_overview(request, race_id):
         )
 
 
-def _paypal_custom_for_runner(runner_id):
-    """Build signed custom value for PayPal (runner_id + HMAC)."""
-    secret = getattr(settings, 'PAYPAL_CUSTOM_SECRET', settings.SECRET_KEY)
+def _paypal_sign_runner_id(runner_id):
+    """Build HMAC signature for runner_id (used for pay-later link authentication)."""
+    secret = settings.SECRET_KEY
     payload = str(runner_id).encode('utf-8')
-    sig = hmac.new(secret.encode('utf-8') if isinstance(secret, str) else secret, payload, hashlib.sha256).hexdigest()
-    return f"{runner_id}:{sig}"
+    return hmac.new(secret.encode('utf-8') if isinstance(secret, str) else secret, payload, hashlib.sha256).hexdigest()
 
 
-def _paypal_runner_id_from_custom(custom_value):
-    """Verify and extract runner_id from PayPal IPN custom field. Returns runner_id or None."""
-    if not custom_value or ':' not in custom_value:
-        return None
-    runner_id_str, sig = custom_value.strip().split(':', 1)
-    try:
-        runner_id = int(runner_id_str)
-    except ValueError:
-        return None
-    expected = _paypal_custom_for_runner(runner_id)
-    if not hmac.compare_digest(custom_value.strip(), expected):
-        return None
-    return runner_id
+def _paypal_verify_runner_signature(runner_id, signature):
+    """Verify an HMAC signature for a runner_id. Returns True if valid."""
+    expected = _paypal_sign_runner_id(runner_id)
+    return hmac.compare_digest(signature, expected)
 
 
-def _paypal_base_url(request):
-    """Base URL for PayPal return/cancel/notify. Use PAYPAL_IPN_BASE_URL if set (for local dev with tunnel)."""
-    base = getattr(settings, 'PAYPAL_IPN_BASE_URL', None) or ''
-    if isinstance(base, str):
-        base = base.strip().rstrip('/')
-    if base:
-        return base
-    return request.build_absolute_uri('/').rstrip('/')
+def _create_paypal_order(request, runner_obj, race_obj):
+    """Create a PayPal order via the REST API and return (approve_url, PayPalOrder) or raise."""
+    from .paypal_client import get_paypal_client
+    from paypalserversdk.models.order_request import OrderRequest
+    from paypalserversdk.models.checkout_payment_intent import CheckoutPaymentIntent
+    from paypalserversdk.models.purchase_unit_request import PurchaseUnitRequest
+    from paypalserversdk.models.amount_with_breakdown import AmountWithBreakdown
+    from paypalserversdk.models.order_application_context import OrderApplicationContext
+    from paypalserversdk.models.shipping_preference import ShippingPreference
+    from paypalserversdk.models.pay_pal_experience_landing_page import PayPalExperienceLandingPage
+
+    entry_fee = Decimal(str(race_obj.Entry_fee or 0))
+    return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
+    cancel_url = request.build_absolute_uri(reverse('tracker:paypal-cancel'))
+
+    client = get_paypal_client()
+    order_request = OrderRequest(
+        intent=CheckoutPaymentIntent.CAPTURE,
+        purchase_units=[
+            PurchaseUnitRequest(
+                amount=AmountWithBreakdown(
+                    currency_code='USD',
+                    value=f'{entry_fee:.2f}',
+                ),
+                description=f"Race entry: {race_obj.name}"[:127],
+                custom_id=str(runner_obj.id),
+            ),
+        ],
+        application_context=OrderApplicationContext(
+            return_url=return_url,
+            cancel_url=cancel_url,
+            shipping_preference=ShippingPreference.NO_SHIPPING,
+            landing_page=PayPalExperienceLandingPage.LOGIN,
+            brand_name='Okey Dokey 5K',
+        ),
+    )
+
+    response = client.orders.orders_create({'body': order_request})
+    order_data = response.body
+    order_id = order_data.id
+
+    approve_url = None
+    for link in order_data.links:
+        if link.rel == 'approve':
+            approve_url = link.href
+            break
+
+    if not approve_url:
+        raise RuntimeError(f"PayPal order {order_id} has no approve link")
+
+    paypal_order = PayPalOrder.objects.create(
+        order_id=order_id,
+        runner=runner_obj,
+        amount=entry_fee,
+        currency='USD',
+        status='CREATED',
+    )
+
+    return approve_url, paypal_order
 
 
-def _paypal_post_context(request, runner, race_obj, return_url_extra=None, cancel_url_extra=None):
-    """
-    Build context for PayPal redirect template: action URL and form params.
-    PayPal requires form POST to webscr so that notify_url (IPN) is honored; GET redirects can drop it.
-    """
-    paypal_email = (getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or '').strip()
-    entry_fee = float(race_obj.Entry_fee or 0)
-    use_sandbox = getattr(settings, 'PAYPAL_SANDBOX', False)
-    base_url = 'https://www.sandbox.paypal.com' if use_sandbox else 'https://www.paypal.com'
-    paypal_base = _paypal_base_url(request)
-    return_path = paypal_base + reverse('tracker:paypal-return')
-    cancel_path = paypal_base + reverse('tracker:paypal-cancel')
-    if return_url_extra:
-        return_path += '?' + urllib.parse.urlencode(return_url_extra)
-    if cancel_url_extra:
-        cancel_path += '?' + urllib.parse.urlencode(cancel_url_extra)
-    notify_url = paypal_base + reverse('tracker:paypal-ipn')
-    custom = _paypal_custom_for_runner(runner.id)
-    item_name = f"Race entry: {race_obj.name}"
-    params = {
-        'cmd': '_donations',
-        'business': paypal_email,
-        'amount': f'{entry_fee:.2f}',
-        'currency_code': 'USD',
-        'item_name': item_name[:127],
-        'return': return_path,
-        'cancel_return': cancel_path,
-        'notify_url': notify_url,
-        'custom': custom[:256],
-    }
+def _capture_paypal_order(order_id):
+    """Capture a PayPal order and return (capture_result_dict, error_string).
+    On success: (result_dict, None). On failure: (None, error_message)."""
+    from .paypal_client import get_paypal_client
+
+    client = get_paypal_client()
+    response = client.orders.orders_capture({'id': order_id})
+    result = response.body
+
+    if result.status != 'COMPLETED':
+        return None, f"Order status is {result.status}, not COMPLETED"
+
+    capture = None
+    if result.purchase_units:
+        payments = result.purchase_units[0].payments
+        if payments and payments.captures:
+            capture = payments.captures[0]
+
+    if not capture:
+        return None, "No capture found in order response"
+
+    payer_email = ''
+    if result.payer and result.payer.email_address:
+        payer_email = result.payer.email_address
+
     return {
-        'paypal_action': base_url + '/cgi-bin/webscr',
-        'paypal_params': params,
-    }
+        'capture_id': capture.id,
+        'amount': Decimal(capture.amount.value),
+        'currency': capture.amount.currency_code,
+        'payer_email': payer_email,
+        'status': result.status,
+    }, None
 
 
 def _pay_link_for_runner(runner):
@@ -1870,8 +1909,7 @@ def _pay_link_for_runner(runner):
     base = (site_settings.site_base_url or '').strip().rstrip('/')
     if not base:
         return None
-    custom = _paypal_custom_for_runner(runner.id)
-    _, signature = custom.split(':', 1)
+    signature = _paypal_sign_runner_id(runner.id)
     path = reverse('tracker:pay-entry', args=[runner.id, signature])
     return base + path
 
@@ -1936,15 +1974,15 @@ def race_signup(request):
             runner.send_signup_confirmation = True
             runner.save(update_fields=['send_signup_confirmation'])
             site_settings = SiteSettings.get_settings()
-            paypal_email = (getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or '').strip()
             entry_fee = float(selected_race.Entry_fee or 0)
-            if site_settings.paypal_enabled and paypal_email and entry_fee > 0:
-                # POST to PayPal so notify_url (IPN) is honored; GET redirects can drop it per PayPal docs.
-                sig = _paypal_custom_for_runner(runner.id).split(':', 1)[1]
-                extra = {'runner_id': runner.id, 'sig': sig}
-                context = _paypal_post_context(request, runner, selected_race, return_url_extra=extra, cancel_url_extra=extra)
-                return render(request, 'tracker/paypal_redirect.html', context)
-            # No PayPal: send signup confirmation immediately (runner.send_signup_confirmation already True from above)
+            paypal_configured = settings.PAYPAL_CLIENT_ID and settings.PAYPAL_CLIENT_SECRET
+            if site_settings.paypal_enabled and paypal_configured and entry_fee > 0:
+                try:
+                    approve_url, _ = _create_paypal_order(request, runner, selected_race)
+                    return redirect(approve_url)
+                except Exception:
+                    logger.exception("PayPal order creation failed for runner pk=%s", runner.pk)
+                    # Fall through to non-PayPal flow so the signup isn't lost
             send_signup_confirmation_email(runner)
             return redirect(reverse('tracker:signup-success', args=[selected_race.id]))
     else:
@@ -1968,55 +2006,86 @@ def signup_success(request, pk):
 
 
 def paypal_return(request):
-    """Shown after user completes (or abandons) PayPal. Payment is normally confirmed via IPN.
-    When we have runner_id+sig in the URL (from our redirect), we treat the return as proof of payment:
-    mark runner paid if not already, and send confirmation email if not already sent.
-    This covers both (1) IPN ran but email failed and (2) IPN never reached us (e.g. localhost).
-    """
-    rid_get = request.GET.get('runner_id')
-    sig_get = (request.GET.get('sig') or '').strip()
-    if rid_get and sig_get:
-        try:
-            rid = int(rid_get)
-        except (TypeError, ValueError):
-            rid = None
-        if rid is not None and _paypal_runner_id_from_custom(f"{rid}:{sig_get}") == rid:
-            runner = runners.objects.filter(pk=rid).first()
-            if runner:
-                if not runner.paid:
-                    runner.paid = True
-                    runner.save(update_fields=['paid'])
-                if runner.send_signup_confirmation and not runner.signup_confirmation_sent:
-                    send_signup_confirmation_email(runner)
-    return render(request, 'tracker/paypal_return.html')
+    """Shown after user approves payment on PayPal. Captures the order server-side,
+    verifies the amount, and marks the runner as paid only if capture succeeds."""
+    token = request.GET.get('token', '').strip()
+    context = {'paid': False, 'error': None}
+
+    if not token:
+        context['error'] = 'No payment token received from PayPal.'
+        return render(request, 'tracker/paypal_return.html', context)
+
+    paypal_order = PayPalOrder.objects.filter(order_id=token).first()
+    if not paypal_order:
+        context['error'] = 'Payment record not found. Please contact the race organiser.'
+        return render(request, 'tracker/paypal_return.html', context)
+
+    runner = paypal_order.runner
+
+    # If already captured (e.g. user refreshes the return page), skip re-capture
+    if paypal_order.status == 'COMPLETED' and runner.paid:
+        context['paid'] = True
+        return render(request, 'tracker/paypal_return.html', context)
+
+    try:
+        result, error = _capture_paypal_order(token)
+    except Exception:
+        logger.exception("PayPal capture failed for order %s", token)
+        context['error'] = 'We could not confirm your payment with PayPal. Please contact the race organiser.'
+        return render(request, 'tracker/paypal_return.html', context)
+
+    if error:
+        logger.warning("PayPal capture error for order %s: %s", token, error)
+        context['error'] = 'Payment could not be completed. Please try again or contact the race organiser.'
+        return render(request, 'tracker/paypal_return.html', context)
+
+    # Verify amount meets entry fee
+    expected_fee = Decimal(str(runner.race.Entry_fee or 0))
+    if expected_fee > 0 and result['amount'] < expected_fee:
+        logger.warning(
+            "PayPal underpayment: order=%s got %s expected %s",
+            token, result['amount'], expected_fee,
+        )
+        context['error'] = 'Payment amount does not match the entry fee. Please contact the race organiser.'
+        return render(request, 'tracker/paypal_return.html', context)
+
+    # Update records
+    paypal_order.status = 'COMPLETED'
+    paypal_order.capture_id = result['capture_id']
+    paypal_order.payer_email = result.get('payer_email', '')
+    paypal_order.captured_at = timezone.now()
+    paypal_order.save()
+
+    runner.paid = True
+    runner.save(update_fields=['paid'])
+
+    if runner.send_signup_confirmation and not runner.signup_confirmation_sent:
+        send_signup_confirmation_email(runner)
+
+    context['paid'] = True
+    logger.info("PayPal payment captured: order=%s capture=%s runner=%s amount=%s",
+                token, result['capture_id'], runner.pk, result['amount'])
+    return render(request, 'tracker/paypal_return.html', context)
 
 
 def paypal_cancel(request):
     """Shown when user cancels PayPal payment. Runner remains registered but unpaid.
-    Sends signup confirmation email automatically (with pay-later link). Only GET; no form.
+    Looks up the runner via the PayPal order token and sends signup confirmation with pay-later link.
     """
     if request.GET.get('sent') == '1':
         return render(request, 'tracker/paypal_cancel.html', {'sent': True})
 
     runner = None
-    session_id = request.session.get('paypal_pending_runner_id')
-    if session_id is not None:
-        runner = runners.objects.filter(pk=session_id).first()
-        if runner:
-            request.session.pop('paypal_pending_runner_id', None)
-    if runner is None:
-        rid_get = request.GET.get('runner_id')
-        sig_get = (request.GET.get('sig') or '').strip()
-        if rid_get and sig_get:
-            try:
-                rid = int(rid_get)
-            except (TypeError, ValueError):
-                rid = None
-            if rid is not None and _paypal_runner_id_from_custom(f"{rid}:{sig_get}") == rid:
-                runner = runners.objects.filter(pk=rid).first()
+    token = request.GET.get('token', '').strip()
+    if token:
+        paypal_order = PayPalOrder.objects.filter(order_id=token).first()
+        if paypal_order:
+            if paypal_order.status == 'CREATED':
+                paypal_order.status = 'CANCELLED'
+                paypal_order.save(update_fields=['status'])
+            runner = paypal_order.runner
 
     if runner is not None:
-        # Only send if eligible for confirmation and haven't already had one
         if runner.send_signup_confirmation and not runner.signup_confirmation_sent:
             send_signup_confirmation_email(runner)
             return redirect(reverse('tracker:paypal-cancel') + '?sent=1')
@@ -2024,105 +2093,12 @@ def paypal_cancel(request):
     return render(request, 'tracker/paypal_cancel.html', {'sent': False})
 
 
-@csrf_exempt
-def paypal_ipn(request):
-    """
-    PayPal IPN (Instant Payment Notification). PayPal POSTs here when a payment completes.
-    Verify the request with PayPal, then mark the runner as paid if payment_status=Completed.
-    """
-    import logging
-    logger = logging.getLogger(__name__)
-    if request.method != 'POST':
-        return HttpResponse(status=405)
-    raw_body = request.body
-    if not raw_body:
-        return HttpResponse('ok')
-    site_settings = SiteSettings.get_settings()
-    use_sandbox = getattr(settings, 'PAYPAL_SANDBOX', False)
-    paypal_url = 'https://ipnpb.sandbox.paypal.com/cgi-bin/webscr' if use_sandbox else 'https://ipnpb.paypal.com/cgi-bin/webscr'
-    # PayPal spec: PREFIX the message with cmd=_notify-validate (do not append)
-    verify_data = b'cmd=_notify-validate&' + raw_body
-    try:
-        import urllib.request
-        req = urllib.request.Request(
-            paypal_url,
-            data=verify_data,
-            method='POST',
-            headers={
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'Simple5K-IPN-Listener',
-            },
-        )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            verify_result = resp.read().decode('utf-8').strip()
-    except Exception as e:
-        logger.exception('PayPal IPN verification request failed: %s', e)
-        return HttpResponse(status=500)
-    if verify_result != 'VERIFIED':
-        logger.warning('PayPal IPN verification failed: result=%r', verify_result)
-        return HttpResponse(status=400)
-    # Parse body for our use (latin-1 never fails on any byte)
-    try:
-        body_str = raw_body.decode('utf-8')
-    except UnicodeDecodeError:
-        body_str = raw_body.decode('latin-1')
-    data = urllib.parse.parse_qs(body_str)
-    payment_status = (data.get('payment_status') or [''])[0]
-    custom = (data.get('custom') or [''])[0]
-    if payment_status.lower() not in ('completed', 'processed'):
-        logger.info('PayPal IPN ignored: payment_status=%r', payment_status)
-        return HttpResponse('ok')
-
-    # Verify receiver email matches our configured PayPal business email
-    expected_email = (getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or '').strip().lower()
-    receiver_email = (data.get('receiver_email') or data.get('business') or [''])[0].strip().lower()
-    if expected_email and receiver_email != expected_email:
-        logger.warning('PayPal IPN: receiver mismatch: got %r expected %r', receiver_email, expected_email)
-        return HttpResponse('ok')
-
-    runner_id = _paypal_runner_id_from_custom(custom)
-    if runner_id is None:
-        logger.warning('PayPal IPN: invalid or missing custom field')
-        return HttpResponse('ok')
-    try:
-        runner_obj = runners.objects.get(pk=runner_id)
-
-        # Verify payment amount meets the entry fee for this race
-        try:
-            mc_gross = float((data.get('mc_gross') or ['0'])[0])
-        except (ValueError, TypeError):
-            mc_gross = 0.0
-        expected_fee = float(runner_obj.race.Entry_fee or 0)
-        if expected_fee > 0 and mc_gross < expected_fee:
-            logger.warning(
-                'PayPal IPN: underpayment for runner_id=%s: got %.2f expected %.2f',
-                runner_id, mc_gross, expected_fee,
-            )
-            return HttpResponse('ok')
-
-        # Verify currency
-        mc_currency = (data.get('mc_currency') or [''])[0].upper()
-        if mc_currency and mc_currency != 'USD':
-            logger.warning('PayPal IPN: unexpected currency %r for runner_id=%s', mc_currency, runner_id)
-            return HttpResponse('ok')
-
-        runner_obj.paid = True
-        runner_obj.save(update_fields=['paid'])
-        if runner_obj.send_signup_confirmation and not runner_obj.signup_confirmation_sent:
-            send_signup_confirmation_email(runner_obj)
-        logger.info('PayPal IPN processed: runner_id=%s marked paid (amount=%.2f)', runner_id, mc_gross)
-    except runners.DoesNotExist:
-        logger.warning('PayPal IPN: runner_id=%s not found', runner_id)
-    return HttpResponse('ok')
-
-
 def pay_entry(request, runner_id, signature):
     """
     Pay-later page: valid link from signup confirmation email. Verifies runner_id + signature
-    then redirects to PayPal with the same flow as at signup.
+    then creates a PayPal order and redirects to PayPal for payment.
     """
-    custom = f"{runner_id}:{signature}"
-    if _paypal_runner_id_from_custom(custom) != runner_id:
+    if not _paypal_verify_runner_signature(runner_id, signature):
         raise Http404("Invalid or expired pay link.")
     try:
         runner_obj = runners.objects.get(pk=runner_id)
@@ -2131,14 +2107,17 @@ def pay_entry(request, runner_id, signature):
     if runner_obj.paid:
         return redirect(reverse('tracker:signup-success', args=[runner_obj.race_id]))
     site_settings = SiteSettings.get_settings()
-    paypal_email = (getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or '').strip()
     race_obj = runner_obj.race
     entry_fee = float(race_obj.Entry_fee or 0)
-    if not site_settings.paypal_enabled or not paypal_email or entry_fee <= 0:
+    paypal_configured = settings.PAYPAL_CLIENT_ID and settings.PAYPAL_CLIENT_SECRET
+    if not site_settings.paypal_enabled or not paypal_configured or entry_fee <= 0:
         return redirect(reverse('tracker:signup-success', args=[race_obj.id]))
-    extra = {'runner_id': runner_obj.id, 'sig': signature}
-    context = _paypal_post_context(request, runner_obj, race_obj, return_url_extra=extra, cancel_url_extra=extra)
-    return render(request, 'tracker/paypal_redirect.html', context)
+    try:
+        approve_url, _ = _create_paypal_order(request, runner_obj, race_obj)
+        return redirect(approve_url)
+    except Exception:
+        logger.exception("PayPal order creation failed for pay_entry runner pk=%s", runner_obj.pk)
+        return redirect(reverse('tracker:signup-success', args=[race_obj.id]))
 
 
 def race_countdown(request):
