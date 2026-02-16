@@ -86,12 +86,13 @@ WSGI_APPLICATION = "Simple5K.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+_ALLOWED_DB_ENGINES = ('sqlite3', 'postgresql', 'mysql')
+_db_engine = (os.environ.get('DATABASE_ENGINE') or 'sqlite3').strip().lower()
+if _db_engine not in _ALLOWED_DB_ENGINES:
+    _db_engine = 'sqlite3'
 DATABASES = {
     'default': {
-
-        'ENGINE': 'django.db.backends.{}'.format(
-            os.environ.get('DATABASE_ENGINE', 'sqlite3')
-        ),
+        'ENGINE': f'django.db.backends.{_db_engine}',
         'NAME': os.environ.get('DATABASE_NAME', BASE_DIR / 'db.sqlite3'),
         'USER': os.environ.get('DATABASE_USERNAME'),
         'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
@@ -119,12 +120,23 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
-        'TIMEOUT': 60,  # Cache expires after 60 seconds
+# Login rate limiting (accounts.views) requires a real cache; DummyCache does not persist.
+# In production set CACHE_BACKEND=locmem (single process) or use Redis/database cache.
+_cache_backend = os.environ.get('CACHE_BACKEND', 'dummy').lower()
+if _cache_backend == 'locmem':
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'TIMEOUT': 60,
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+            'TIMEOUT': 60,
+        }
+    }
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -139,8 +151,12 @@ USE_TZ = True
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# So nginx can read files that Django writes (shared volume): new files/dirs world-readable.
+FILE_UPLOAD_PERMISSIONS = 0o644   # -rw-r--r--
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755   # drwxr-xr-x
 # Note: WhiteNoise serves only STATIC files (from collectstatic). User uploads (media)
-# are served by Django in urls.py; for high-traffic production, serve /media/ from nginx etc.
+# are served by Django or nginx; when nginx serves /media/, ensure existing files are
+# readable once: chmod -R o+rX media/
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
