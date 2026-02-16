@@ -259,7 +259,7 @@
     }
     var editRunnerUrl = '{{ edit_runner_url|escapejs }}';
     var addRunnerUrl = '{{ add_runner_url|escapejs }}';
-    var currentRaceId = {{ race.id }};
+    var currentRaceId = {{ race.id|escapejs }};
     function getCsrf() {
         var x = document.querySelector('input[name="csrfmiddlewaretoken"]');
         if (x && x.value) return x.value;

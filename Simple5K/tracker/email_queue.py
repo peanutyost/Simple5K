@@ -122,14 +122,18 @@ def _worker_loop():
                 error_message="Reset: job was stuck in Sending (worker may have stopped). Re-send from the email page if needed.",
             )
 
-            job = (
-                EmailSendJob.objects.filter(status=EmailSendJob.STATUS_QUEUED)
-                .order_by("created_at")
-                .first()
-            )
-            if job:
-                job.status = EmailSendJob.STATUS_SENDING
-                job.save(update_fields=["status"])
+            from django.db import transaction as db_transaction
+
+            with db_transaction.atomic():
+                job = (
+                    EmailSendJob.objects.select_for_update(skip_locked=True)
+                    .filter(status=EmailSendJob.STATUS_QUEUED)
+                    .order_by("created_at")
+                    .first()
+                )
+                if job:
+                    job.status = EmailSendJob.STATUS_SENDING
+                    job.save(update_fields=["status"])
                 _process_one_job(job)
         except Exception as e:
             logger.exception("Email worker failed processing job: %s", e)

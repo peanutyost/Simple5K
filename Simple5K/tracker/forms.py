@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 from .models import runners, race, SiteSettings, Banner
 from captcha.fields import CaptchaField
@@ -238,6 +240,12 @@ class BannerForm(forms.ModelForm):
             'show_on_results': 'Show on Results',
             'show_on_countdown': 'Show on Countdown',
         }
+
+    def clean_background_color(self):
+        value = (self.cleaned_data.get('background_color') or '').strip()
+        if not re.match(r'^#[0-9a-fA-F]{6}$', value):
+            raise forms.ValidationError('Background color must be a valid hex color (e.g. #ff0000).')
+        return value
 
     def clean_image(self):
         value = self.cleaned_data.get('image')

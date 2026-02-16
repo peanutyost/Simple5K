@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import F, Q, Window, IntegerField, OrderBy, Value
 from django.db.models.functions import Rank, Lower, Coalesce
 from django.urls import reverse
@@ -358,11 +358,11 @@ def send_race_report_email(runner_id, race_id):
             email.send()  # Actually sends the email.
 
         except Exception as e:
-            print(f"Error sending email: {e}")
+            logger.exception("Error sending email for runner pk=%s", runner_obj.pk)
             raise  # Re-raise to alert the caller
 
     except Exception as e:
-        print(f"Error processing or sending race report for {runner_obj.email}: {e}")  # Log the combined error.
+        logger.exception("Error processing or sending race report for runner pk=%s", runner_obj.pk)
         # Potentially log details to database
         raise  # Re-raise the exception to  handle it further up
 
@@ -574,8 +574,11 @@ def add_runner(request):
     number = data.get('number')
     if auto_assign_number:
         # Assign next available number for this race (same logic as assign_numbers)
-        existing_numbers = runners.objects.filter(race=race_obj, number__isnull=False).values_list('number', flat=True)
-        number = (max(existing_numbers) + 1) if existing_numbers else (race_obj.number_start or 1)
+        # Lock the race row to prevent concurrent auto-assign from producing duplicate numbers
+        with transaction.atomic():
+            race.objects.select_for_update().filter(pk=race_obj.pk).first()
+            existing_numbers = runners.objects.filter(race=race_obj, number__isnull=False).values_list('number', flat=True)
+            number = (max(existing_numbers) + 1) if existing_numbers else (race_obj.number_start or 1)
     elif number is not None and number != '':
         try:
             number = int(number)
@@ -1033,6 +1036,10 @@ def record_lap(request):
         if not laps_data or not isinstance(laps_data, list):
             return JsonResponse({'error': 'Laps data must be a list'}, status=400)
 
+        MAX_BATCH_SIZE = 500
+        if len(laps_data) > MAX_BATCH_SIZE:
+            return JsonResponse({'error': f'Maximum {MAX_BATCH_SIZE} laps per request'}, status=400)
+
         results = []
 
         for lap_data in laps_data:
@@ -1152,35 +1159,39 @@ def record_lap(request):
                     if runner_obj.gender is None:
                         runner_obj.gender = 'male'
 
-                    allfinnisher = runners.objects.filter(
-                        race=race_obj, race_completed=True, gender=runner_obj.gender
-                    )
-                    if not allfinnisher.exists():
-                        runner_obj.place = 1
-                    else:
-                        prevfinnisher = allfinnisher.order_by('-place').first()
-                        runner_obj.place = (prevfinnisher.place or 0) + 1
+                    # Use transaction + select_for_update to prevent race condition on place assignment
+                    with transaction.atomic():
+                        allfinnisher = (
+                            runners.objects
+                            .select_for_update()
+                            .filter(race=race_obj, race_completed=True, gender=runner_obj.gender)
+                        )
+                        if not allfinnisher.exists():
+                            runner_obj.place = 1
+                        else:
+                            prevfinnisher = allfinnisher.order_by('-place').first()
+                            runner_obj.place = (prevfinnisher.place or 0) + 1
 
-                    # Gun time: from race start to finish
-                    runner_obj.total_race_time = current_time - race_obj.start_time
-                    # Chip time: from first crossing (lap 0) or race start to finish
-                    lap0 = laps.objects.filter(
-                        runner=runner_obj, attach_to_race=race_obj, lap=0
-                    ).first()
-                    chip_start = lap0.time if lap0 else race_obj.start_time
-                    runner_obj.chip_time = current_time - chip_start
+                        # Gun time: from race start to finish
+                        runner_obj.total_race_time = current_time - race_obj.start_time
+                        # Chip time: from first crossing (lap 0) or race start to finish
+                        lap0 = laps.objects.filter(
+                            runner=runner_obj, attach_to_race=race_obj, lap=0
+                        ).first()
+                        chip_start = lap0.time if lap0 else race_obj.start_time
+                        runner_obj.chip_time = current_time - chip_start
 
-                    # Avg speed (mph) and pace (sec/mile): use chip time when available (runner's actual time over distance)
-                    time_for_calc = runner_obj.chip_time if runner_obj.chip_time else runner_obj.total_race_time
-                    total_seconds = time_for_calc.total_seconds()
-                    distance_meters = float(race_obj.distance)
-                    if total_seconds > 0 and distance_meters > 0:
-                        distance_miles = distance_meters / 1609.34
-                        # speed_mph = distance_miles / time_hours
-                        runner_obj.race_avg_speed = (distance_miles * 3600) / total_seconds
-                        # pace: seconds per mile (for timedelta display as min:sec per mile)
-                        runner_obj.race_avg_pace = timedelta(seconds=total_seconds * 1609.34 / distance_meters)
-                    runner_obj.save()
+                        # Avg speed (mph) and pace (sec/mile): use chip time when available (runner's actual time over distance)
+                        time_for_calc = runner_obj.chip_time if runner_obj.chip_time else runner_obj.total_race_time
+                        total_seconds = time_for_calc.total_seconds()
+                        distance_meters = float(race_obj.distance)
+                        if total_seconds > 0 and distance_meters > 0:
+                            distance_miles = distance_meters / 1609.34
+                            # speed_mph = distance_miles / time_hours
+                            runner_obj.race_avg_speed = (distance_miles * 3600) / total_seconds
+                            # pace: seconds per mile (for timedelta display as min:sec per mile)
+                            runner_obj.race_avg_pace = timedelta(seconds=total_seconds * 1609.34 / distance_meters)
+                        runner_obj.save()
 
                 results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
 
@@ -1468,7 +1479,10 @@ def generate_api_key(request):
         name = request.POST.get('name')
         if name:
             api_key = ApiKey.objects.create(name=name)
-            return render(request, 'tracker/generate_api_key.html', {'api_key': api_key})
+            response = render(request, 'tracker/generate_api_key.html', {'api_key': api_key})
+            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response['Pragma'] = 'no-cache'
+            return response
     return render(request, 'tracker/generate_api_key.html')
 
 
@@ -1528,22 +1542,23 @@ def assign_numbers(request):
             assigned_no_tag = 0
 
             try:
-                for i, runner in enumerate(runners_unassigned):
-                    if i < len(available_tags):
-                        tag = available_tags[i]
-                        runner.number = tag.tag_number
-                        runner.tag = tag
-                        assigned_numbers.add(tag.tag_number)
-                        assigned_with_tag += 1
-                    else:
-                        runner.tag = None
-                        next_num = 1
-                        while next_num in existing_numbers or next_num in assigned_numbers:
-                            next_num += 1
-                        runner.number = next_num
-                        assigned_numbers.add(next_num)
-                        assigned_no_tag += 1
-                    runner.save()
+                with transaction.atomic():
+                    for i, runner in enumerate(runners_unassigned):
+                        if i < len(available_tags):
+                            tag = available_tags[i]
+                            runner.number = tag.tag_number
+                            runner.tag = tag
+                            assigned_numbers.add(tag.tag_number)
+                            assigned_with_tag += 1
+                        else:
+                            runner.tag = None
+                            next_num = 1
+                            while next_num in existing_numbers or next_num in assigned_numbers:
+                                next_num += 1
+                            runner.number = next_num
+                            assigned_numbers.add(next_num)
+                            assigned_no_tag += 1
+                        runner.save()
             except IntegrityError:
                 messages.error(
                     request,
@@ -2057,17 +2072,45 @@ def paypal_ipn(request):
     if payment_status.lower() not in ('completed', 'processed'):
         logger.info('PayPal IPN ignored: payment_status=%r', payment_status)
         return HttpResponse('ok')
+
+    # Verify receiver email matches our configured PayPal business email
+    expected_email = (getattr(settings, 'PAYPAL_BUSINESS_EMAIL', '') or '').strip().lower()
+    receiver_email = (data.get('receiver_email') or data.get('business') or [''])[0].strip().lower()
+    if expected_email and receiver_email != expected_email:
+        logger.warning('PayPal IPN: receiver mismatch: got %r expected %r', receiver_email, expected_email)
+        return HttpResponse('ok')
+
     runner_id = _paypal_runner_id_from_custom(custom)
     if runner_id is None:
         logger.warning('PayPal IPN: invalid or missing custom field')
         return HttpResponse('ok')
     try:
         runner_obj = runners.objects.get(pk=runner_id)
+
+        # Verify payment amount meets the entry fee for this race
+        try:
+            mc_gross = float((data.get('mc_gross') or ['0'])[0])
+        except (ValueError, TypeError):
+            mc_gross = 0.0
+        expected_fee = float(runner_obj.race.Entry_fee or 0)
+        if expected_fee > 0 and mc_gross < expected_fee:
+            logger.warning(
+                'PayPal IPN: underpayment for runner_id=%s: got %.2f expected %.2f',
+                runner_id, mc_gross, expected_fee,
+            )
+            return HttpResponse('ok')
+
+        # Verify currency
+        mc_currency = (data.get('mc_currency') or [''])[0].upper()
+        if mc_currency and mc_currency != 'USD':
+            logger.warning('PayPal IPN: unexpected currency %r for runner_id=%s', mc_currency, runner_id)
+            return HttpResponse('ok')
+
         runner_obj.paid = True
         runner_obj.save(update_fields=['paid'])
         if runner_obj.send_signup_confirmation and not runner_obj.signup_confirmation_sent:
             send_signup_confirmation_email(runner_obj)
-        logger.info('PayPal IPN processed: runner_id=%s marked paid', runner_id)
+        logger.info('PayPal IPN processed: runner_id=%s marked paid (amount=%.2f)', runner_id, mc_gross)
     except runners.DoesNotExist:
         logger.warning('PayPal IPN: runner_id=%s not found', runner_id)
     return HttpResponse('ok')
