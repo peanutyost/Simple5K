@@ -200,11 +200,15 @@ def prepare_race_data(race_obj, runner_obj):
     Prepares the race data for the PDF report, including runner details,
     lap information, and competitor placings.
     """
+    try:
+        logo_path = race_obj.logo.path if race_obj.logo else ''
+    except (ValueError, OSError):
+        logo_path = ''  # File missing from storage
     race_info = {
         'name': race_obj.name,
         'date': race_obj.date.strftime('%Y-%m-%d'),
         'distance': race_obj.distance,
-        'logo': race_obj.logo.path if race_obj.logo else '',
+        'logo': logo_path,
     }
 
     # Runner Details
@@ -237,12 +241,15 @@ def prepare_race_data(race_obj, runner_obj):
     for lap in laps.objects.filter(runner=runner_obj).order_by('lap'):
         if lap.lap == 0:
             continue
+        dur = getattr(lap, 'duration', None)
+        speed = getattr(lap, 'average_speed', None)
+        pace = getattr(lap, 'average_pace', None)
         laps_data.append({
             'lap': lap.lap,
-            'time': str(timedelta(seconds=round(lap.duration.total_seconds()))) if lap.duration else 'N/A',
-            'duration': str(lap.duration),
-            'average_speed': float(lap.average_speed),
-            'average_pace': str(timedelta(seconds=round(lap.average_pace.total_seconds()))) if lap.average_pace else 'N/A',
+            'time': str(timedelta(seconds=round(dur.total_seconds()))) if dur else 'N/A',
+            'duration': str(dur) if dur is not None else 'N/A',
+            'average_speed': float(speed) if speed is not None else 0,
+            'average_pace': str(timedelta(seconds=round(pace.total_seconds()))) if pace else 'N/A',
         })
 
     # Competitor Placement Data (2 faster, 2 slower) — same gender only
@@ -410,7 +417,7 @@ def race_start_view(request):
 
     if request.method == "POST":
         if form.is_valid():
-            lv = race.objects.get(name=form.cleaned_data['racename'])
+            lv = form.cleaned_data['racename']  # ModelChoiceField returns the race instance
             now = timezone.now()
             lv.start_time = now
             lv.status = 'in_progress'
@@ -432,8 +439,12 @@ def runner_stats(request):
     if request.method == "POST":
         racetotalobj = {}
         if form.is_valid():
-            raceobj = race.objects.get(name=form.cleaned_data['racename'])
-            runnerobj = runners.objects.get(number=form.cleaned_data['runnernumber'], race=form.cleaned_data['racename'])
+            raceobj = form.cleaned_data['racename']
+            try:
+                runnerobj = runners.objects.get(number=form.cleaned_data['runnernumber'], race=raceobj)
+            except runners.DoesNotExist:
+                messages.error(request, f"No runner with number {form.cleaned_data['runnernumber']} found for this race.")
+                return render(request, 'tracker/runner_stats.html', context=context)
             racetotalobj = prepare_race_data(raceobj, runnerobj)
         else:
             return render(request, 'tracker/runner_stats.html', context=context)
@@ -1058,6 +1069,9 @@ def record_lap(request):
                     continue
                 runner_obj = runners.objects.get(race=race_obj, tag=rfid_tag_obj)
 
+                if race_obj.start_time is None:
+                    results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Race has not started"})
+                    continue
                 if race_obj.min_lap_time is None:
                     race_obj.min_lap_time = timedelta(seconds=0)
 
@@ -1620,11 +1634,14 @@ def race_overview(request):
             for lap in alap:
                 if lap.lap == 0:
                     continue  # exclude chip start from lap list
+                lap_dur = getattr(lap, 'duration', None)
+                lap_pace = getattr(lap, 'average_pace', None)
+                lap_speed = getattr(lap, 'average_speed', None)
                 run_laps.append({
                     'lap': lap.lap,
-                    'duration': timedelta(seconds=round(lap.duration.total_seconds())),
-                    'average_pace': timedelta(seconds=round(lap.average_pace.total_seconds())),
-                    'average_speed': lap.average_speed
+                    'duration': timedelta(seconds=round(lap_dur.total_seconds())) if lap_dur else timedelta(0),
+                    'average_pace': timedelta(seconds=round(lap_pace.total_seconds())) if lap_pace else timedelta(0),
+                    'average_speed': lap_speed
                 })
 
             runner_times.append({
@@ -1650,7 +1667,7 @@ def race_overview(request):
                     if (trt := arunner.race_avg_pace) is not None
                     else "Not Finished"
                 ),
-                'average_speed': arunner.race_avg_speed if not None else "Not Finished",
+                'average_speed': arunner.race_avg_speed if arunner.race_avg_speed is not None else "Not Finished",
                 'place': arunner.place,
                 'gender': arunner.gender,
                 'type': arunner.type,
@@ -2097,10 +2114,12 @@ def race_countdown(request):
     # Calculate remaining time for each race
     race_data = []
     for r in upcoming_races:
-        # Combine date and scheduled_time into a datetime object
-        start_time = datetime.combine(r.date, r.scheduled_time)
-        # Get formatted remaining time
-        remaining = format_remaining_time(start_time)
+        # Combine date and scheduled_time; skip if no scheduled time
+        if r.scheduled_time is None:
+            remaining = {'days': 0, 'hours': 0, 'minutes': 0, 'seconds': 0}
+        else:
+            start_time = datetime.combine(r.date, r.scheduled_time)
+            remaining = format_remaining_time(start_time)
         race_data.append({
             'id': r.id,
             'name': r.name,
