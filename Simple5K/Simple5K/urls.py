@@ -28,9 +28,8 @@ urlpatterns = [
     path('race-countdown/', race_countdown, name='race-countdown'),
 ]
 
-# Serve uploaded media files (e.g. site background image) with DEBUG on or off.
-# Django's static() helper returns [] when DEBUG=False, so we add the pattern directly.
-# WhiteNoise only serves STATIC files (collectstatic); it does not serve MEDIA (user uploads).
-urlpatterns += [
-    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
-]
+# Serve uploaded media only when DEBUG is True (e.g. local dev). In production, nginx serves /media/.
+if settings.DEBUG:
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]

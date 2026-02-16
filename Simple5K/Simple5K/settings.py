@@ -177,13 +177,15 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')  # Your Microsoft 365 email 
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # Your Microsoft 365 password or app password
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')  # The email address you want to send from
 
-# Production security (recommended when serving over HTTPS)
-# Set SECURE_PROXY_SSL_HEADER if behind a reverse proxy that terminates TLS (e.g. 'HTTP_X_FORWARDED_PROTO', 'https')
-# SECURE_SSL_REDIRECT = True
-# SESSION_COOKIE_SECURE = True
-# CSRF_COOKIE_SECURE = True
-# SESSION_COOKIE_HTTPONLY = True
-# SESSION_COOKIE_SAMESITE = 'Lax'
+# Production security when behind HTTPS (e.g. nginx with SSL). Set SECURE_HTTPS=1 in env.
+_secure_https = os.environ.get('SECURE_HTTPS', '').upper() in ('1', 'TRUE', 'YES')
+if _secure_https:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
 
 # PayPal donation flow (signup → redirect to PayPal → IPN marks runner as paid)
 PAYPAL_BUSINESS_EMAIL = os.environ.get('PAYPAL_BUSINESS_EMAIL', '')  # Your PayPal email for receiving donations
