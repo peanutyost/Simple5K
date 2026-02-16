@@ -1980,9 +1980,13 @@ def race_signup(request):
                 try:
                     approve_url, _ = _create_paypal_order(request, runner, selected_race)
                     return redirect(approve_url)
-                except Exception:
+                except Exception as exc:
                     logger.exception("PayPal order creation failed for runner pk=%s", runner.pk)
-                    # Fall through to non-PayPal flow so the signup isn't lost
+                    messages.warning(
+                        request,
+                        f"You're signed up, but we couldn't connect to PayPal: {exc}. "
+                        "You can pay later or on race day.",
+                    )
             send_signup_confirmation_email(runner)
             return redirect(reverse('tracker:signup-success', args=[selected_race.id]))
     else:
@@ -2115,8 +2119,12 @@ def pay_entry(request, runner_id, signature):
     try:
         approve_url, _ = _create_paypal_order(request, runner_obj, race_obj)
         return redirect(approve_url)
-    except Exception:
+    except Exception as exc:
         logger.exception("PayPal order creation failed for pay_entry runner pk=%s", runner_obj.pk)
+        messages.warning(
+            request,
+            f"We couldn't connect to PayPal: {exc}. You can try again later or pay on race day.",
+        )
         return redirect(reverse('tracker:signup-success', args=[race_obj.id]))
 
 
