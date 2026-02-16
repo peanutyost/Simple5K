@@ -178,10 +178,13 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # Your Microsoft 36
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')  # The email address you want to send from
 
 # Production security when behind HTTPS (e.g. nginx with SSL). Set SECURE_HTTPS=1 in env.
+# SECURE_SSL_REDIRECT is False so Django does not redirect (avoids "too many redirects" when
+# nginx already terminates SSL and may not pass X-Forwarded-Proto in all cases). Nginx should
+# handle HTTP→HTTPS at the edge; we only set secure cookie flags here.
 _secure_https = os.environ.get('SECURE_HTTPS', '').upper() in ('1', 'TRUE', 'YES')
 if _secure_https:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = False  # Let nginx handle redirect; avoids redirect loops
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
