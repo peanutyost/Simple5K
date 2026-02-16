@@ -9,9 +9,10 @@ Use these in a `.env` file (with something like `python-dotenv` or your host’s
 | Variable | Required | Default | Notes |
 |----------|----------|---------|--------|
 | **DEBUG** | No | `FALSE` | Set to `TRUE`, `1`, or `YES` for local development. Leave unset or `FALSE` in production. |
-| **SECRET_KEY** | **Yes in production** | (insecure default) | Set a long random secret in production. Optional for local dev if `DEBUG=TRUE`. |
+| **SECRET_KEY** | **Yes in production** | (insecure default) | Set a long random secret in production. App raises an error in production if unset. Optional for local dev if `DEBUG=TRUE`. |
 | **ALLOWED_HOSTS** | No | `localhost` | Comma-separated: `localhost,example.com,www.example.com`. |
 | **TRUSTED_ORIGINS** | No | `http://localhost` | Comma-separated origins for CSRF (e.g. `https://example.com`). |
+| **CACHE_BACKEND** | No | `dummy` | Set to `locmem` for in-memory cache (login rate limiting will work in single-process). Use Redis/database cache in multi-process production (configure in settings if needed). |
 
 ---
 
