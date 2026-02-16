@@ -1975,18 +1975,30 @@ def race_signup(request):
             runner.save(update_fields=['send_signup_confirmation'])
             site_settings = SiteSettings.get_settings()
             entry_fee = float(selected_race.Entry_fee or 0)
-            paypal_configured = settings.PAYPAL_CLIENT_ID and settings.PAYPAL_CLIENT_SECRET
+            paypal_client_id = getattr(settings, 'PAYPAL_CLIENT_ID', '')
+            paypal_client_secret = getattr(settings, 'PAYPAL_CLIENT_SECRET', '')
+            paypal_configured = bool(paypal_client_id and paypal_client_secret)
+            logger.info(
+                "PayPal check: enabled=%s, configured=%s (client_id_len=%d, secret_len=%d), entry_fee=%s",
+                site_settings.paypal_enabled,
+                paypal_configured,
+                len(paypal_client_id),
+                len(paypal_client_secret),
+                entry_fee,
+            )
             if site_settings.paypal_enabled and paypal_configured and entry_fee > 0:
                 try:
                     approve_url, _ = _create_paypal_order(request, runner, selected_race)
                     return redirect(approve_url)
                 except Exception as exc:
                     logger.exception("PayPal order creation failed for runner pk=%s", runner.pk)
-                    messages.warning(
-                        request,
-                        f"You're signed up, but we couldn't connect to PayPal: {exc}. "
-                        "You can pay later or on race day.",
-                    )
+                    # Render success page directly with error so user sees it
+                    return render(request, 'tracker/signup_success.html', {
+                        'entry_fee': selected_race.Entry_fee,
+                        'race_date': selected_race.date,
+                        'race_time': selected_race.scheduled_time,
+                        'paypal_error': str(exc),
+                    })
             send_signup_confirmation_email(runner)
             return redirect(reverse('tracker:signup-success', args=[selected_race.id]))
     else:
