@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models import Q
 from django.urls import reverse
+from django.core.validators import MinValueValidator, RegexValidator
 import secrets
 
 
@@ -14,11 +15,11 @@ class race(models.Model):
 
     name = models.CharField(max_length=255, unique=True)
     status = models.CharField(max_length=20, choices=status_choices)
-    Entry_fee = models.DecimalField(max_digits=10, decimal_places=2)
+    Entry_fee = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     date = models.DateField(auto_now=False, auto_now_add=False)
-    distance = models.IntegerField()
-    laps_count = models.IntegerField()
-    max_runners = models.IntegerField(null=True, blank=True)
+    distance = models.IntegerField(validators=[MinValueValidator(1)])
+    laps_count = models.IntegerField(validators=[MinValueValidator(1)])
+    max_runners = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
     number_start = models.IntegerField(null=True, blank=True)
     scheduled_time = models.TimeField(null=True, blank=True)
     start_time = models.DateTimeField(
@@ -206,7 +207,14 @@ class Banner(models.Model):
 
     title = models.CharField(max_length=200, blank=True)
     subtitle = models.CharField(max_length=1024, blank=True)
-    background_color = models.CharField(max_length=30, default='#ffffff')
+    background_color = models.CharField(
+        max_length=30,
+        default='#ffffff',
+        validators=[RegexValidator(
+            regex=r'^#[0-9a-fA-F]{6}$',
+            message='Background color must be a valid hex color (e.g. #ff0000).',
+        )],
+    )
     image = models.ImageField(upload_to='banners/', blank=True)
     active = models.BooleanField(default=False)
 

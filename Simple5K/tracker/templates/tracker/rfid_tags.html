@@ -59,7 +59,7 @@
                             <td>{{ tag.name|default:"—" }}</td>
                             <td class="font-monospace small text-break">{{ tag.rfid_hex }}</td>
                             <td class="text-end">
-                                <form method="post" action="{% url 'tracker:rfid_tags_list' %}" class="d-inline" onsubmit="return confirm('Remove tag {{ tag.tag_number }}?');">
+                                <form method="post" action="{% url 'tracker:rfid_tags_list' %}" class="d-inline rfid-delete-form" data-tag-number="{{ tag.tag_number|escapejs }}">
                                     {% csrf_token %}
                                     <input type="hidden" name="delete_id" value="{{ tag.id }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
@@ -77,4 +77,14 @@
         </div>
     </div>
 </div>
+<script>
+document.querySelectorAll('.rfid-delete-form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+        var tagNum = form.getAttribute('data-tag-number');
+        if (!confirm('Remove tag ' + tagNum + '?')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
 {% endblock %}
