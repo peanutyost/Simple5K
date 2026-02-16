@@ -207,6 +207,7 @@ if _secure_https:
     SESSION_COOKIE_SAMESITE = 'Lax'
 
 # PayPal REST API (Orders v2) — signup → redirect to PayPal → capture on return
-PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
-PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')
-PAYPAL_SANDBOX = os.environ.get('PAYPAL_SANDBOX', 'False').upper() in ('1', 'TRUE', 'YES')
+# Check both uppercase and lowercase env var names for compatibility
+PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '') or os.environ.get('paypal_client_id', '')
+PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '') or os.environ.get('paypal_client_secret', '')
+PAYPAL_SANDBOX = (os.environ.get('PAYPAL_SANDBOX', '') or os.environ.get('paypal_sandbox', 'False')).upper() in ('1', 'TRUE', 'YES')
