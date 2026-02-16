@@ -235,7 +235,7 @@
     </div>
 </div>
 
-{% json_script "runner-choices" runner_choices %}
+{{ runner_choices|json_script:"runner-choices" }}
 <script>
 (function() {
     function init() {
