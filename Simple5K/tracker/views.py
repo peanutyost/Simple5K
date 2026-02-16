@@ -1816,8 +1816,8 @@ def _create_paypal_order(request, runner_obj, race_obj):
     from paypalserversdk.models.purchase_unit_request import PurchaseUnitRequest
     from paypalserversdk.models.amount_with_breakdown import AmountWithBreakdown
     from paypalserversdk.models.order_application_context import OrderApplicationContext
-    from paypalserversdk.models.shipping_preference import ShippingPreference
-    from paypalserversdk.models.pay_pal_experience_landing_page import PayPalExperienceLandingPage
+    from paypalserversdk.models.order_application_context_shipping_preference import OrderApplicationContextShippingPreference
+    from paypalserversdk.models.order_application_context_landing_page import OrderApplicationContextLandingPage
 
     entry_fee = Decimal(str(race_obj.Entry_fee or 0))
     return_url = request.build_absolute_uri(reverse('tracker:paypal-return'))
@@ -1839,13 +1839,13 @@ def _create_paypal_order(request, runner_obj, race_obj):
         application_context=OrderApplicationContext(
             return_url=return_url,
             cancel_url=cancel_url,
-            shipping_preference=ShippingPreference.NO_SHIPPING,
-            landing_page=PayPalExperienceLandingPage.LOGIN,
-            brand_name='Okey Dokey 5K',
+            shipping_preference=OrderApplicationContextShippingPreference.NO_SHIPPING,
+            landing_page=OrderApplicationContextLandingPage.LOGIN,
+            brand_name='Simple5K',
         ),
     )
 
-    response = client.orders.orders_create({'body': order_request})
+    response = client.orders.create_order({'body': order_request})
     order_data = response.body
     order_id = order_data.id
 
@@ -1875,7 +1875,7 @@ def _capture_paypal_order(order_id):
     from .paypal_client import get_paypal_client
 
     client = get_paypal_client()
-    response = client.orders.orders_capture({'id': order_id})
+    response = client.orders.capture_order({'id': order_id, 'prefer': 'return=representation'})
     result = response.body
 
     if result.status != 'COMPLETED':
