@@ -139,8 +139,12 @@ USE_TZ = True
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# So nginx can read files that Django writes (shared volume): new files/dirs world-readable.
+FILE_UPLOAD_PERMISSIONS = 0o644   # -rw-r--r--
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755   # drwxr-xr-x
 # Note: WhiteNoise serves only STATIC files (from collectstatic). User uploads (media)
-# are served by Django in urls.py; for high-traffic production, serve /media/ from nginx etc.
+# are served by Django or nginx; when nginx serves /media/, ensure existing files are
+# readable once: chmod -R o+rX media/
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
