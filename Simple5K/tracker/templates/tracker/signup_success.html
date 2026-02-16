@@ -10,6 +10,11 @@
                 <br><small>You are still signed up. You can pay later or on race day.</small>
             </div>
             {% endif %}
+            {% if paypal_debug %}
+            <div class="alert alert-info mb-3" role="alert">
+                <strong>PayPal debug:</strong> {{ paypal_debug }}
+            </div>
+            {% endif %}
             {% if messages %}
             {% for message in messages %}
             <div class="alert alert-{{ message.tags }} mb-3" role="alert">{{ message }}</div>
