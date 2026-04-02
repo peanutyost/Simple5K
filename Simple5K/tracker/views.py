@@ -1571,15 +1571,9 @@ def assign_numbers(request):
                             runner.tag = tag
                             assigned_numbers.add(tag.tag_number)
                             assigned_with_tag += 1
+                            runner.save()
                         else:
-                            runner.tag = None
-                            next_num = 1
-                            while next_num in existing_numbers or next_num in assigned_numbers:
-                                next_num += 1
-                            runner.number = next_num
-                            assigned_numbers.add(next_num)
-                            assigned_no_tag += 1
-                        runner.save()
+                            break
             except IntegrityError:
                 messages.error(
                     request,
@@ -1595,17 +1589,16 @@ def assign_numbers(request):
                     'starting_tag': starting_tag,
                 })
 
-            count = runners_unassigned.count()
-            if assigned_no_tag == 0:
+            remaining = runners_unassigned.count() - assigned_with_tag
+            if remaining == 0:
                 messages.success(
                     request,
-                    f'Assigned {count} runner(s): runner number = tag number for each. You can run again to assign the next batch.'
+                    f'Assigned {assigned_with_tag} runner(s): runner number = tag number for each. You can run again to assign the next batch.'
                 )
             else:
                 messages.warning(
                     request,
-                    f'Assigned {count} runner(s): {assigned_with_tag} got a tag (runner number = tag number); '
-                    f'{assigned_no_tag} have a number but no tag (not enough unused tags). Add more tags and run again if needed.'
+                    f'Assigned {assigned_with_tag} runner(s). Stopped: not enough unused tags for the remaining {remaining} runner(s). Add more tags and run again.'
                 )
             return redirect(reverse('tracker:assign_numbers') + f'?race={race_id}&starting_tag={starting_tag}')
         else:
