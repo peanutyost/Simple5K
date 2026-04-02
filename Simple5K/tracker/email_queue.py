@@ -134,7 +134,7 @@ def _worker_loop():
                 if job:
                     job.status = EmailSendJob.STATUS_SENDING
                     job.save(update_fields=["status"])
-                _process_one_job(job)
+                    _process_one_job(job)
         except Exception as e:
             logger.exception("Email worker failed processing job: %s", e)
             if job is not None:
