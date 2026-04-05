@@ -572,13 +572,36 @@ def add_runner(request):
     gender = (data.get('gender') or '').strip() or None
     auto_assign_number = data.get('auto_assign_number') in (True, 'true', 'True', 1, '1')
     number = data.get('number')
+    tag_obj = None
     if auto_assign_number:
-        # Assign next available number for this race (same logic as assign_numbers)
-        # Lock the race row to prevent concurrent auto-assign from producing duplicate numbers
+        # Assign the smallest unused tag whose tag_number >= race.number_start (fills gaps).
+        # Lock the race row to prevent concurrent auto-assign from producing duplicates.
         with transaction.atomic():
             race.objects.select_for_update().filter(pk=race_obj.pk).first()
-            existing_numbers = runners.objects.filter(race=race_obj, number__isnull=False).values_list('number', flat=True)
-            number = (max(existing_numbers) + 1) if existing_numbers else (race_obj.number_start or 1)
+            starting = race_obj.number_start or 1
+            tags_in_use = set(
+                runners.objects.filter(race=race_obj)
+                .exclude(tag__isnull=True)
+                .values_list('tag_id', flat=True)
+            )
+            tag_obj = (
+                RfidTag.objects
+                .exclude(pk__in=tags_in_use)
+                .filter(tag_number__gte=starting)
+                .order_by('tag_number')
+                .first()
+            )
+            if tag_obj:
+                number = tag_obj.tag_number
+            else:
+                # No tags left — assign a number only, filling the smallest gap >= starting
+                existing_numbers = set(
+                    runners.objects.filter(race=race_obj, number__isnull=False)
+                    .values_list('number', flat=True)
+                )
+                number = starting
+                while number in existing_numbers:
+                    number += 1
     elif number is not None and number != '':
         try:
             number = int(number)
@@ -632,6 +655,7 @@ def add_runner(request):
         age=age,
         gender=gender,
         number=number,
+        tag=tag_obj,
         type=runner_type,
         shirt_size=shirt_size,
         notes=notes,
@@ -649,6 +673,8 @@ def add_runner(request):
             'age': runner_obj.age,
             'gender': runner_obj.gender or '',
             'number': runner_obj.number,
+            'tag_id': runner_obj.tag_id,
+            'tag_display': str(runner_obj.tag) if runner_obj.tag else '',
             'type': runner_obj.type or '',
             'shirt_size': runner_obj.shirt_size,
             'paid': runner_obj.paid,
