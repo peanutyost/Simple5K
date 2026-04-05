@@ -1098,7 +1098,8 @@ def record_lap(request):
                     rfid_hex__iexact=runner_rfid_hex.strip()
                 ).first()
                 if not rfid_tag_obj:
-                    results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Tag not found"})
+                    logger.debug('record_lap: unknown tag hex %s — ignored', runner_rfid_hex)
+                    results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
                     continue
                 runner_obj = runners.objects.get(race=race_obj, tag=rfid_tag_obj)
 
@@ -1222,7 +1223,8 @@ def record_lap(request):
                 results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
 
             except runners.DoesNotExist:
-                results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "No runner in this race has that tag"})
+                logger.debug('record_lap: tag %s not assigned to any runner in race %s — ignored', runner_rfid_hex, race_id)
+                results.append({"runner_rfid": runner_rfid_hex, "status": "success"})
 
             except race.DoesNotExist:
 
