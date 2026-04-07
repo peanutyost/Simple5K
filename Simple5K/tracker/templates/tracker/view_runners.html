@@ -155,6 +155,17 @@
 </div>
 </div>
 
+<!-- Add Runner Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+    <div id="addRunnerToast" class="toast text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="6000">
+        <div class="toast-header bg-success text-white">
+            <strong class="me-auto">Runner Added</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="addRunnerToastBody"></div>
+    </div>
+</div>
+
 <!-- Add Runner Modal -->
 <div class="modal fade" id="addRunnerModal" tabindex="-1" aria-labelledby="addRunnerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
@@ -532,6 +543,17 @@
                     addRunnerForm.reset();
                     addAutoAssignEl.checked = true;
                     setAddNumberDisabled();
+                    var toastEl = document.getElementById('addRunnerToast');
+                    var toastBody = document.getElementById('addRunnerToastBody');
+                    if (toastEl && toastBody) {
+                        toastBody.innerHTML =
+                            '<strong>' + escapeHtml(((r.first_name || '') + ' ' + (r.last_name || '')).trim()) + '</strong><br>' +
+                            'Runner #: ' + (r.number != null ? escapeHtml(String(r.number)) : '—') + '<br>' +
+                            'Email: ' + escapeHtml(r.email || '—') + '<br>' +
+                            'Age: ' + escapeHtml(r.age || '—') + ' &nbsp;|&nbsp; ' +
+                            'Shirt: ' + escapeHtml(r.shirt_size || '—');
+                        bootstrap.Toast.getOrCreateInstance(toastEl).show();
+                    }
                 } else {
                     var msg = (data.errors && data.errors.length) ? data.errors.join(' ') : 'Failed to add runner';
                     addRunnerErrors.textContent = msg;
