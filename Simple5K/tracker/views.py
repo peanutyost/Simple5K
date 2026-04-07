@@ -4,7 +4,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.db import IntegrityError, transaction
 from django.db.models import F, Q, Window, IntegerField, OrderBy, Value
-from django.db.models.functions import Rank, Lower, Coalesce
+from django.db.models.functions import Rank, DenseRank, Lower, Coalesce
 from django.urls import reverse
 from django.http import Http404, HttpResponse, JsonResponse, HttpResponseNotFound
 from datetime import datetime, timedelta
@@ -153,10 +153,17 @@ def calculate_age_bracket_placement_in_gender(runner, race_obj):
 
 def _build_race_summary_data(race_obj):
     """Build summary data for race summary PDF: finishers by gender with lap stats and placements."""
+    # Order by finish time and annotate with overall place (across both genders).
+    # DenseRank means two runners with the same time share a place and the next place is not skipped.
     finishers = runners.objects.filter(
         race=race_obj,
         total_race_time__isnull=False
-    ).order_by(F('place').asc(nulls_last=True))
+    ).annotate(
+        overall_rank=Window(
+            expression=DenseRank(),
+            order_by=F('total_race_time').asc(),
+        )
+    ).order_by('total_race_time')
     females = []
     males = []
     for runner in finishers:
@@ -180,7 +187,7 @@ def _build_race_summary_data(race_obj):
             'slowest_lap_time': slowest_lap_time,
             'slowest_lap_num': slowest_lap_num,
             'overall_time': runner.total_race_time,
-            'overall_place': runner.place,
+            'overall_place': runner.overall_rank,
             'age_group': runner.get_age_display() if runner.age else None,
             'age_group_place': calculate_age_bracket_placement_in_gender(runner, race_obj),
         }
@@ -1086,7 +1093,10 @@ def record_lap(request):
                 continue
 
             try:
-                time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
+                try:
+                    time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
+                except ValueError:
+                    time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')
             except (ValueError, TypeError):
                 results.append({"runner_rfid": runner_rfid_hex, "status": "failed", "error": "Invalid timestamp format"})
                 continue
@@ -1186,12 +1196,20 @@ def record_lap(request):
                     if runner_obj.gender is None:
                         runner_obj.gender = 'male'
 
-                    # Use transaction + select_for_update to prevent race condition on place assignment
+                    # Use transaction + select_for_update to prevent race condition on place assignment.
+                    # Lock the race row so only one finisher can be processed at a time.
+                    # Filter place__isnull=False so runners marked as dropped out (race_completed=True
+                    # but no place assigned) don't corrupt the place sequence.
                     with transaction.atomic():
+                        race.objects.select_for_update().get(id=race_obj.id)
                         allfinnisher = (
                             runners.objects
-                            .select_for_update()
-                            .filter(race=race_obj, race_completed=True, gender=runner_obj.gender)
+                            .filter(
+                                race=race_obj,
+                                race_completed=True,
+                                gender=runner_obj.gender,
+                                place__isnull=False,
+                            )
                         )
                         if not allfinnisher.exists():
                             runner_obj.place = 1
@@ -1264,7 +1282,10 @@ def update_race_time(request):
         return JsonResponse({'error': 'action must be "start" or "stop"'}, status=400)
 
     try:
-        time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
+        try:
+            time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
+        except ValueError:
+            time_naive = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')
         current_time = time_naive.replace(tzinfo=pytz.utc)
     except (ValueError, TypeError):
         return JsonResponse({'error': 'Invalid timestamp format'}, status=400)
@@ -1578,15 +1599,9 @@ def assign_numbers(request):
                             runner.tag = tag
                             assigned_numbers.add(tag.tag_number)
                             assigned_with_tag += 1
+                            runner.save()
                         else:
-                            runner.tag = None
-                            next_num = 1
-                            while next_num in existing_numbers or next_num in assigned_numbers:
-                                next_num += 1
-                            runner.number = next_num
-                            assigned_numbers.add(next_num)
-                            assigned_no_tag += 1
-                        runner.save()
+                            break
             except IntegrityError:
                 messages.error(
                     request,
@@ -1602,17 +1617,16 @@ def assign_numbers(request):
                     'starting_tag': starting_tag,
                 })
 
-            count = runners_unassigned.count()
-            if assigned_no_tag == 0:
+            remaining = runners_unassigned.count() - assigned_with_tag
+            if remaining == 0:
                 messages.success(
                     request,
-                    f'Assigned {count} runner(s): runner number = tag number for each. You can run again to assign the next batch.'
+                    f'Assigned {assigned_with_tag} runner(s): runner number = tag number for each. You can run again to assign the next batch.'
                 )
             else:
                 messages.warning(
                     request,
-                    f'Assigned {count} runner(s): {assigned_with_tag} got a tag (runner number = tag number); '
-                    f'{assigned_no_tag} have a number but no tag (not enough unused tags). Add more tags and run again if needed.'
+                    f'Assigned {assigned_with_tag} runner(s). Stopped: not enough unused tags for the remaining {remaining} runner(s). Add more tags and run again.'
                 )
             return redirect(reverse('tracker:assign_numbers') + f'?race={race_id}&starting_tag={starting_tag}')
         else:
