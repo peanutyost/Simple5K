@@ -157,13 +157,30 @@
         font-weight: 600;
         color: var(--page-heading);
         white-space: nowrap;
-        min-width: 3rem;
+        padding-right: 0.6rem;
+        margin-right: 0.6rem;
+        border-right: 2px solid var(--page-border);
+        align-self: center;
     }
 
     .active-race-page .runner-card .laps-collapse .lap-stats {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.25rem 0.75rem;
+        gap: 0.25rem 0;
+    }
+
+    .active-race-page .runner-card .laps-collapse .lap-stat {
+        display: flex;
+        align-items: center;
+        padding-right: 0.6rem;
+        margin-right: 0.6rem;
+        border-right: 1px solid #cbd5e1;
+    }
+
+    .active-race-page .runner-card .laps-collapse .lap-stat:last-child {
+        border-right: none;
+        padding-right: 0;
+        margin-right: 0;
     }
 
     .active-race-page .runner-card .laps-collapse .lap-stat-label {
@@ -171,7 +188,7 @@
         font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.04em;
-        margin-right: 0.15rem;
+        margin-right: 0.25rem;
     }
 
     .active-race-page .empty-state {
@@ -333,9 +350,9 @@
                             <div class="lap-row">
                                 <span class="lap-num">Lap {{ lap.lap }}</span>
                                 <div class="lap-stats">
-                                    <span><span class="lap-stat-label">Time</span>{{ lap.duration }}</span>
-                                    <span><span class="lap-stat-label">Pace</span>{{ lap.average_pace }}</span>
-                                    <span><span class="lap-stat-label">Speed</span>{{ lap.average_speed }} mph</span>
+                                    <span class="lap-stat"><span class="lap-stat-label">Time</span>{{ lap.duration }}</span>
+                                    <span class="lap-stat"><span class="lap-stat-label">Pace</span>{{ lap.average_pace }}</span>
+                                    <span class="lap-stat"><span class="lap-stat-label">Speed</span>{{ lap.average_speed }} mph</span>
                                 </div>
                             </div>
                             {% endfor %}
