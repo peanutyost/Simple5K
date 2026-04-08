@@ -316,7 +316,7 @@
                                     <td>{{ runner.name }}</td>
                                     <td class="lap-cell">
                                         {% for lap in runner.laps %}
-                                        <div class="lap-row"><span class="lap-num">Lap {{ lap.lap }}</span><span class="lap-divider">|</span><span class="lap-stat-label">Time</span>{{ lap.duration }}<span class="lap-divider">|</span><span class="lap-stat-label">Pace</span>{{ lap.average_pace }}<span class="lap-divider">|</span><span class="lap-stat-label">Speed</span>{{ lap.average_speed }} mph</div>
+                                        <div class="lap-row"><span class="lap-num">Lap {{ lap.lap }}</span><span class="lap-divider"> | </span><span class="lap-stat-label">Time </span>{{ lap.duration }}<span class="lap-divider"> | </span><span class="lap-stat-label">Pace </span>{{ lap.average_pace }}<span class="lap-divider"> | </span><span class="lap-stat-label">Speed </span>{{ lap.average_speed }} mph</div>
                                         {% endfor %}
                                     </td>
                                     <td>{% if runner.gun_time %}{{ runner.gun_time }}{% else %}—{% endif %}</td>
@@ -354,7 +354,7 @@
                         <div class="laps-collapse">
                             {% for lap in runner.laps %}
                             <div class="lap-row">
-                                <span class="lap-num">Lap {{ lap.lap }}</span><span class="lap-divider">|</span><span class="lap-stat-label">Time</span>{{ lap.duration }}<span class="lap-divider">|</span><span class="lap-stat-label">Pace</span>{{ lap.average_pace }}<span class="lap-divider">|</span><span class="lap-stat-label">Speed</span>{{ lap.average_speed }} mph
+                                <span class="lap-num">Lap {{ lap.lap }}</span><span class="lap-divider"> | </span><span class="lap-stat-label">Time </span>{{ lap.duration }}<span class="lap-divider"> | </span><span class="lap-stat-label">Pace </span>{{ lap.average_pace }}<span class="lap-divider"> | </span><span class="lap-stat-label">Speed </span>{{ lap.average_speed }} mph
                             </div>
                             {% endfor %}
                         </div>
