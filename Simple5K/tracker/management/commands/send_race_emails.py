@@ -18,21 +18,29 @@ class Command(BaseCommand):
             all_succeeded = True
             if runners_list:
                 for runner in runners_list:
-                    start_time = time.time()
-                    if laps.objects.filter(runner=runner, attach_to_race=race_obj).exists():
-                        logger.info("Sending email to runner pk=%s", runner.pk)
-                        try:
-                            send_race_report_email(runner.pk, race_obj.pk)
-                            runner.email_sent = True
-                            runner.save()
-                        except Exception:
-                            logger.exception("Failed to send email for runner pk=%s", runner.pk)
-                            all_succeeded = False
+                    if not laps.objects.filter(runner=runner, attach_to_race=race_obj).exists():
+                        continue
 
-                    end_time = time.time()
-                    iteration_time = end_time - start_time
-                    if iteration_time < 2.1:
-                        time.sleep(2.1 - iteration_time)
+                    # Atomically claim this runner — if another process already
+                    # marked email_sent=True, claimed will be 0 and we skip.
+                    claimed = runners.objects.filter(pk=runner.pk, email_sent=False).update(email_sent=True)
+                    if not claimed:
+                        logger.info("Email already claimed for runner pk=%s, skipping", runner.pk)
+                        continue
+
+                    start_time = time.time()
+                    logger.info("Sending email to runner pk=%s", runner.pk)
+                    try:
+                        send_race_report_email(runner.pk, race_obj.pk)
+                    except Exception:
+                        logger.exception("Failed to send email for runner pk=%s", runner.pk)
+                        # Revert the flag so the next run will retry
+                        runners.objects.filter(pk=runner.pk).update(email_sent=False)
+                        all_succeeded = False
+
+                    elapsed = time.time() - start_time
+                    if elapsed < 2.1:
+                        time.sleep(2.1 - elapsed)
             if all_succeeded:
                 race_obj.all_emails_sent = True
                 race_obj.save()
