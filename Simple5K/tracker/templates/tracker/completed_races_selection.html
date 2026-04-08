@@ -73,23 +73,57 @@
     color: #64748b;
     padding: 0.875rem 1rem;
     background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
+  }
+  .results-table th .col-unit {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #94a3b8;
+    margin-top: 0.1rem;
   }
   .results-table td {
     padding: 0.875rem 1rem;
     border-bottom: 1px solid #f1f5f9;
     vertical-align: middle;
+    font-size: 0.9375rem;
+  }
+  .results-table tbody tr:last-child td {
+    border-bottom: none;
   }
   .results-table tbody tr:hover {
     background: #f8fafc;
   }
   .results-table .lap-details {
-    font-size: 0.8125rem;
+    font-size: 0.8rem;
     color: #64748b;
-    max-width: 220px;
+    max-width: 260px;
   }
   .results-table .lap-details .lap-line {
-    padding: 0.15rem 0;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    display: grid;
+    grid-template-columns: auto 1fr 1fr 1fr;
+    gap: 0 0.5rem;
+    align-items: center;
+  }
+  .results-table .lap-details .lap-line:last-child {
+    border-bottom: none;
+  }
+  .results-table .lap-details .lap-label {
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+  }
+  .results-table .lap-details .lap-val {
+    white-space: nowrap;
+  }
+  .results-table .lap-details .lap-val-unit {
+    font-size: 0.7rem;
+    color: #94a3b8;
   }
   .runner-card {
     background: #fff;
@@ -227,7 +261,16 @@
     var html = '';
     laps.forEach(function(lap) {
       if (lap.lap === 0) return;
-      html += '<div class="lap-line">Lap ' + escapeHtml(lap.lap) + ': ' + escapeHtml(lap.duration) + ' — ' + escapeHtml(lap.average_pace) + ' — ' + escapeHtml(lap.average_speed) + ' MPH</div>';
+      var speed = (lap.average_speed && lap.average_speed !== 'Not Finished') ? escapeHtml(lap.average_speed) : '—';
+      var pace  = lap.average_pace ? escapeHtml(lap.average_pace) : '—';
+      var dur   = lap.duration    ? escapeHtml(lap.duration)      : '—';
+      html +=
+        '<div class="lap-line">' +
+          '<span class="lap-label">Lap ' + escapeHtml(lap.lap) + '</span>' +
+          '<span class="lap-val">' + dur + ' <span class="lap-val-unit">time</span></span>' +
+          '<span class="lap-val">' + pace + ' <span class="lap-val-unit">pace</span></span>' +
+          '<span class="lap-val">' + speed + ' <span class="lap-val-unit">mph</span></span>' +
+        '</div>';
     });
     return html;
   }
@@ -245,7 +288,16 @@
     table.className = 'results-table';
     table.setAttribute('role', 'table');
     var thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Laps</th><th scope="col">Gun time</th><th scope="col">Chip time</th><th scope="col">Pace</th><th scope="col">Speed</th><th scope="col">Place</th></tr>';
+    thead.innerHTML = '<tr>' +
+      '<th scope="col">#</th>' +
+      '<th scope="col">Name</th>' +
+      '<th scope="col">Laps<span class="col-unit">time · pace · speed</span></th>' +
+      '<th scope="col">Gun Time<span class="col-unit">h:mm:ss</span></th>' +
+      '<th scope="col">Chip Time<span class="col-unit">h:mm:ss</span></th>' +
+      '<th scope="col">Avg Pace<span class="col-unit">min/mi</span></th>' +
+      '<th scope="col">Avg Speed<span class="col-unit">mph</span></th>' +
+      '<th scope="col">Place</th>' +
+    '</tr>';
     table.appendChild(thead);
     var tbody = document.createElement('tbody');
     (data.runner_times || []).forEach(function(runner) {
@@ -284,10 +336,10 @@
           '<span class="runner-place">' + escapeHtml(placeText(runner)) + '</span>' +
         '</div>' +
         '<div class="runner-stats">' +
-          '<span>Gun: ' + escapeHtml(runner.gun_time != null ? runner.gun_time : runner.total_race_time) + '</span>' +
-          '<span>Chip: ' + escapeHtml(runner.chip_time != null ? runner.chip_time : '—') + '</span>' +
-          '<span>Pace: ' + escapeHtml(runner.average_pace) + '</span>' +
-          '<span>' + speedText + '</span>' +
+          '<span>Gun Time: ' + escapeHtml(runner.gun_time != null ? runner.gun_time : runner.total_race_time) + '</span>' +
+          '<span>Chip Time: ' + escapeHtml(runner.chip_time != null ? runner.chip_time : '—') + '</span>' +
+          '<span>Avg Pace: ' + escapeHtml(runner.average_pace) + '</span>' +
+          '<span>Avg Speed: ' + speedText + '</span>' +
         '</div>' +
         (lapsHtml ? ('<button type="button" class="laps-toggle" aria-expanded="false">View laps</button><div class="laps-detail" style="display:none;">' + lapsHtml + '</div>') : '');
       if (lapsHtml) {
