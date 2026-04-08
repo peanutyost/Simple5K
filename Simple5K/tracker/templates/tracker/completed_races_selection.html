@@ -100,30 +100,32 @@
   .results-table .lap-details {
     font-size: 0.8rem;
     color: #64748b;
-    max-width: 260px;
+    min-width: 220px;
   }
   .results-table .lap-details .lap-line {
-    padding: 0.2rem 0;
-    border-bottom: 1px solid #f1f5f9;
-    display: grid;
-    grid-template-columns: auto 1fr 1fr 1fr;
-    gap: 0 0.5rem;
-    align-items: center;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgba(0,0,0,0.07);
+    line-height: 1.6;
   }
   .results-table .lap-details .lap-line:last-child {
     border-bottom: none;
+    padding-bottom: 0;
   }
   .results-table .lap-details .lap-label {
-    font-weight: 600;
-    color: #475569;
-    white-space: nowrap;
+    font-weight: 700;
+    color: #1e293b;
   }
-  .results-table .lap-details .lap-val {
-    white-space: nowrap;
+  .results-table .lap-details .lap-divider {
+    color: #cbd5e1;
+    margin: 0 0.4rem;
+    font-weight: 300;
   }
-  .results-table .lap-details .lap-val-unit {
-    font-size: 0.7rem;
+  .results-table .lap-details .lap-stat-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: #94a3b8;
+    margin-right: 0.2rem;
   }
   .runner-card {
     background: #fff;
@@ -267,9 +269,12 @@
       html +=
         '<div class="lap-line">' +
           '<span class="lap-label">Lap ' + escapeHtml(lap.lap) + '</span>' +
-          '<span class="lap-val">' + dur + ' <span class="lap-val-unit">time</span></span>' +
-          '<span class="lap-val">' + pace + ' <span class="lap-val-unit">pace</span></span>' +
-          '<span class="lap-val">' + speed + ' <span class="lap-val-unit">mph</span></span>' +
+          '<span class="lap-divider">|</span>' +
+          '<span class="lap-stat-label">Time</span>' + dur +
+          '<span class="lap-divider">|</span>' +
+          '<span class="lap-stat-label">Pace</span>' + pace +
+          '<span class="lap-divider">|</span>' +
+          '<span class="lap-stat-label">Speed</span>' + speed + ' mph' +
         '</div>';
     });
     return html;

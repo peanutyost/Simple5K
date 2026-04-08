@@ -61,8 +61,34 @@
         color: var(--page-muted);
     }
 
-    .active-race-page .race-table .lap-cell div {
-        margin-bottom: 0.25rem;
+    .active-race-page .race-table .lap-cell .lap-row {
+        padding: 0.25rem 0;
+        border-bottom: 1px solid rgba(0,0,0,0.07);
+        line-height: 1.6;
+    }
+
+    .active-race-page .race-table .lap-cell .lap-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .active-race-page .race-table .lap-cell .lap-num {
+        font-weight: 700;
+        color: var(--page-heading);
+    }
+
+    .active-race-page .race-table .lap-cell .lap-divider {
+        color: #cbd5e1;
+        margin: 0 0.4rem;
+        font-weight: 300;
+    }
+
+    .active-race-page .race-table .lap-cell .lap-stat-label {
+        color: #94a3b8;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-right: 0.2rem;
     }
 
     .active-race-page .table-scroll-wrap {
@@ -137,15 +163,13 @@
         color: var(--page-muted);
         margin-top: 0.5rem;
         border-top: 1px solid var(--page-border);
-        padding-top: 0.5rem;
+        padding-top: 0.25rem;
     }
 
     .active-race-page .runner-card .laps-collapse .lap-row {
-        display: flex;
-        gap: 0.5rem;
-        align-items: baseline;
-        padding: 0.3rem 0;
-        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding: 0.35rem 0;
+        border-bottom: 1px solid rgba(0,0,0,0.07);
+        line-height: 1.6;
     }
 
     .active-race-page .runner-card .laps-collapse .lap-row:last-child {
@@ -154,41 +178,23 @@
     }
 
     .active-race-page .runner-card .laps-collapse .lap-num {
-        font-weight: 600;
+        font-weight: 700;
         color: var(--page-heading);
-        white-space: nowrap;
-        padding-right: 0.6rem;
-        margin-right: 0.6rem;
-        border-right: 2px solid var(--page-border);
-        align-self: center;
+        font-size: 0.8rem;
     }
 
-    .active-race-page .runner-card .laps-collapse .lap-stats {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem 0;
-    }
-
-    .active-race-page .runner-card .laps-collapse .lap-stat {
-        display: flex;
-        align-items: center;
-        padding-right: 0.6rem;
-        margin-right: 0.6rem;
-        border-right: 1px solid #cbd5e1;
-    }
-
-    .active-race-page .runner-card .laps-collapse .lap-stat:last-child {
-        border-right: none;
-        padding-right: 0;
-        margin-right: 0;
+    .active-race-page .runner-card .laps-collapse .lap-divider {
+        color: #cbd5e1;
+        margin: 0 0.4rem;
+        font-weight: 300;
     }
 
     .active-race-page .runner-card .laps-collapse .lap-stat-label {
         color: #94a3b8;
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         text-transform: uppercase;
         letter-spacing: 0.04em;
-        margin-right: 0.25rem;
+        margin-right: 0.2rem;
     }
 
     .active-race-page .empty-state {
@@ -310,7 +316,7 @@
                                     <td>{{ runner.name }}</td>
                                     <td class="lap-cell">
                                         {% for lap in runner.laps %}
-                                        <div>Lap {{ lap.lap }}: {{ lap.duration }} – {{ lap.average_pace }} – {{ lap.average_speed }} MPH</div>
+                                        <div class="lap-row"><span class="lap-num">Lap {{ lap.lap }}</span><span class="lap-divider">|</span><span class="lap-stat-label">Time</span>{{ lap.duration }}<span class="lap-divider">|</span><span class="lap-stat-label">Pace</span>{{ lap.average_pace }}<span class="lap-divider">|</span><span class="lap-stat-label">Speed</span>{{ lap.average_speed }} mph</div>
                                         {% endfor %}
                                     </td>
                                     <td>{% if runner.gun_time %}{{ runner.gun_time }}{% else %}—{% endif %}</td>
@@ -348,12 +354,7 @@
                         <div class="laps-collapse">
                             {% for lap in runner.laps %}
                             <div class="lap-row">
-                                <span class="lap-num">Lap {{ lap.lap }}</span>
-                                <div class="lap-stats">
-                                    <span class="lap-stat"><span class="lap-stat-label">Time</span>{{ lap.duration }}</span>
-                                    <span class="lap-stat"><span class="lap-stat-label">Pace</span>{{ lap.average_pace }}</span>
-                                    <span class="lap-stat"><span class="lap-stat-label">Speed</span>{{ lap.average_speed }} mph</span>
-                                </div>
+                                <span class="lap-num">Lap {{ lap.lap }}</span><span class="lap-divider">|</span><span class="lap-stat-label">Time</span>{{ lap.duration }}<span class="lap-divider">|</span><span class="lap-stat-label">Pace</span>{{ lap.average_pace }}<span class="lap-divider">|</span><span class="lap-stat-label">Speed</span>{{ lap.average_speed }} mph
                             </div>
                             {% endfor %}
                         </div>
