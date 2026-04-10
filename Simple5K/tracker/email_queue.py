@@ -134,7 +134,13 @@ def _worker_loop():
                 if job:
                     job.status = EmailSendJob.STATUS_SENDING
                     job.save(update_fields=["status"])
-                    _process_one_job(job)
+
+            # Process the job OUTSIDE the atomic block so that connection.close()
+            # in _process_one_job's finally does not close the connection while a
+            # transaction is still open (which would roll back the status updates
+            # and leave the job as QUEUED, causing it to be re-sent indefinitely).
+            if job:
+                _process_one_job(job)
         except Exception as e:
             logger.exception("Email worker failed processing job: %s", e)
             if job is not None:
